@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "VPM",
+  "parent_region": "THALAMUS",
+  "function": "facial_sensory_relay",
+
+  "populations": {
+    "RELAY_NEURONS": {
+      "count": 50000,
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 5.5,
+      "plasticity_profile": "low"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "type": "RegionBase",
+  "region_id": "CEREBELLUM",
+  "category": "error_correction",
+  "reference_models": ["human", "rodent"],
+
+  "spatial_properties": {
+    "coordinate_frame": "posterior_fossa_space",
+    "approx_dimensions_mm": [100, 50, 40]
+  },
+
+  "default_neuron_template": {
+    "neuron_base": "neubase",
+    "plasticity_enabled": true
+  },
+
+  "default_channels": {
+    "NaV_FAST": 0.8,
+    "KV_DELAYED_RECTIFIER": 0.7,
+    "CaV_PQ": 0.6,
+    "HCN": 0.3,
+    "LEAK": 0.55
+  },
+
+  "default_receptors": {
+    "AMPA": 0.6,
+    "NMDA": 0.25,
+    "GABA_A": 0.5,
+    "GABA_B": 0.2
+  },
+
+  "intrinsic_signals": {
+    "prediction_error": 0.0,
+    "timing_precision": 1.0,
+    "energy_state": 1.0
+  },
+
+  "allowed_inputs": [
+    "CORTEX",
+    "BRAINSTEM",
+    "SPINAL"
+  ],
+
+  "allowed_outputs": [
+    "THALAMUS",
+    "BRAINSTEM"
+  ],
+
+  "notes": "Cerebellum implements predictive timing and error correction via highly regular microcircuitry."
+}

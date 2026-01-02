@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "GPe",
+  "parent_region": "BASAL_GANGLIA",
+
+  "function": "indirect_pathway_modulation",
+
+  "populations": {
+    "OUTPUT_NEURONS": {
+      "count": 20000,
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+      "baseline_firing_rate_hz": 15.0,
+      "plasticity_profile": "low"
+    }
+  },
+
+  "outputs": [
+    {
+      "target_region": "STN",
+      "target_population": "EXCITATORY_NEURONS",
+      "strength": 0.8
+    }
+  ]
+}

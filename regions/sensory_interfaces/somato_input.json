@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "type": "SensoryInterface",
+  "region_id": "SOMATO_INPUT",
+  "parent_region": "SENSORY_INTERFACES",
+
+  "function": "somatosensory_transduction",
+
+  "signal_dimensions": {
+    "body_map_resolution": 64,
+    "modalities": ["touch", "pressure", "temperature", "pain"]
+  },
+
+  "encoding": {
+    "mode": "topographic",
+    "adaptation": "slow"
+  },
+
+  "outputs": [
+    {
+      "target_region": "THALAMUS",
+      "target_population": "VPL",
+      "strength": 1.0
+    }
+  ]
+}

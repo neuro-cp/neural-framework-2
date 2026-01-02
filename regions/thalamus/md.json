@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "MD",
+  "parent_region": "THALAMUS",
+  "function": "prefrontal_modulation",
+
+  "populations": {
+    "RELAY_NEURONS": {
+      "count": 70000,
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 2.0,
+      "plasticity_profile": "medium"
+    }
+  }
+}

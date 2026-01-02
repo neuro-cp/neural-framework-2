@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "type": "SensoryInterface",
+  "region_id": "AUDITORY_INPUT",
+  "parent_region": "SENSORY_INTERFACES",
+
+  "function": "auditory_signal_transduction",
+
+  "signal_dimensions": {
+    "frequency_bins": 64,
+    "time_bins": 32
+  },
+
+  "encoding": {
+    "mode": "tonotopic",
+    "temporal_filter": "envelope"
+  },
+
+  "outputs": [
+    {
+      "target_region": "THALAMUS",
+      "target_population": "MGB_PROXY",
+      "strength": 1.0
+    }
+  ]
+}

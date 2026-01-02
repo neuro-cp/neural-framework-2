@@ -1,0 +1,66 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "SUBICULUM",
+  "parent_region": "HIPPOCAMPAL_FORMATION",
+
+  "function": "memory_distribution",
+
+  "spatial_properties": {
+    "layered": false,
+    "neuron_density_per_mm3": 60000
+  },
+
+  "populations": {
+
+    "PYRAMIDAL_CELLS": {
+      "count": 30000,
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+
+      "channels": {
+        "NaV_FAST": 0.75,
+        "KV_DELAYED_RECTIFIER": 0.65,
+        "HCN": 0.35,
+        "LEAK": 0.6
+      },
+
+      "receptors": {
+        "AMPA": 0.5,
+        "NMDA": 0.4,
+        "GABA_A": 0.35,
+        "D1": 0.2,
+        "5HT1A": 0.2
+      },
+
+      "baseline_firing_rate_hz": 1.0,
+      "plasticity_profile": "medium"
+    }
+  },
+
+  "inputs": [
+    {
+      "source_region": "CA1",
+      "source_population": "PYRAMIDAL_CELLS",
+      "strength": 0.9
+    }
+  ],
+
+  "outputs": [
+    {
+      "target_region": "CORTEX",
+      "target_population": "L5_PYRAMIDAL",
+      "strength": 0.6
+    },
+    {
+      "target_region": "AMYGDALA",
+      "target_population": "BLA",
+      "strength": 0.4
+    }
+  ],
+
+  "drug_sensitivity": {
+    "dopaminergic_agents": "moderate",
+    "serotonergic_agents": "moderate"
+  }
+}

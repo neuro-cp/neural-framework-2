@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "A1",
+  "parent_region": "CORTEX",
+  "function": "auditory_processing",
+
+  "spatial_properties": {
+    "laminar": true
+  },
+
+  "populations": {
+    "L4_EXCITATORY": {
+      "count": 75000,
+      "layer": "L4",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 1.0,
+      "plasticity_profile": "medium"
+    },
+    "L2_3_PYRAMIDAL": {
+      "count": 85000,
+      "layer": "L2_3",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.6,
+      "plasticity_profile": "high"
+    },
+    "INTERNEURONS": {
+      "count": 38000,
+      "layer": "all",
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+      "baseline_firing_rate_hz": 6.5,
+      "plasticity_profile": "low"
+    }
+  }
+}

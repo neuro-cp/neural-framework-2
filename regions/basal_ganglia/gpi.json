@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "GPi",
+  "parent_region": "BASAL_GANGLIA",
+
+  "function": "thalamic_inhibition",
+
+  "populations": {
+    "OUTPUT_NEURONS": {
+      "count": 25000,
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+      "baseline_firing_rate_hz": 20.0,
+      "plasticity_profile": "very_low"
+    }
+  },
+
+  "outputs": [
+    {
+      "target_region": "THALAMUS",
+      "target_population": "MD",
+      "strength": 1.0
+    }
+  ]
+}

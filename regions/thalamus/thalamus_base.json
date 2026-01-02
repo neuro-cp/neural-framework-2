@@ -1,0 +1,59 @@
+{
+  "version": "1.0.0",
+  "type": "RegionBase",
+  "region_id": "THALAMUS",
+  "category": "relay_nuclei",
+  "reference_models": ["human", "rodent", "primate"],
+
+  "spatial_properties": {
+    "coordinate_frame": "deep_nuclei_space",
+    "approx_dimensions_mm": [30, 25, 20]
+  },
+
+  "default_neuron_template": {
+    "neuron_base": "neubase",
+    "plasticity_enabled": true
+  },
+
+  "default_channels": {
+    "NaV_FAST": 0.8,
+    "KV_DELAYED_RECTIFIER": 0.7,
+    "CaV_T": 0.5,
+    "HCN": 0.4,
+    "LEAK": 0.5
+  },
+
+  "default_receptors": {
+    "AMPA": 0.5,
+    "NMDA": 0.3,
+    "GABA_A": 0.4,
+    "GABA_B": 0.2
+  },
+
+  "intrinsic_signals": {
+    "calcium_proxy": 0.0,
+    "energy_state": 1.0,
+    "excitatory_drive": 0.0
+  },
+
+  "functional_modes": {
+    "tonic_firing": {
+      "CaV_T_bias": 0.2
+    },
+    "burst_firing": {
+      "CaV_T_bias": 0.6
+    }
+  },
+
+  "allowed_inputs": [
+    "SENSORY_INTERFACES",
+    "CORTEX",
+    "BRAINSTEM"
+  ],
+
+  "allowed_outputs": [
+    "CORTEX"
+  ],
+
+  "notes": "Thalamus regulates sensory flow, cortical synchrony, sleep-wake transitions, and anesthetic sensitivity."
+}

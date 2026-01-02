@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "PFC",
+  "parent_region": "CORTEX",
+  "function": "executive_control",
+
+  "spatial_properties": {
+    "laminar": true
+  },
+
+  "populations": {
+    "L2_3_PYRAMIDAL": {
+      "count": 95000,
+      "layer": "L2_3",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.4,
+      "plasticity_profile": "very_high"
+    },
+    "L5_PYRAMIDAL": {
+      "count": 70000,
+      "layer": "L5",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.8,
+      "plasticity_profile": "high"
+    },
+    "INTERNEURONS": {
+      "count": 45000,
+      "layer": "all",
+      "neuron_type": "inhibitory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 7.5,
+      "plasticity_profile": "medium"
+    }
+  }
+}

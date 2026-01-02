@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "SNc",
+  "parent_region": "BASAL_GANGLIA",
+
+  "function": "dopaminergic_motor_modulation",
+
+  "populations": {
+    "DOPAMINERGIC_NEURONS": {
+      "count": 18000,
+      "neuron_type": "neuromodulatory",
+      "baseline_firing_rate_hz": 3.0,
+      "plasticity_profile": "low"
+    }
+  },
+
+  "drug_sensitivity": {
+    "dopamine_depletion": "very_high",
+    "parkinsons_agents": "very_high"
+  }
+}

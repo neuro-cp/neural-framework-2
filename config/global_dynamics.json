@@ -1,0 +1,23 @@
+{
+  "population_defaults": {
+    "tau": 20.0,
+    "gain": 8.0,
+    "threshold": 0.03,
+    "decay": 0.12,
+    "inhibition_gain": 0.35,
+    "inhibition_knee": 0.35,
+    "tonic_drive": 0.015,
+    "activity_coupling": 0.15,
+    "max_rate": 40.0,
+    "activity_floor": 0.0,
+    "activity_ceiling": 8.0
+  },
+  "baseline_activity_scale": 0.006,
+  "background_noise": {
+    "amplitude": 0.02,
+    "distribution": "gaussian"
+  },
+  "propagation": {
+    "global_strength": 1.0
+  }
+}

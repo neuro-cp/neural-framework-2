@@ -1,0 +1,124 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "STRIATUM",
+  "parent_region": "BASAL_GANGLIA",
+
+  "function": "action_value_integration",
+
+  "spatial_properties": {
+    "neuron_density_per_mm3": 90000
+  },
+
+  "populations": {
+
+    "D1_MSN": {
+      "count": 40000,
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+
+      "channels": {
+        "NaV_FAST": 0.7,
+        "KV_DELAYED_RECTIFIER": 0.6,
+        "LEAK": 0.65
+      },
+
+      "receptors": {
+        "AMPA": 0.45,
+        "NMDA": 0.4,
+        "GABA_A": 0.6,
+        "D1": 0.6
+      },
+
+      "baseline_firing_rate_hz": 0.3,
+      "plasticity_profile": "high"
+    },
+
+    "D2_MSN": {
+      "count": 40000,
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+
+      "channels": {
+        "NaV_FAST": 0.7,
+        "KV_DELAYED_RECTIFIER": 0.6,
+        "LEAK": 0.65
+      },
+
+      "receptors": {
+        "AMPA": 0.45,
+        "NMDA": 0.4,
+        "GABA_A": 0.6,
+        "D2": 0.6
+      },
+
+      "baseline_firing_rate_hz": 0.3,
+      "plasticity_profile": "high"
+    },
+
+    "INTERNEURONS": {
+      "count": 15000,
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+
+      "channels": {
+        "NaV_FAST": 0.85,
+        "KV_DELAYED_RECTIFIER": 0.75,
+        "LEAK": 0.45
+      },
+
+      "receptors": {
+        "AMPA": 0.4,
+        "GABA_A": 0.7
+      },
+
+      "baseline_firing_rate_hz": 8.0,
+      "plasticity_profile": "low"
+    }
+  },
+
+  "inputs": [
+    {
+      "source_region": "CORTEX",
+      "source_population": "L5_PYRAMIDAL",
+      "strength": 0.6
+    },
+    {
+      "source_region": "HIPPOCAMPAL_FORMATION",
+      "source_population": "SUBICULUM",
+      "strength": 0.3
+    },
+    {
+      "source_region": "AMYGDALA",
+      "source_population": "BLA",
+      "strength": 0.4
+    },
+    {
+      "source_region": "BRAINSTEM",
+      "source_population": "VTA",
+      "signal": "dopamine_tone",
+      "strength": 1.0
+    }
+  ],
+
+  "outputs": [
+    {
+      "target_region": "GPi",
+      "target_population": "OUTPUT_NEURONS",
+      "pathway": "direct",
+      "strength": 0.7
+    },
+    {
+      "target_region": "GPe",
+      "target_population": "OUTPUT_NEURONS",
+      "pathway": "indirect",
+      "strength": 0.7
+    }
+  ],
+
+  "drug_sensitivity": {
+    "dopaminergic_agents": "very_high",
+    "antipsychotics": "very_high",
+    "psychostimulants": "high"
+  }
+}

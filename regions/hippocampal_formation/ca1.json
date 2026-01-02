@@ -1,0 +1,92 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "CA1",
+  "parent_region": "HIPPOCAMPAL_FORMATION",
+
+  "function": "memory_output_integration",
+
+  "spatial_properties": {
+    "layered": true,
+    "layers": ["stratum_oriens", "stratum_pyramidale", "stratum_radiatum"],
+    "neuron_density_per_mm3": 70000
+  },
+
+  "populations": {
+
+    "PYRAMIDAL_CELLS": {
+      "count": 45000,
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+
+      "channels": {
+        "NaV_FAST": 0.8,
+        "KV_DELAYED_RECTIFIER": 0.7,
+        "KCa": 0.35,
+        "HCN": 0.3,
+        "LEAK": 0.55
+      },
+
+      "receptors": {
+        "AMPA": 0.55,
+        "NMDA": 0.5,
+        "GABA_A": 0.4,
+        "GABA_B": 0.2,
+        "M1": 0.15
+      },
+
+      "baseline_firing_rate_hz": 0.5,
+      "plasticity_profile": "high"
+    },
+
+    "INTERNEURONS": {
+      "count": 10000,
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+
+      "channels": {
+        "NaV_FAST": 0.9,
+        "KV_DELAYED_RECTIFIER": 0.85,
+        "LEAK": 0.4
+      },
+
+      "receptors": {
+        "AMPA": 0.45,
+        "NMDA": 0.3,
+        "GABA_A": 0.7
+      },
+
+      "baseline_firing_rate_hz": 7.0,
+      "plasticity_profile": "medium"
+    }
+  },
+
+  "inputs": [
+    {
+      "source_region": "CA3",
+      "source_population": "PYRAMIDAL_CELLS",
+      "pathway": "schaffer_collaterals",
+      "strength": 0.8
+    },
+    {
+      "source_region": "CORTEX",
+      "source_population": "L3_PYRAMIDAL",
+      "pathway": "temporoammonic",
+      "strength": 0.4
+    }
+  ],
+
+  "outputs": [
+    {
+      "target_region": "SUBICULUM",
+      "target_population": "PYRAMIDAL_CELLS",
+      "strength": 0.9
+    }
+  ],
+
+  "drug_sensitivity": {
+    "cholinergic_agents": "high",
+    "nmda_antagonists": "high",
+    "gabaergic_agents": "moderate"
+  }
+}
