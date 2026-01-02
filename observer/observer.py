@@ -1,18 +1,37 @@
 import json
 import os
+from typing import Dict, Any, Optional
 
 
 class BrainObserver:
-    def __init__(self, brain):
+    """
+    Observer / auditor for compiled brain definitions.
+
+    RESPONSIBILITIES:
+    - Summarize loaded regions and profiles
+    - Validate region + population references
+    - Provide human-readable diagnostics
+    - Stay READ-ONLY (no runtime mutation)
+    """
+
+    def __init__(self, brain: Dict[str, Any]):
         self.brain = brain
         self.aliases = self._load_aliases()
+        self._region_cache = self._build_region_cache()
 
-    def _load_aliases(self):
+    # --------------------------------------------------
+    # Alias handling
+    # --------------------------------------------------
+
+    def _load_aliases(self) -> Dict[str, list]:
+        """
+        Load region alias definitions from regions/region_aliases.json
+        """
         path = os.path.join(
             os.path.dirname(__file__),
             "..",
             "regions",
-            "region_aliases.json"
+            "region_aliases.json",
         )
 
         try:
@@ -25,32 +44,51 @@ class BrainObserver:
             print(f"⚠️  Alias file error: {e}")
             return {}
 
-    def _resolve_region(self, name):
+    def _build_region_cache(self) -> Dict[str, str]:
         """
-        Attempt to resolve a region name to a concrete loaded region.
-        Returns resolved region_id or None.
+        Build a fast lookup map for region resolution:
+        lowercased_label -> canonical_region_key
         """
         regions = self.brain.get("regions", {})
+        cache: Dict[str, str] = {}
 
-        # Direct hit
-        if name in regions:
-            return name
-            
-        # Case-insensitive hit
-        lname = name.lower()
-        if lname in regions:
-            return lname
+        for key, region in regions.items():
+            cache[key.lower()] = key
 
-        # Alias resolution
+            if isinstance(region, dict):
+                rid = region.get("region_id")
+                name = region.get("name")
+
+                if rid:
+                    cache[str(rid).lower()] = key
+                if name:
+                    cache[str(name).lower()] = key
+
+        # Aliases
         for canonical, members in self.aliases.items():
-            if name == canonical or name in members:
-                for m in members:
-                    if m in regions:
-                        return m
+            for m in members:
+                if m.lower() in cache:
+                    cache[canonical.lower()] = cache[m.lower()]
 
-        return None
+        return cache
 
-    def summary(self):
+    def _resolve_region(self, name: Optional[str]) -> Optional[str]:
+        """
+        Resolve a region name / alias / label to a canonical region key.
+        """
+        if not name:
+            return None
+
+        return self._region_cache.get(str(name).lower())
+
+    # --------------------------------------------------
+    # High-level summaries
+    # --------------------------------------------------
+
+    def summary(self) -> None:
+        """
+        Print a compact summary of the brain definition.
+        """
         print("\n=== BRAIN SUMMARY ===")
 
         neuron_bases = self.brain.get("neuron_bases", {})
@@ -74,7 +112,14 @@ class BrainObserver:
 
         print("\n====================\n")
 
-    def region_details(self):
+    # --------------------------------------------------
+    # Structural inspection
+    # --------------------------------------------------
+
+    def region_details(self) -> None:
+        """
+        Print per-region population composition (counts only).
+        """
         print("\n=== REGION DETAILS ===")
 
         regions = self.brain.get("regions", {})
@@ -89,16 +134,23 @@ class BrainObserver:
 
             total_neurons = 0
             for pop_name, pop in populations.items():
-                count = pop.get("count", 0)
-                total_neurons += count
+                count = int(pop.get("count", 0) or 0)
                 ntype = pop.get("neuron_type", "unknown")
+                total_neurons += count
                 print(f"  - {pop_name}: {count} ({ntype})")
 
             print(f"  Total neurons: {total_neurons}")
 
         print("\n======================\n")
 
-    def connectivity_summary(self):
+    # --------------------------------------------------
+    # Connectivity inspection
+    # --------------------------------------------------
+
+    def connectivity_summary(self) -> None:
+        """
+        Print region-to-region connectivity graph (human readable).
+        """
         print("\n=== CONNECTIVITY SUMMARY ===")
 
         regions = self.brain.get("regions", {})
@@ -128,7 +180,15 @@ class BrainObserver:
 
         print("\n============================\n")
 
-    def validate_references(self):
+    # --------------------------------------------------
+    # Validation
+    # --------------------------------------------------
+
+    def validate_references(self) -> None:
+        """
+        Validate region and population references.
+        Does NOT stop execution — purely diagnostic.
+        """
         print("\n=== REFERENCE VALIDATION ===")
 
         regions = self.brain.get("regions", {})
@@ -139,43 +199,59 @@ class BrainObserver:
             inputs = region.get("inputs", [])
             outputs = region.get("outputs", [])
 
+            # ---- Inputs ----
             for inp in inputs:
                 src = inp.get("source_region")
-                resolved = self._resolve_region(src) if src else None
+                resolved = self._resolve_region(src)
 
                 if src and not resolved:
-                    print(f"⚠️  WARNING: [{region_id}] input source_region '{src}' not resolved")
+                    print(
+                        f"⚠️  WARNING: [{region_id}] input source_region '{src}' not resolved"
+                    )
                     warnings += 1
                 elif src and resolved and resolved != src:
-                    print(f"ℹ️  INFO: [{region_id}] input '{src}' resolved to '{resolved}'")
+                    print(
+                        f"ℹ️  INFO: [{region_id}] input '{src}' resolved to '{resolved}'"
+                    )
                     infos += 1
 
                 src_pop = inp.get("source_population")
-                if src_pop and resolved and resolved == src:
+                if src_pop and resolved:
                     pops = regions[resolved].get("populations", {})
                     if src_pop not in pops:
-                        print(f"⚠️  WARNING: [{region_id}] source_population '{src_pop}' not found in region '{resolved}'")
+                        print(
+                            f"⚠️  WARNING: [{region_id}] source_population '{src_pop}' not found in region '{resolved}'"
+                        )
                         warnings += 1
 
+            # ---- Outputs ----
             for out in outputs:
                 tgt = out.get("target_region")
-                resolved = self._resolve_region(tgt) if tgt else None
+                resolved = self._resolve_region(tgt)
 
                 if tgt and not resolved:
-                    print(f"⚠️  WARNING: [{region_id}] output target_region '{tgt}' not resolved")
+                    print(
+                        f"⚠️  WARNING: [{region_id}] output target_region '{tgt}' not resolved"
+                    )
                     warnings += 1
                 elif tgt and resolved and resolved != tgt:
-                    print(f"ℹ️  INFO: [{region_id}] output '{tgt}' resolved to '{resolved}'")
+                    print(
+                        f"ℹ️  INFO: [{region_id}] output '{tgt}' resolved to '{resolved}'"
+                    )
                     infos += 1
 
                 tgt_pop = out.get("target_population")
-                if tgt_pop and resolved and resolved == tgt:
+                if tgt_pop and resolved:
                     pops = regions[resolved].get("populations", {})
                     if tgt_pop not in pops:
-                        print(f"⚠️  WARNING: [{region_id}] target_population '{tgt_pop}' not found in region '{resolved}'")
+                        print(
+                            f"⚠️  WARNING: [{region_id}] target_population '{tgt_pop}' not found in region '{resolved}'"
+                        )
                         warnings += 1
 
         if warnings == 0:
             print("✓ No unresolved references")
 
-        print(f"\nValidation complete — {warnings} warning(s), {infos} info resolution(s)\n")
+        print(
+            f"\nValidation complete — {warnings} warning(s), {infos} info resolution(s)\n"
+        )

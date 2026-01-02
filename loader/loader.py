@@ -1,5 +1,9 @@
+# loader/loader.py
+from __future__ import annotations
+
 import json
 from pathlib import Path
+from typing import Dict, Tuple, Optional, Any
 
 
 class NeuralFrameworkLoader:
@@ -10,13 +14,12 @@ class NeuralFrameworkLoader:
     Folder layout assumed (relative to root_path):
       neuron/        -> neuron base jsons
       regions/       -> region jsons (may be nested in subfolders)
-      profiles/      -> profile jsons
+      profiles/      -> profile jsons (may be nested)
       config/        -> global dynamics config json (preferred name: global_dynamics.json)
 
     Notes:
       - Region keys in the compiled brain are the JSON filenames (stems), not the internal 'region_id'.
-      - Global dynamics config is loaded from config/global_dynamics.json, with fallback to
-        config/global_config.json for backward compatibility.
+      - Special files (BrainMap / RegionAliasRegistry) are loaded separately and NOT treated as regions.
     """
 
     def __init__(self, root_path: str | Path):
@@ -27,11 +30,15 @@ class NeuralFrameworkLoader:
         self.profiles_path = self.root / "profiles"
         self.config_path = self.root / "config"
 
-        self.neuron_bases: dict = {}
-        self.regions: dict = {}
-        self.profiles: dict = {}
+        self.neuron_bases: Dict[str, Any] = {}
+        self.regions: Dict[str, Any] = {}
+        self.profiles: Dict[str, Any] = {}
 
-        self.compiled_brain: dict | None = None
+        # Special registry/meta files (often stored inside regions/)
+        self.brain_map: Optional[Dict[str, Any]] = None
+        self.region_aliases: Optional[Dict[str, Any]] = None
+
+        self.compiled_brain: Optional[Dict[str, Any]] = None
 
     # ----------------------------
     # Low-level helpers
@@ -42,18 +49,25 @@ class NeuralFrameworkLoader:
             return json.load(f)
 
     def _load_folder(self, folder: Path) -> dict:
-        data = {}
+        data: Dict[str, Any] = {}
         if not folder.exists():
             return data
+
         for file in folder.rglob("*.json"):
-            data[file.stem] = self._load_json(file)
+            key = file.stem
+            if key in data:
+                # Avoid silent overwrite if nested dirs reuse filenames
+                rel = str(file.relative_to(folder)).replace("\\", "/")
+                raise RuntimeError(f"Duplicate JSON stem '{key}' under {folder} (conflict at: {rel})")
+            data[key] = self._load_json(file)
+
         return data
 
     # ----------------------------
     # Config
     # ----------------------------
 
-    def load_global_dynamics(self) -> tuple[dict, str | None]:
+    def load_global_dynamics(self) -> Tuple[dict, Optional[str]]:
         """
         Load global dynamics config.
 
@@ -79,7 +93,35 @@ class NeuralFrameworkLoader:
         self.neuron_bases = self._load_folder(self.neuron_path)
 
     def load_regions(self) -> None:
-        self.regions = self._load_folder(self.regions_path)
+        """
+        Loads region JSONs, but pulls out meta registries if present:
+          - type == "BrainMap" -> self.brain_map
+          - type == "RegionAliasRegistry" -> self.region_aliases
+        Everything else is treated as a region definition.
+        """
+        self.regions = {}
+        self.brain_map = None
+        self.region_aliases = None
+
+        if not self.regions_path.exists():
+            return
+
+        for file in self.regions_path.rglob("*.json"):
+            blob = self._load_json(file)
+            t = str(blob.get("type", "") or "")
+
+            if t == "BrainMap":
+                self.brain_map = blob
+                continue
+            if t == "RegionAliasRegistry":
+                self.region_aliases = blob
+                continue
+
+            key = file.stem
+            if key in self.regions:
+                rel = str(file.relative_to(self.regions_path)).replace("\\", "/")
+                raise RuntimeError(f"Duplicate region stem '{key}' under regions/ (conflict at: {rel})")
+            self.regions[key] = blob
 
     def load_profiles(self) -> None:
         self.profiles = self._load_folder(self.profiles_path)
@@ -114,9 +156,16 @@ class NeuralFrameworkLoader:
         self.compiled_brain = {
             "neuron_bases": self.neuron_bases,
             "regions": self.regions,
+
+            # Profiles are optional (but should be loaded for observer/runtime consistency)
             "expression_profile": self.profiles.get(expression_profile),
             "state_profile": self.profiles.get(state_profile),
             "compound_profile": self.profiles.get(compound_profile),
+
+            # Meta registries (often stored in regions/)
+            "brain_map": self.brain_map,
+            "region_aliases": self.region_aliases,
+
             "global_dynamics": global_dyn,
             "global_dynamics_loaded_from": global_dyn_path,
         }

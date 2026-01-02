@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 import msvcrt
+from pathlib import Path
 
 from loader.loader import NeuralFrameworkLoader
 from engine.runtime import BrainRuntime
@@ -12,9 +13,9 @@ from engine.runtime import BrainRuntime
 # UI CONFIG
 # ============================================================
 
-SHOW_ASSEMBLIES = True     # True = show every assembly row, False = aggregate per region
-SHOW_ZERO_REGIONS = False  # Hide regions with 0 assemblies by default (can toggle)
-UI_INTERVAL = 0.50         # seconds of simulation time between UI refreshes
+SHOW_ASSEMBLIES = True       # True = show every assembly row, False = aggregate per region
+SHOW_ZERO_REGIONS = False    # Hide regions with 0 assemblies by default (can toggle)
+UI_INTERVAL = 0.50           # seconds of simulation time between UI refreshes
 
 # ============================================================
 # SNAPSHOT FUNCTIONS
@@ -179,9 +180,15 @@ def apply_command(runtime: BrainRuntime, cmd: str) -> str:
 # LOAD BRAIN
 # ============================================================
 
-loader = NeuralFrameworkLoader("C:/Users/Admin/Desktop/neural framework")
+DEFAULT_ROOT = Path("C:/Users/Admin/Desktop/neural framework")
+FALLBACK_ROOT = Path(__file__).resolve().parent
+
+root = DEFAULT_ROOT if DEFAULT_ROOT.exists() else FALLBACK_ROOT
+
+loader = NeuralFrameworkLoader(root)
 loader.load_neuron_bases()
 loader.load_regions()
+loader.load_profiles()  # IMPORTANT: keeps profiles present/consistent
 
 brain = loader.compile(
     expression_profile="human_default",
