@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.2",
   "type": "RegionSubstructure",
   "region_id": "CA1",
   "parent_region": "HIPPOCAMPAL_FORMATION",
@@ -13,7 +13,6 @@
   },
 
   "populations": {
-
     "PYRAMIDAL_CELLS": {
       "count": 45000,
       "neuron_type": "excitatory",
@@ -36,6 +35,13 @@
       },
 
       "baseline_firing_rate_hz": 0.5,
+      "tonic_drive": 0.020,
+      "excitability_gain": 0.75,
+      "firing_threshold": 0.06,
+      "activity_clamp_max": 4.5,
+
+      "_notes": "Pyramidal cells kept alive at rest, reduced excitability to prevent hypersensitivity",
+
       "plasticity_profile": "high"
     },
 
@@ -57,6 +63,13 @@
       },
 
       "baseline_firing_rate_hz": 7.0,
+      "tonic_drive": 0.010,
+      "excitability_gain": 1.1,
+      "firing_threshold": 0.03,
+      "activity_clamp_max": 3.5,
+
+      "_notes": "Interneurons active but bounded to avoid inhibitory collapse",
+
       "plasticity_profile": "medium"
     }
   },

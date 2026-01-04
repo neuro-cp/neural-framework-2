@@ -1,23 +1,31 @@
 {
   "population_defaults": {
-    "tau": 20.0,
-    "gain": 8.0,
-    "threshold": 0.03,
+    "tau": 15.0,
+    "gain": 3.0,
+    "threshold": 0.15,
     "decay": 0.12,
     "inhibition_gain": 0.35,
     "inhibition_knee": 0.35,
-    "tonic_drive": 0.015,
+    "tonic_drive": 0.08,
     "activity_coupling": 0.15,
-    "max_rate": 40.0,
-    "activity_floor": 0.0,
-    "activity_ceiling": 8.0
+    "max_rate": 25.0,
+    "activity_floor": 0.05,
+    "activity_ceiling": 6.0
   },
-  "baseline_activity_scale": 0.006,
+
+  "baseline_activity_scale": 0.01,
+
   "background_noise": {
-    "amplitude": 0.02,
+    "amplitude": 0.015,
     "distribution": "gaussian"
   },
+
   "propagation": {
-    "global_strength": 1.0
+    "global_strength": 0.85
+  },
+
+  "runtime": {
+    "assembly_downscale_factor": 0.05,
+    "max_assemblies_per_population": 3
   }
 }

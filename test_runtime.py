@@ -1,27 +1,63 @@
-# test_runtime.py  (Windows-friendly interactive runtime)
+# test_runtime.py  (Cross-platform interactive runtime)
 from __future__ import annotations
 
 import time
-import msvcrt
+import os
+import sys
 from pathlib import Path
 
 from loader.loader import NeuralFrameworkLoader
 from engine.runtime import BrainRuntime
+
+# ============================================================
+# PLATFORM INPUT HANDLING
+# ============================================================
+
+IS_WINDOWS = os.name == "nt"
+
+if IS_WINDOWS:
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+
+    # Put terminal into raw mode so we get characters immediately
+    fd = sys.stdin.fileno()
+    old_term_settings = termios.tcgetattr(fd)
+    tty.setcbreak(fd)
+
+
+def key_available() -> bool:
+    """Non-blocking keyboard check."""
+    if IS_WINDOWS:
+        return msvcrt.kbhit()
+    else:
+        return bool(select.select([sys.stdin], [], [], 0)[0])
+
+
+def read_key() -> str:
+    """Read one character."""
+    if IS_WINDOWS:
+        return msvcrt.getwch()
+    else:
+        return sys.stdin.read(1)
 
 
 # ============================================================
 # UI CONFIG
 # ============================================================
 
-SHOW_ASSEMBLIES = True       # True = show every assembly row, False = aggregate per region
-SHOW_ZERO_REGIONS = False    # Hide regions with 0 assemblies by default (can toggle)
-UI_INTERVAL = 0.50           # seconds of simulation time between UI refreshes
+SHOW_ASSEMBLIES = True        # True = show every assembly row, False = aggregate per region
+SHOW_ZERO_REGIONS = False    # Hide regions with 0 assemblies
+UI_INTERVAL = 1.0            # seconds of simulation time between UI refreshes
+
 
 # ============================================================
 # SNAPSHOT FUNCTIONS
 # ============================================================
 
-def snapshot_aggregate(runtime: BrainRuntime, *, show_zero: bool) -> list[tuple[str, float, float, int]]:
+def snapshot_aggregate(runtime: BrainRuntime, *, show_zero: bool):
     """
     Aggregate activity and firing per region.
     Returns: (region_id, mean_activity, mean_firing, n_assemblies)
@@ -42,20 +78,18 @@ def snapshot_aggregate(runtime: BrainRuntime, *, show_zero: bool) -> list[tuple[
         if count == 0 and not show_zero:
             continue
 
-        mean_act = (total_act / count) if count else 0.0
-        mean_fr = (total_fr / count) if count else 0.0
-
-        rows.append((region_id, mean_act, mean_fr, count))
+        rows.append((
+            region_id,
+            (total_act / count) if count else 0.0,
+            (total_fr / count) if count else 0.0,
+            count
+        ))
 
     rows.sort(key=lambda x: x[0])
     return rows
 
 
-def snapshot_assemblies(
-    runtime: BrainRuntime,
-    *,
-    region_filter: str | None = None,
-) -> list[tuple[str, float, float, str]]:
+def snapshot_assemblies(runtime: BrainRuntime, *, region_filter: str | None = None):
     """
     Return one row per assembly.
     Returns: (assembly_id, activity, firing_rate, region_id)
@@ -75,9 +109,7 @@ def snapshot_assemblies(
 
 
 def dump_region_assemblies(runtime: BrainRuntime, region_id: str) -> str:
-    """
-    Print ALL assemblies for a region once (e.g., the 430 striatum assemblies).
-    """
+    """Print ALL assemblies for a region."""
     if region_id not in runtime.region_states:
         return f"Unknown region: {region_id}"
 
@@ -89,7 +121,7 @@ def dump_region_assemblies(runtime: BrainRuntime, region_id: str) -> str:
     print(f"DUMP REGION: {region_id}  (assemblies={len(rows)})")
     print(f"{'ASSEMBLY ID':55} {'ACT':>10} {'FR':>10}")
     print("-" * 90)
-    for aid, act, fr, _rid in rows:
+    for aid, act, fr, _ in rows:
         print(f"{aid:55} {act:10.4f} {fr:10.4f}")
     print("=" * 90 + "\n")
 
@@ -101,16 +133,6 @@ def dump_region_assemblies(runtime: BrainRuntime, region_id: str) -> str:
 # ============================================================
 
 def apply_command(runtime: BrainRuntime, cmd: str) -> str:
-    """
-    Commands:
-      poke <region|all> <magnitude>
-      view assemblies
-      view regions
-      toggle view
-      toggle zeros
-      dump <region>
-      help
-    """
     global SHOW_ASSEMBLIES, SHOW_ZERO_REGIONS
 
     parts = cmd.strip().split()
@@ -122,55 +144,44 @@ def apply_command(runtime: BrainRuntime, cmd: str) -> str:
     if head == "help":
         return (
             "Commands: "
-            "poke <region|all> <mag> | view assemblies | view regions | toggle view | "
-            "toggle zeros | dump <region> | help"
+            "poke <region|all> <mag> | view assemblies | view regions | "
+            "toggle view | toggle zeros | dump <region> | help"
         )
 
     if head == "poke":
         if len(parts) != 3:
             return "Usage: poke <region|all> <magnitude>"
 
-        target = parts[1]
         try:
             mag = float(parts[2])
         except ValueError:
             return "Magnitude must be numeric"
 
-        if target == "all":
-            for rid in runtime.region_states.keys():
+        if parts[1] == "all":
+            for rid in runtime.region_states:
                 runtime.inject_stimulus(rid, magnitude=mag)
             return f"POKE all (queued) += {mag}"
 
-        runtime.inject_stimulus(target, magnitude=mag)
-        return f"POKE {target} (queued) += {mag}"
+        runtime.inject_stimulus(parts[1], magnitude=mag)
+        return f"POKE {parts[1]} (queued) += {mag}"
 
     if head == "view":
         if len(parts) != 2:
             return "Usage: view assemblies | view regions"
-        mode = parts[1].lower()
-        if mode == "assemblies":
-            SHOW_ASSEMBLIES = True
-            return "View set to ASSEMBLIES."
-        if mode == "regions":
-            SHOW_ASSEMBLIES = False
-            return "View set to REGIONS."
-        return "Usage: view assemblies | view regions"
+        SHOW_ASSEMBLIES = (parts[1].lower() == "assemblies")
+        return f"View set to {'ASSEMBLIES' if SHOW_ASSEMBLIES else 'REGIONS'}."
 
     if head == "toggle":
         if len(parts) != 2:
             return "Usage: toggle view | toggle zeros"
-        what = parts[1].lower()
-        if what == "view":
+        if parts[1] == "view":
             SHOW_ASSEMBLIES = not SHOW_ASSEMBLIES
             return f"Toggled view -> {'ASSEMBLIES' if SHOW_ASSEMBLIES else 'REGIONS'}."
-        if what == "zeros":
+        if parts[1] == "zeros":
             SHOW_ZERO_REGIONS = not SHOW_ZERO_REGIONS
             return f"Toggled zeros -> {'SHOW' if SHOW_ZERO_REGIONS else 'HIDE'} empty regions."
-        return "Usage: toggle view | toggle zeros"
 
-    if head == "dump":
-        if len(parts) != 2:
-            return "Usage: dump <region>"
+    if head == "dump" and len(parts) == 2:
         return dump_region_assemblies(runtime, parts[1])
 
     return "Unknown command (type: help)"
@@ -182,13 +193,12 @@ def apply_command(runtime: BrainRuntime, cmd: str) -> str:
 
 DEFAULT_ROOT = Path("C:/Users/Admin/Desktop/neural framework")
 FALLBACK_ROOT = Path(__file__).resolve().parent
-
 root = DEFAULT_ROOT if DEFAULT_ROOT.exists() else FALLBACK_ROOT
 
 loader = NeuralFrameworkLoader(root)
 loader.load_neuron_bases()
 loader.load_regions()
-loader.load_profiles()  # IMPORTANT: keeps profiles present/consistent
+loader.load_profiles()
 
 brain = loader.compile(
     expression_profile="human_default",
@@ -201,6 +211,7 @@ runtime = BrainRuntime(brain, dt=0.01)
 print("\nLIVE RUNTIME")
 print("Ctrl+C to quit | type 'help' for commands")
 print("-" * 80)
+
 
 # ============================================================
 # MAIN LOOP
@@ -215,16 +226,15 @@ try:
     while True:
         runtime.step()
 
-        # Keyboard input (non-blocking)
-        while msvcrt.kbhit():
-            ch = msvcrt.getwch()
+        while key_available():
+            ch = read_key()
 
             if ch in ("\r", "\n"):
                 if cmd_buffer.strip():
                     last_msg = apply_command(runtime, cmd_buffer)
                 cmd_buffer = ""
 
-            elif ch == "\b":
+            elif ch in ("\x7f", "\b"):
                 cmd_buffer = cmd_buffer[:-1]
 
             elif ch == "\x03":
@@ -233,7 +243,6 @@ try:
             elif ch.isprintable():
                 cmd_buffer += ch
 
-        # UI update based on SIM time, not wall time
         if runtime.time >= next_ui_time:
             next_ui_time += UI_INTERVAL
 
@@ -243,7 +252,7 @@ try:
             if SHOW_ASSEMBLIES:
                 print(f"{'ASSEMBLY ID':55} {'ACT':>10} {'FR':>10}")
                 print("-" * 80)
-                for aid, act, fr, _rid in snapshot_assemblies(runtime):
+                for aid, act, fr, _ in snapshot_assemblies(runtime):
                     print(f"{aid:55} {act:10.4f} {fr:10.4f}")
             else:
                 print(f"{'REGION':20} {'MEAN_ACT':>10} {'MEAN_FR':>10} {'ASSEMBLIES':>10}")
@@ -255,7 +264,6 @@ try:
             print(f"last: {last_msg}")
             print(f"> {cmd_buffer}", end="", flush=True)
 
-        # Real-time throttle (optional)
         target_wall = runtime.time
         elapsed = time.perf_counter() - t0
         if target_wall > elapsed:
@@ -263,3 +271,7 @@ try:
 
 except KeyboardInterrupt:
     print("\nStopped.")
+
+finally:
+    if not IS_WINDOWS:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_term_settings)
