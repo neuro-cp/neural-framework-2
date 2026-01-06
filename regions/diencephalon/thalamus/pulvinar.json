@@ -13,5 +13,16 @@
       "baseline_firing_rate_hz": 3.0,
       "plasticity_profile": "medium"
     }
-  }
+  },
+
+  "outputs": [
+    {
+      "target_region": "V1",
+      "strength": 0.8
+    },
+    {
+      "target_region": "S1",
+      "strength": 0.4
+    }
+  ]
 }

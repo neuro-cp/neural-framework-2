@@ -2,11 +2,11 @@
   "population_defaults": {
     "tau": 15.0,
     "gain": 3.0,
-    "threshold": 0.15,
+    "threshold": 0.005,
     "decay": 0.12,
     "inhibition_gain": 0.35,
     "inhibition_knee": 0.35,
-    "tonic_drive": 0.08,
+    "tonic_drive": 0.01,
     "activity_coupling": 0.15,
     "max_rate": 25.0,
     "activity_floor": 0.05,
@@ -21,7 +21,7 @@
   },
 
   "propagation": {
-    "global_strength": 0.85
+    "global_strength": 1.5
   },
 
   "runtime": {

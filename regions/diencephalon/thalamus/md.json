@@ -13,5 +13,19 @@
       "baseline_firing_rate_hz": 2.0,
       "plasticity_profile": "medium"
     }
-  }
+  },
+
+  "inputs": [
+    {
+      "source_region": "PFC",
+      "strength": 0.6
+    }
+  ],
+
+  "outputs": [
+    {
+      "target_region": "PFC",
+      "strength": 0.7
+    }
+  ]
 }

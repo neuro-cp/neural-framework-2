@@ -18,19 +18,16 @@
       "layer": "L4",
       "neuron_type": "excitatory",
       "sign": 1.0,
-
       "channels": {
         "NaV_FAST": 0.85,
         "KV_DELAYED_RECTIFIER": 0.7,
         "LEAK": 0.55
       },
-
       "receptors": {
         "AMPA": 0.6,
         "NMDA": 0.4,
         "GABA_A": 0.4
       },
-
       "baseline_firing_rate_hz": 1.0,
       "plasticity_profile": "medium"
     },
@@ -40,7 +37,6 @@
       "layer": "L2_3",
       "neuron_type": "excitatory",
       "sign": 1.0,
-
       "channels": {
         "NaV_FAST": 0.8,
         "KV_DELAYED_RECTIFIER": 0.7,
@@ -48,14 +44,12 @@
         "HCN": 0.25,
         "LEAK": 0.5
       },
-
       "receptors": {
         "AMPA": 0.55,
         "NMDA": 0.5,
         "GABA_A": 0.35,
         "M1": 0.15
       },
-
       "baseline_firing_rate_hz": 0.8,
       "plasticity_profile": "high"
     },
@@ -65,7 +59,6 @@
       "layer": "L5",
       "neuron_type": "excitatory",
       "sign": 1.0,
-
       "channels": {
         "NaV_FAST": 0.85,
         "KV_DELAYED_RECTIFIER": 0.75,
@@ -73,16 +66,23 @@
         "HCN": 0.3,
         "LEAK": 0.45
       },
-
       "receptors": {
         "AMPA": 0.5,
         "NMDA": 0.45,
         "GABA_A": 0.4,
         "D1": 0.2
       },
-
       "baseline_firing_rate_hz": 1.2,
       "plasticity_profile": "medium"
+    },
+
+    "L6_PYRAMIDAL": {
+      "count": 50000,
+      "layer": "L6",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.3,
+      "plasticity_profile": "low"
     },
 
     "INTERNEURONS": {
@@ -90,19 +90,16 @@
       "layer": "all",
       "neuron_type": "inhibitory",
       "sign": -1.0,
-
       "channels": {
         "NaV_FAST": 0.9,
         "KV_DELAYED_RECTIFIER": 0.85,
         "LEAK": 0.4
       },
-
       "receptors": {
         "AMPA": 0.4,
         "NMDA": 0.2,
         "GABA_A": 0.7
       },
-
       "baseline_firing_rate_hz": 8.0,
       "plasticity_profile": "low"
     }
@@ -117,8 +114,7 @@
 
   "inputs": [
     {
-      "source_region": "THALAMUS",
-      "source_population": "LGN_PROXY",
+      "source_region": "LGN",
       "strength": 0.9
     }
   ],
@@ -126,8 +122,21 @@
   "outputs": [
     {
       "target_region": "CORTEX",
-      "target_population": "V2_L2_3",
       "strength": 0.7
+    },
+    {
+      "target_region": "PULVINAR",
+      "strength": 0.45
+    },
+    {
+      "target_region": "LGN",
+      "target_population": "RELAY_NEURONS",
+      "source_population": "L6_PYRAMIDAL",
+      "strength": 0.35
+    },
+    {
+      "target_region": "V1",
+      "strength": 0.15
     }
   ],
 

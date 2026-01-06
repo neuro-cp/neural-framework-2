@@ -12,11 +12,9 @@
   },
 
   "populations": {
-
     "PYRAMIDAL_CELLS": {
       "count": 30000,
       "neuron_type": "excitatory",
-      "sign": 1.0,
 
       "channels": {
         "NaV_FAST": 0.75,
@@ -53,8 +51,8 @@
       "strength": 0.6
     },
     {
-      "target_region": "AMYGDALA",
-      "target_population": "BLA",
+      "target_region": "BLA",
+      "target_population": "PYRAMIDAL_CELLS",
       "strength": 0.4
     }
   ],

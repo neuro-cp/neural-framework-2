@@ -25,26 +25,23 @@ class PopulationModel:
     """
     A single 'assembly' (subpopulation) dynamics model.
 
-    IMPORTANT:
-    - This module must NOT import BrainRuntime (avoids circular import).
-    - This module must NOT run demo code at import time.
-
-    DESIGN INTENT:
-    - Baseline activity is tonic and persistent (does NOT decay to zero)
-    - External input is phasic
-    - Noise is additive and bounded
+    DESIGN GOALS:
+    - Tonic baseline (never decays to zero)
+    - Phasic external input
+    - Activity-dependent inhibition (stability)
+    - Soft normalization (prevents lockstep saturation)
     """
 
     # --------------------------------------------------
-    # Identity / metadata
+    # Identity
     # --------------------------------------------------
 
     assembly_id: str = ""
     size: int = 100
-    sign: float = 1.0  # +1 excitatory, -1 inhibitory (affects output polarity)
+    sign: float = 1.0  # +1 excitatory, -1 inhibitory
 
     # --------------------------------------------------
-    # State variables
+    # State
     # --------------------------------------------------
 
     activity: float = 0.0
@@ -52,24 +49,28 @@ class PopulationModel:
     input: float = 0.0
 
     # --------------------------------------------------
-    # Dynamics
+    # Core dynamics
     # --------------------------------------------------
 
-    baseline: float = 0.0        # tonic drive (persistent)
-    tau: float = 0.05            # seconds; membrane / population time constant
-    threshold: float = 0.5       # firing threshold
-    gain: float = 1.0            # slope above threshold
-    max_rate: float = 2.0        # firing rate clamp
+    baseline: float = 0.0
+    tau: float = 0.05
+    threshold: float = 0.5
+    gain: float = 1.0
+    max_rate: float = 2.0
+
+    # NEW: intrinsic stabilization
+    inhibition_gain: float = 0.0     # subtracts activity from drive
+    normalization: float = 0.0        # divisive soft cap
 
     # --------------------------------------------------
     # Noise
     # --------------------------------------------------
 
     noise_amplitude: float = 0.0
-    noise_distribution: str = "gaussian"  # gaussian | uniform
+    noise_distribution: str = "gaussian"
 
     # --------------------------------------------------
-    # Stability clamps
+    # Safety clamps
     # --------------------------------------------------
 
     clamp_min: float = 0.0
@@ -86,68 +87,43 @@ class PopulationModel:
         *,
         default_assembly_id: str,
     ) -> "PopulationModel":
-        """
-        Build a PopulationModel from merged dynamics params.
-        """
 
         assembly_id = str(params.get("assembly_id") or default_assembly_id)
 
-        size = _i(
-            params.get("size", params.get("n", params.get("neurons", 100))),
-            100,
-        )
-
+        size = _i(params.get("size", params.get("neurons", 100)), 100)
         sign = _f(params.get("sign", 1.0), 1.0)
 
-        baseline = _f(
-            params.get("baseline", params.get("base", 0.0)),
-            0.0,
-        )
-
+        baseline = _f(params.get("baseline", 0.0), 0.0)
         tau = _f(params.get("tau", 0.05), 0.05)
         threshold = _f(params.get("threshold", 0.5), 0.5)
         gain = _f(params.get("gain", 1.0), 1.0)
+        max_rate = _f(params.get("max_rate", 2.0), 2.0)
 
-        max_rate = _f(
-            params.get("max_rate", params.get("max_firing_rate", 2.0)),
-            2.0,
-        )
+        inhibition_gain = _f(params.get("inhibition_gain", 0.0), 0.0)
+        normalization = _f(params.get("normalization", 0.0), 0.0)
 
-        noise_amplitude = _f(
-            params.get("noise_amplitude", params.get("noise", 0.0)),
-            0.0,
-        )
-
-        noise_distribution = str(
-            params.get("noise_distribution", "gaussian")
-        ).lower()
+        noise_amplitude = _f(params.get("noise_amplitude", 0.0), 0.0)
+        noise_distribution = str(params.get("noise_distribution", "gaussian")).lower()
 
         clamp_min = _f(params.get("clamp_min", 0.0), 0.0)
         clamp_max = _f(params.get("clamp_max", 1.0), 1.0)
 
-        # Initial conditions
-        init_activity = _f(
-            params.get("activity", baseline),
-            baseline,
-        )
-
-        init_firing = _f(
-            params.get("firing_rate", 0.0),
-            0.0,
-        )
+        init_activity = _f(params.get("activity", baseline), baseline)
 
         return cls(
             assembly_id=assembly_id,
             size=size,
             sign=sign,
             activity=init_activity,
-            firing_rate=init_firing,
+            firing_rate=0.0,
             input=0.0,
             baseline=baseline,
             tau=tau,
             threshold=threshold,
             gain=gain,
             max_rate=max_rate,
+            inhibition_gain=inhibition_gain,
+            normalization=normalization,
             noise_amplitude=noise_amplitude,
             noise_distribution=noise_distribution,
             clamp_min=clamp_min,
@@ -159,9 +135,6 @@ class PopulationModel:
     # --------------------------------------------------
 
     def output(self) -> float:
-        """
-        Signed output used for region-to-region propagation.
-        """
         return self.sign * self.firing_rate
 
     # --------------------------------------------------
@@ -169,15 +142,11 @@ class PopulationModel:
     # --------------------------------------------------
 
     def _sample_noise(self) -> float:
-        amp = self.noise_amplitude
-        if amp <= 0.0:
+        if self.noise_amplitude <= 0.0:
             return 0.0
-
         if self.noise_distribution == "uniform":
-            return random.uniform(-amp, amp)
-
-        # Default: gaussian
-        return random.gauss(0.0, amp)
+            return random.uniform(-self.noise_amplitude, self.noise_amplitude)
+        return random.gauss(0.0, self.noise_amplitude)
 
     # --------------------------------------------------
     # Step
@@ -185,44 +154,39 @@ class PopulationModel:
 
     def step(self, dt: float) -> None:
         """
-        Advance one timestep.
-
-        MODEL:
-        - Baseline is tonic (persistent)
-        - Input is phasic (cleared each step)
-        - Activity relaxes toward baseline + input
+        Advance one timestep with intrinsic stabilization.
         """
 
+        # Activity-dependent inhibition
+        inhibition = self.inhibition_gain * self.activity
+
         # Total drive
-        drive = self.baseline + self.input + self._sample_noise()
+        drive = (
+            self.baseline
+            + self.input
+            - inhibition
+            + self._sample_noise()
+        )
 
-        # Leaky integration toward drive
-        # dA/dt = (drive - A) / tau
-        if self.tau <= 0.0:
-            self.activity = drive
-        else:
+        # Leaky integration
+        if self.tau > 0.0:
             self.activity += (dt / self.tau) * (drive - self.activity)
+        else:
+            self.activity = drive
 
-        # Clamp activity for numerical stability
-        if self.activity < self.clamp_min:
-            self.activity = self.clamp_min
-        elif self.activity > self.clamp_max:
-            self.activity = self.clamp_max
+        # Clamp activity
+        self.activity = max(self.clamp_min, min(self.activity, self.clamp_max))
 
-        # Thresholded firing
+        # Threshold + soft normalization
         above = self.activity - self.threshold
         if above > 0.0:
             fr = self.gain * above
+            if self.normalization > 0.0:
+                fr /= (1.0 + self.normalization * self.activity)
         else:
             fr = 0.0
 
-        # Clamp firing rate
-        if fr < 0.0:
-            fr = 0.0
-        elif fr > self.max_rate:
-            fr = self.max_rate
+        self.firing_rate = max(0.0, min(fr, self.max_rate))
 
-        self.firing_rate = fr
-
-        # Consume input (phasic)
+        # Consume phasic input
         self.input = 0.0

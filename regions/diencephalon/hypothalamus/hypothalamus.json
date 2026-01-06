@@ -1,0 +1,85 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "HYPOTHALAMUS",
+  "parent_region": "DIENCEPHALON",
+
+  "function": "homeostatic_regulation",
+
+  "populations": {
+
+    "PARAVENTRICULAR_NUCLEUS": {
+      "count": 300,
+      "neuron_type": "neuroendocrine",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.5,
+      "plasticity_profile": "low"
+    },
+
+    "LATERAL_HYPOTHALAMUS": {
+      "count": 400,
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 1.0,
+      "plasticity_profile": "low"
+    },
+
+    "VENTROMEDIAL_NUCLEUS": {
+      "count": 250,
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+      "baseline_firing_rate_hz": 0.8,
+      "plasticity_profile": "very_low"
+    },
+
+    "SUPRACHIASMATIC_NUCLEUS": {
+      "count": 200,
+      "neuron_type": "pacemaker",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.3,
+      "plasticity_profile": "very_low"
+    }
+  },
+
+  "inputs": [
+    {
+      "source_region": "BRAINSTEM",
+      "strength": 0.6
+    },
+    {
+      "source_region": "AMYGDALA",
+      "strength": 0.4
+    },
+    {
+      "source_region": "HIPPOCAMPAL_FORMATION",
+      "strength": 0.3
+    },
+    {
+      "source_region": "CORTEX",
+      "strength": 0.2
+    }
+  ],
+
+  "outputs": [
+    {
+      "target_region": "BRAINSTEM",
+      "strength": 0.8
+    },
+    {
+      "target_region": "THALAMUS",
+      "strength": 0.4
+    },
+    {
+      "target_region": "PITUITARY",
+      "strength": 0.9
+    }
+  ],
+
+  "functional_roles": [
+    "autonomic_control",
+    "endocrine_interface",
+    "circadian_rhythms",
+    "motivational_drive",
+    "stress_integration"
+  ]
+}

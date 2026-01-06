@@ -1,0 +1,59 @@
+{
+  "version": "1.0.0",
+  "type": "RegionSubstructure",
+  "region_id": "TRN",
+  "parent_region": "THALAMUS",
+  "function": "thalamic_gating_and_inhibitory_control",
+
+  "populations": {
+    "GABAERGIC_NEURONS": {
+      "count": 50000,
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+      "baseline_firing_rate_hz": 6.0,
+      "plasticity_profile": "low"
+    }
+  },
+
+  "inputs": [
+    {
+      "source_region": "CORTEX",
+      "strength": 0.5
+    },
+    {
+      "source_region": "LGN",
+      "strength": 0.4
+    },
+    {
+      "source_region": "MGB",
+      "strength": 0.4
+    },
+    {
+      "source_region": "MD",
+      "strength": 0.4
+    },
+    {
+      "source_region": "PULVINAR",
+      "strength": 0.4
+    }
+  ],
+
+  "outputs": [
+    {
+      "target_region": "LGN",
+      "strength": 0.6
+    },
+    {
+      "target_region": "MGB",
+      "strength": 0.6
+    },
+    {
+      "target_region": "MD",
+      "strength": 0.6
+    },
+    {
+      "target_region": "PULVINAR",
+      "strength": 0.6
+    }
+  ]
+}

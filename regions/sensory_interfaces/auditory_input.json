@@ -18,8 +18,7 @@
 
   "outputs": [
     {
-      "target_region": "THALAMUS",
-      "target_population": "MGB_PROXY",
+      "target_region": "MGB",
       "strength": 1.0
     }
   ]

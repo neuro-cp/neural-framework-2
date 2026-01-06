@@ -34,5 +34,23 @@
       "baseline_firing_rate_hz": 6.5,
       "plasticity_profile": "low"
     }
-  }
+  },
+
+  "inputs": [
+    {
+      "source_region": "MGB",
+      "strength": 1.0
+    }
+  ],
+
+  "outputs": [
+    {
+      "target_region": "CORTEX",
+      "strength": 0.6
+    },
+    {
+      "target_region": "PULVINAR",
+      "strength": 0.3
+    }
+  ]
 }

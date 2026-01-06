@@ -39,7 +39,6 @@ class NeuralFrameworkLoader:
         self.regions: Dict[str, Any] = {}
         self.profiles: Dict[str, Any] = {}
 
-        # Special registry/meta files
         self.brain_map: Optional[Dict[str, Any]] = None
         self.region_aliases: Optional[Dict[str, Any]] = None
 
@@ -62,10 +61,48 @@ class NeuralFrameworkLoader:
             key = file.stem
             if key in data:
                 rel = str(file.relative_to(folder)).replace("\\", "/")
-                raise RuntimeError(f"Duplicate JSON stem '{key}' under {folder} (conflict at: {rel})")
+                raise RuntimeError(
+                    f"Duplicate JSON stem '{key}' under {folder} (conflict at: {rel})"
+                )
             data[key] = self._load_json(file)
 
         return data
+
+    # ----------------------------
+    # Semantic resolution helpers
+    # ----------------------------
+
+    def resolve_region_set(self, abstract_region: str) -> list[str]:
+        """
+        Expands abstract anatomical labels into concrete region IDs.
+        This does NOT alter wiring or compilation.
+        Intended for validation, inspection, and future routing logic.
+        """
+        if not abstract_region:
+            return []
+
+        key = abstract_region.upper()
+
+        if key == "CORTEX":
+            return [
+                r for r, blob in self.regions.items()
+                if blob.get("parent_region") == "CORTEX"
+                or r in {"v1", "s1", "a1", "association_cortex", "pfc"}
+            ]
+
+        if key == "HIPPOCAMPAL_FORMATION":
+            return ["dentate_gyrus", "ca3", "ca1", "subiculum"]
+
+        if key == "BASAL_GANGLIA":
+            return ["striatum", "gpe", "gpi", "snc", "stn"]
+
+        if key == "SENSORY_INTERFACES":
+            return ["visual_input", "auditory_input", "somato_input", "gustatory_input"]
+
+        if key == "THALAMUS":
+            return ["lgn", "mgb", "vpl", "vpm", "md", "pulvinar", "intralaminar"]
+
+        return [abstract_region.lower()]
 
     # ----------------------------
     # Config
@@ -114,28 +151,26 @@ class NeuralFrameworkLoader:
                 self.region_aliases = blob
                 continue
 
-            # --------------------------------------------------
-            # TEMP: downscale population counts
-            # --------------------------------------------------
             if ASSEMBLY_DOWNSCALE != 1.0:
                 pops = blob.get("populations")
                 if isinstance(pops, dict):
-                    for pop_name, pop in pops.items():
-                        if not isinstance(pop, dict):
-                            continue
-                        if "count" in pop:
+                    for pop in pops.values():
+                        if isinstance(pop, dict) and "count" in pop:
                             try:
                                 original = int(pop["count"])
-                                scaled = max(1, int(round(original * ASSEMBLY_DOWNSCALE)))
+                                scaled = max(
+                                    1, int(round(original * ASSEMBLY_DOWNSCALE))
+                                )
                                 pop["count"] = scaled
                             except Exception:
                                 pass
-            # --------------------------------------------------
 
             key = file.stem
             if key in self.regions:
                 rel = str(file.relative_to(self.regions_path)).replace("\\", "/")
-                raise RuntimeError(f"Duplicate region stem '{key}' under regions/ (conflict at: {rel})")
+                raise RuntimeError(
+                    f"Duplicate region stem '{key}' under regions/ (conflict at: {rel})"
+                )
 
             self.regions[key] = blob
 
@@ -148,9 +183,13 @@ class NeuralFrameworkLoader:
 
     def validate(self) -> None:
         if not self.neuron_bases:
-            raise RuntimeError("Neuron bases not loaded (neuron/ missing or empty).")
+            raise RuntimeError(
+                "Neuron bases not loaded (neuron/ missing or empty)."
+            )
         if not self.regions:
-            raise RuntimeError("Regions not loaded (regions/ missing or empty).")
+            raise RuntimeError(
+                "Regions not loaded (regions/ missing or empty)."
+            )
 
     # ----------------------------
     # Compilation
@@ -180,7 +219,6 @@ class NeuralFrameworkLoader:
             "global_dynamics": global_dyn,
             "global_dynamics_loaded_from": global_dyn_path,
 
-            # DEBUG TRACE
             "assembly_downscale": ASSEMBLY_DOWNSCALE,
         }
 
