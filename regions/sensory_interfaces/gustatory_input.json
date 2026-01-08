@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "SensoryInterface",
   "region_id": "GUSTATORY_INPUT",
   "parent_region": "SENSORY_INTERFACES",
@@ -17,8 +17,7 @@
 
   "outputs": [
     {
-      "target_region": "THALAMUS",
-      "target_population": "VPM",
+      "target_region": "VPM",
       "strength": 1.0
     }
   ]

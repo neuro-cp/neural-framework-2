@@ -1,28 +1,115 @@
 {
-  "version": "1.0.0",
+  "version": "1.2.1",
   "type": "RegionSubstructure",
   "region_id": "PULVINAR",
   "parent_region": "THALAMUS",
-  "function": "visual_attention_coordination",
+
+  "function": "visual_attention_and_cross_modal_coordination",
+
+  "spatial_properties": {
+    "association_nucleus": true,
+    "diffuse_projection": true,
+    "non_primary_relay": true
+  },
 
   "populations": {
-    "RELAY_NEURONS": {
+    "RELAY_CELLS": {
       "count": 80000,
       "neuron_type": "excitatory",
       "sign": 1.0,
       "baseline_firing_rate_hz": 3.0,
-      "plasticity_profile": "medium"
+      "plasticity_profile": "medium",
+
+      "receives_inhibition_from": ["TRN"],
+
+      "subpopulations": {
+        "VISUAL_COORDINATION_UNITS": {
+          "fraction": 0.50,
+          "role": "visual_context_alignment",
+          "target_bias": "visual_cortex",
+          "gain": 0.8
+        },
+
+        "CROSS_MODAL_ALIGNMENT_UNITS": {
+          "fraction": 0.30,
+          "role": "cross_modal_feature_synchronization",
+          "target_bias": "association_cortex",
+          "gain": 0.6
+        },
+
+        "SALIENCE_RELAY_UNITS": {
+          "fraction": 0.20,
+          "role": "salience_weighting",
+          "context_sensitivity": 0.7,
+          "gain": 0.5
+        }
+      }
     }
   },
+
+  "inputs": [
+    {
+      "source_region": "CORTEX",
+      "source_population": "L6_PYRAMIDAL",
+      "signal": "top_down_attention",
+      "strength": 0.5
+    },
+    {
+      "source_region": "LGN",
+      "signal": "visual_relay_context",
+      "strength": 0.4
+    },
+    {
+      "source_region": "SUPERIOR_COLLICULUS",
+      "signal": "salience_and_orientation",
+      "strength": 0.3
+    }
+  ],
 
   "outputs": [
     {
       "target_region": "V1",
+      "target_population": "L2_3_PYRAMIDAL",
       "strength": 0.8
     },
     {
       "target_region": "S1",
+      "target_population": "L2_3_PYRAMIDAL",
       "strength": 0.4
+    },
+    {
+      "target_region": "ASSOCIATION_CORTEX",
+      "signal": "salience_bias",
+      "strength": 0.5
     }
-  ]
+  ],
+
+  "functional_roles": {
+    "attention_alignment": "high",
+    "cross_modal_binding": "moderate",
+    "cortical_synchronization": "declarative_only"
+  },
+
+  "state_modulation": {
+    "focused_attention": {
+      "visual_gain": 1.0,
+      "cross_modal_gain": 0.6
+    },
+    "diffuse_attention": {
+      "visual_gain": 0.6,
+      "cross_modal_gain": 0.8
+    },
+    "sensory_overload": {
+      "visual_gain": 0.3,
+      "cross_modal_gain": 0.4
+    }
+  },
+
+  "drug_sensitivity": {
+    "sedatives": "high",
+    "psychedelics": "moderate",
+    "cholinergic_agents": "high"
+  },
+
+  "notes": "Pulvinar is an associative thalamic nucleus that coordinates attentional alignment and cross-modal synchronization rather than primary sensory relay. It preferentially targets cortical L2/3 populations and association cortex, operating under TRN inhibition and corticothalamic guidance. Subpopulation roles and state descriptors are declarative and reserved for later enforcement by attentional and oscillatory control systems."
 }

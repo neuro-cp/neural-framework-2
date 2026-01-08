@@ -6,7 +6,7 @@
   "function": "interhemispheric_integration",
 
   "populations": {
-    "CALL0SAL_FIBERS": {
+    "CALLOSAL_FIBERS": {
       "count": 120000,
       "neuron_type": "excitatory",
       "sign": 1.0,

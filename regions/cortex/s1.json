@@ -1,8 +1,9 @@
 {
-  "version": "1.0.0",
+  "version": "1.2.0",
   "type": "RegionSubstructure",
   "region_id": "S1",
   "parent_region": "CORTEX",
+
   "function": "somatosensory_processing",
 
   "spatial_properties": {
@@ -10,6 +11,7 @@
   },
 
   "populations": {
+
     "L4_EXCITATORY": {
       "count": 85000,
       "layer": "L4",
@@ -18,14 +20,42 @@
       "baseline_firing_rate_hz": 1.2,
       "plasticity_profile": "medium"
     },
+
     "L2_3_PYRAMIDAL": {
       "count": 90000,
       "layer": "L2_3",
       "neuron_type": "excitatory",
       "sign": 1.0,
       "baseline_firing_rate_hz": 0.7,
-      "plasticity_profile": "high"
+      "plasticity_profile": "high",
+
+      "modulatory_inputs": [
+        {
+          "source_region": "PULVINAR",
+          "role": "cross_modal_attention_bias",
+          "strength": 0.4
+        }
+      ]
     },
+
+    "L5_PYRAMIDAL": {
+      "count": 60000,
+      "layer": "L5",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.8,
+      "plasticity_profile": "medium"
+    },
+
+    "L6_PYRAMIDAL": {
+      "count": 50000,
+      "layer": "L6",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.5,
+      "plasticity_profile": "medium"
+    },
+
     "INTERNEURONS": {
       "count": 40000,
       "layer": "all",
@@ -34,5 +64,27 @@
       "baseline_firing_rate_hz": 7.0,
       "plasticity_profile": "low"
     }
-  }
+  },
+
+  "inputs": [
+    {
+      "source_region": "VPL",
+      "target_population": "L4_EXCITATORY",
+      "strength": 1.0
+    }
+  ],
+
+  "outputs": [
+    {
+      "target_region": "ASSOCIATION_CORTEX",
+      "strength": 0.6
+    },
+    {
+      "target_region": "THALAMUS",
+      "source_population": "L6_PYRAMIDAL",
+      "strength": 0.4
+    }
+  ],
+
+  "notes": "Primary somatosensory cortex. VPL provides feedforward sensory drive to layer 4. Pulvinar supplies modulatory, cross-modal attentional bias to supragranular layers (L2/3) without directly driving sensory activation. Corticothalamic feedback originates from layer 6."
 }

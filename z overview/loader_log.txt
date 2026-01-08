@@ -1,0 +1,739 @@
+C:\Users\Admin\Desktop\neural framework>python test_loader.py
+
+=== BRAIN SUMMARY ===
+Neuron base files loaded: 5
+Regions loaded: 54
+
+Regions:
+  - Intralaminar
+  - a1
+  - amyg_base
+  - anterior_pituitary
+  - association_cortex
+  - auditory_input
+  - autonomic_system
+  - bg_base
+  - bla
+  - brainstem_base
+  - ca1
+  - ca3
+  - cea
+  - cerebellar_cortex
+  - cerebellum_base
+  - corpus_callosum
+  - cortex_base
+  - deep_nuclei
+  - dentate_gyrus
+  - endocrine_system
+  - gpe
+  - gpi
+  - gustatory_input
+  - hip_base
+  - hypothalamus
+  - inferior_colliculus
+  - insula
+  - lgn
+  - locus_coeruleus
+  - m1
+  - md
+  - mea
+  - medulla
+  - mgb
+  - pfc
+  - pons
+  - posterior_pituitary
+  - pulvinar
+  - raphe
+  - s1
+  - sensory_base
+  - snc
+  - somato_input
+  - stn
+  - striatum
+  - subiculum
+  - superior_colliculus
+  - thalamus_base
+  - trn
+  - v1
+  - visual_input
+  - vpl
+  - vpm
+  - vta
+
+Active Profiles:
+  Expression: None
+  State: None
+  Compound: None
+
+====================
+
+
+=== REGION DETAILS ===
+
+[AMYG_BASE]
+  No populations defined
+
+[BLA]
+  - PYRAMIDAL_CELLS: 350 (excitatory)
+  - INTERNEURONS: 120 (inhibitory)
+  Total neurons: 470
+
+[CEA]
+  - OUTPUT_NEURONS: 200 (inhibitory)
+  Total neurons: 200
+
+[MEA]
+  - PRINCIPAL_NEURONS: 150 (excitatory)
+  Total neurons: 150
+
+[BG_BASE]
+  No populations defined
+
+[GPE]
+  - OUTPUT_NEURONS: 200 (inhibitory)
+  Total neurons: 200
+
+[GPI]
+  - OUTPUT_NEURONS: 250 (inhibitory)
+  Total neurons: 250
+
+[SNC]
+  - DOPAMINERGIC_NEURONS: 180 (neuromodulatory)
+  Total neurons: 180
+
+[STN]
+  - EXCITATORY_NEURONS: 150 (excitatory)
+  Total neurons: 150
+
+[STRIATUM]
+  - D1_MSN: 400 (inhibitory)
+  - D2_MSN: 400 (inhibitory)
+  - INTERNEURONS: 150 (inhibitory)
+  Total neurons: 950
+
+[AUTONOMIC_SYSTEM]
+  - SYMPATHETIC_OUTFLOW: 1 (autonomic)
+  - PARASYMPATHETIC_OUTFLOW: 1 (autonomic)
+  Total neurons: 2
+
+[BRAINSTEM_BASE]
+  No populations defined
+
+[LOCUS_COERULEUS]
+  - NORADRENERGIC_NEURONS: 150 (excitatory)
+  Total neurons: 150
+
+[MEDULLA]
+  - AUTONOMIC_NEURONS: 250 (autonomic)
+  Total neurons: 250
+
+[PONS]
+  - MIXED_NEURONS: 300 (mixed)
+  Total neurons: 300
+
+[RAPHE]
+  - SEROTONERGIC_NEURONS: 250 (neuromodulatory)
+  Total neurons: 250
+
+[VTA]
+  - DOPAMINERGIC_NEURONS: 200 (neuromodulatory)
+  - GABA_INTERNEURONS: 80 (inhibitory)
+  Total neurons: 280
+
+[CEREBELLAR_CORTEX]
+  - GRANULE_CELLS: 2000 (excitatory)
+  - PURKINJE_CELLS: 150 (inhibitory)
+  - INTERNEURONS: 300 (inhibitory)
+  Total neurons: 2450
+
+[CEREBELLUM_BASE]
+  No populations defined
+
+[DEEP_NUCLEI]
+  - OUTPUT_NEURONS: 200 (excitatory)
+  Total neurons: 200
+
+[A1]
+  - L4_EXCITATORY: 750 (excitatory)
+  - L2_3_PYRAMIDAL: 850 (excitatory)
+  - L6_PYRAMIDAL: 400 (excitatory)
+  - INTERNEURONS: 380 (inhibitory)
+  Total neurons: 2380
+
+[CORTEX_BASE]
+  - L2_3_PYRAMIDAL: 0 (excitatory)
+  - L4_EXCITATORY: 0 (excitatory)
+  - L5_PYRAMIDAL: 0 (excitatory)
+  - L6_PYRAMIDAL: 0 (excitatory)
+  - INTERNEURONS: 0 (inhibitory)
+  Total neurons: 0
+
+[INSULA]
+  - L2_3_PYRAMIDAL: 600 (excitatory)
+  - L5_PYRAMIDAL: 450 (excitatory)
+  - INTERNEURONS: 300 (inhibitory)
+  Total neurons: 1350
+
+[M1]
+  - L2_3_PYRAMIDAL: 700 (excitatory)
+  - L5_PYRAMIDAL: 600 (excitatory)
+  - INTERNEURONS: 350 (inhibitory)
+  Total neurons: 1650
+
+[S1]
+  - L4_EXCITATORY: 850 (excitatory)
+  - L2_3_PYRAMIDAL: 900 (excitatory)
+  - L5_PYRAMIDAL: 600 (excitatory)
+  - L6_PYRAMIDAL: 500 (excitatory)
+  - INTERNEURONS: 400 (inhibitory)
+  Total neurons: 3250
+
+[V1]
+  - L4_EXCITATORY: 800 (excitatory)
+  - L2_3_PYRAMIDAL: 1000 (excitatory)
+  - L5_PYRAMIDAL: 600 (excitatory)
+  - L6_PYRAMIDAL: 500 (excitatory)
+  - INTERNEURONS: 400 (inhibitory)
+  Total neurons: 3300
+
+[CA1]
+  - PYRAMIDAL_CELLS: 450 (excitatory)
+  - INTERNEURONS: 100 (inhibitory)
+  Total neurons: 550
+
+[CA3]
+  - PYRAMIDAL_CELLS: 500 (excitatory)
+  - INTERNEURONS: 120 (inhibitory)
+  Total neurons: 620
+
+[DENTATE_GYRUS]
+  - GRANULE_CELLS: 1000 (excitatory)
+  - INTERNEURONS: 150 (inhibitory)
+  Total neurons: 1150
+
+[HIP_BASE]
+  No populations defined
+
+[SUBICULUM]
+  - PYRAMIDAL_CELLS: 300 (excitatory)
+  Total neurons: 300
+
+[ASSOCIATION_CORTEX]
+  - L2_3_PYRAMIDAL: 1200 (excitatory)
+  - L5_PYRAMIDAL: 800 (excitatory)
+  - INTERNEURONS: 500 (inhibitory)
+  Total neurons: 2500
+
+[CORPUS_CALLOSUM]
+  - CALLOSAL_FIBERS: 1200 (excitatory)
+  Total neurons: 1200
+
+[INTRALAMINAR]
+  - RELAY_NEURONS: 400 (excitatory)
+  Total neurons: 400
+
+[PFC]
+  - L2_3_PYRAMIDAL: 950 (excitatory)
+  - L5_PYRAMIDAL: 700 (excitatory)
+  - L6_PYRAMIDAL: 300 (excitatory)
+  - INTERNEURONS: 450 (inhibitory)
+  Total neurons: 2400
+
+[INFERIOR_COLLICULUS]
+  - CENTRAL_NUCLEUS: 600 (excitatory)
+  - EXTERNAL_CORTEX: 300 (excitatory)
+  - INTERNEURONS: 250 (inhibitory)
+  Total neurons: 1150
+
+[SUPERIOR_COLLICULUS]
+  - SUPERFICIAL_VISUAL: 500 (excitatory)
+  - DEEP_MOTOR: 400 (excitatory)
+  - INTERNEURONS: 300 (inhibitory)
+  Total neurons: 1200
+
+[AUDITORY_INPUT]
+  No populations defined
+
+[GUSTATORY_INPUT]
+  No populations defined
+
+[SENSORY_BASE]
+  No populations defined
+
+[SOMATO_INPUT]
+  No populations defined
+
+[VISUAL_INPUT]
+  No populations defined
+
+[ENDOCRINE_SYSTEM]
+  No populations defined
+
+[HYPOTHALAMUS]
+  - PARAVENTRICULAR_NUCLEUS: 3 (neuroendocrine)
+  - LATERAL_HYPOTHALAMUS: 4 (excitatory)
+  - VENTROMEDIAL_NUCLEUS: 2 (inhibitory)
+  - SUPRACHIASMATIC_NUCLEUS: 2 (pacemaker)
+  Total neurons: 11
+
+[ANTERIOR_PITUITARY]
+  - CORTICOTROPES: 1 (endocrine)
+  - THYROTROPES: 1 (endocrine)
+  - GONADOTROPES: 1 (endocrine)
+  - SOMATOTROPES: 1 (endocrine)
+  - LACTOTROPES: 1 (endocrine)
+  Total neurons: 5
+
+[POSTERIOR_PITUITARY]
+  - OXYTOCIN_NEURONS: 1 (neurosecretory)
+  - VASOPRESSIN_NEURONS: 1 (neurosecretory)
+  Total neurons: 2
+
+[LGN]
+  - RELAY_CELLS: 600 (excitatory)
+  Total neurons: 600
+
+[MD]
+  - RELAY_CELLS: 700 (excitatory)
+  Total neurons: 700
+
+[MGB]
+  - RELAY_CELLS: 500 (excitatory)
+  Total neurons: 500
+
+[PULVINAR]
+  - RELAY_CELLS: 800 (excitatory)
+  Total neurons: 800
+
+[THALAMUS_BASE]
+  No populations defined
+
+[TRN]
+  - GABAERGIC_NEURONS: 500 (inhibitory)
+  Total neurons: 500
+
+[VPL]
+  - RELAY_CELLS: 600 (excitatory)
+  - LOCAL_INTERNEURONS: 150 (inhibitory)
+  Total neurons: 750
+
+[VPM]
+  - RELAY_CELLS: 500 (excitatory)
+  Total neurons: 500
+
+======================
+
+
+=== CONNECTIVITY SUMMARY ===
+
+[BLA]
+  Inputs:
+    <- SUBICULUM (strength 0.4)
+    <- ASSOCIATION_CORTEX (strength 0.5)
+  Outputs:
+    -> PFC (strength 0.4)
+    -> CEA (strength 0.7)
+
+[CEA]
+  Outputs:
+    -> MEDULLA (strength 0.8)
+
+[GPE]
+  Inputs:
+    <- STRIATUM (strength 0.8)
+  Outputs:
+    -> STN (strength 0.8)
+    -> GPi (strength 0.4)
+
+[GPI]
+  Inputs:
+    <- STRIATUM (strength 0.8)
+    <- STN (strength 0.6)
+  Outputs:
+    -> MD (strength 1.0)
+
+[SNC]
+  Outputs:
+    -> STRIATUM (strength 1.0)
+    -> STRIATUM (strength 1.0)
+
+[STN]
+  Inputs:
+    <- GPe (strength 0.8)
+    <- PFC (strength 0.5)
+  Outputs:
+    -> GPi (strength 0.9)
+
+[STRIATUM]
+  Inputs:
+    <- PFC (strength 0.6)
+    <- SUBICULUM (strength 0.3)
+    <- BLA (strength 0.4)
+    <- VTA (strength 1.0)
+  Outputs:
+    -> GPi (strength 0.7)
+    -> GPe (strength 0.7)
+
+[LOCUS_COERULEUS]
+  Outputs:
+    -> CORTEX (strength 0.3)
+    -> THALAMUS (strength 0.4)
+    -> HIPPOCAMPUS (strength 0.3)
+    -> BASAL_GANGLIA (strength 0.2)
+
+[VTA]
+  Outputs:
+    -> STRIATUM (strength 1.0)
+    -> CORTEX (strength 0.6)
+    -> CA1 (strength 0.4)
+
+[CEREBELLAR_CORTEX]
+  Inputs:
+    <- CORTEX (strength 0.6)
+    <- BRAINSTEM (strength 1.0)
+  Outputs:
+    -> DEEP_NUCLEI (strength 1.0)
+
+[DEEP_NUCLEI]
+  Inputs:
+    <- CEREBELLAR_CORTEX (strength 1.0)
+  Outputs:
+    -> THALAMUS (strength 0.8)
+    -> BRAINSTEM (strength 0.6)
+
+[A1]
+  Inputs:
+    <- MGB (strength 1.0)
+  Outputs:
+    -> CORTEX (strength 0.6)
+    -> PULVINAR (strength 0.3)
+    -> MGB (strength 0.4)
+
+[S1]
+  Inputs:
+    <- VPL (strength 1.0)
+  Outputs:
+    -> ASSOCIATION_CORTEX (strength 0.6)
+    -> THALAMUS (strength 0.4)
+
+[V1]
+  Inputs:
+    <- LGN (strength 0.9)
+  Outputs:
+    -> CORTEX (strength 0.7)
+    -> PULVINAR (strength 0.45)
+    -> LGN (strength 0.35)
+    -> V1 (strength 0.15)
+
+[CA1]
+  Inputs:
+    <- CA3 (strength 0.8)
+    <- CORTEX (strength 0.4)
+  Outputs:
+    -> SUBICULUM (strength 0.9)
+
+[CA3]
+  Inputs:
+    <- DENTATE_GYRUS (strength 0.9)
+  Outputs:
+    -> CA1 (strength 0.8)
+
+[DENTATE_GYRUS]
+  Outputs:
+    -> CA3 (strength 0.8)
+
+[SUBICULUM]
+  Inputs:
+    <- CA1 (strength 0.9)
+  Outputs:
+    -> CORTEX (strength 0.6)
+    -> BLA (strength 0.4)
+
+[ASSOCIATION_CORTEX]
+  Inputs:
+    <- V1 (strength 0.6)
+    <- A1 (strength 0.6)
+    <- PULVINAR (strength 0.4)
+  Outputs:
+    -> PFC (strength 0.7)
+    -> PFC (strength 0.4)
+
+[CORPUS_CALLOSUM]
+  Inputs:
+    <- ASSOCIATION_CORTEX (strength 0.6)
+    <- PFC (strength 0.4)
+  Outputs:
+    -> ASSOCIATION_CORTEX (strength 0.6)
+    -> PFC (strength 0.4)
+
+[INTRALAMINAR]
+  Inputs:
+    <- LOCUS_COERULEUS (strength 0.4)
+    <- RAPHE (strength 0.2)
+    <- GPi (strength 0.4)
+  Outputs:
+    -> ASSOCIATION_CORTEX (strength 0.5)
+    -> PFC (strength 0.6)
+
+[PFC]
+  Inputs:
+    <- MD (strength 0.7)
+    <- HIPPOCAMPAL_FORMATION (strength 0.4)
+  Outputs:
+    -> MD (strength 0.6)
+    -> STRIATUM (strength 0.4)
+
+[INFERIOR_COLLICULUS]
+  Inputs:
+    <- AUDITORY_INPUT (strength 0.6)
+    <- A1 (strength 0.3)
+  Outputs:
+    -> MGB (strength 0.9)
+    -> TRN (strength 0.4)
+
+[SUPERIOR_COLLICULUS]
+  Inputs:
+    <- LGN (strength 0.6)
+    <- V1 (strength 0.4)
+  Outputs:
+    -> PULVINAR (strength 0.5)
+    -> LGN (strength 0.3)
+
+[AUDITORY_INPUT]
+  Outputs:
+    -> MGB (strength 1.0)
+
+[GUSTATORY_INPUT]
+  Outputs:
+    -> VPM (strength 1.0)
+
+[SOMATO_INPUT]
+  Outputs:
+    -> VPL (strength 1.0)
+
+[VISUAL_INPUT]
+  Outputs:
+    -> LGN (strength 1.0)
+
+[HYPOTHALAMUS]
+  Inputs:
+    <- BRAINSTEM (strength 0.6)
+    <- AMYGDALA (strength 0.4)
+    <- HIPPOCAMPAL_FORMATION (strength 0.3)
+    <- CORTEX (strength 0.2)
+  Outputs:
+    -> BRAINSTEM (strength 0.8)
+    -> THALAMUS (strength 0.4)
+    -> PITUITARY (strength 0.9)
+
+[ANTERIOR_PITUITARY]
+  Inputs:
+    <- HYPOTHALAMUS (strength 1.0)
+  Outputs:
+    -> ENDOCRINE_SYSTEM (strength 1.0)
+
+[POSTERIOR_PITUITARY]
+  Inputs:
+    <- HYPOTHALAMUS (strength 1.0)
+  Outputs:
+    -> ENDOCRINE_SYSTEM (strength 1.0)
+
+[LGN]
+  Inputs:
+    <- VISUAL_INPUT (strength 1.0)
+    <- CORTEX (strength 0.4)
+  Outputs:
+    -> V1 (strength 1.0)
+    -> PULVINAR (strength 0.4)
+
+[MD]
+  Inputs:
+    <- PFC (strength 0.6)
+  Outputs:
+    -> PFC (strength 0.7)
+    -> PFC (strength 0.5)
+
+[MGB]
+  Inputs:
+    <- AUDITORY_INPUT (strength 1.0)
+    <- A1 (strength 0.4)
+  Outputs:
+    -> A1 (strength 1.0)
+
+[PULVINAR]
+  Inputs:
+    <- CORTEX (strength 0.5)
+    <- LGN (strength 0.4)
+    <- SUPERIOR_COLLICULUS (strength 0.3)
+  Outputs:
+    -> V1 (strength 0.8)
+    -> S1 (strength 0.4)
+    -> ASSOCIATION_CORTEX (strength 0.5)
+
+[TRN]
+  Inputs:
+    <- CORTEX (strength 0.5)
+    <- LGN (strength 0.4)
+    <- MGB (strength 0.4)
+    <- MD (strength 0.4)
+    <- PULVINAR (strength 0.4)
+  Outputs:
+    -> LGN (strength 0.6)
+    -> MGB (strength 0.6)
+    -> VPL (strength 0.6)
+    -> VPM (strength 0.6)
+    -> MD (strength 0.6)
+    -> PULVINAR (strength 0.6)
+
+[VPL]
+  Inputs:
+    <- SOMATO_INPUT (strength 1.0)
+    <- S1 (strength 0.4)
+  Outputs:
+    -> S1 (strength 0.9)
+
+[VPM]
+  Inputs:
+    <- SOMATO_INPUT (strength 1.0)
+    <- S1 (strength 0.4)
+  Outputs:
+    -> S1 (strength 0.9)
+
+============================
+
+
+=== REFERENCE VALIDATION ===
+ℹ️  INFO: [bla] input 'SUBICULUM' resolved to 'subiculum'
+ℹ️  INFO: [bla] input 'ASSOCIATION_CORTEX' resolved to 'association_cortex'
+ℹ️  INFO: [bla] output 'PFC' resolved to 'pfc'
+ℹ️  INFO: [bla] output 'CEA' resolved to 'cea'
+ℹ️  INFO: [cea] output 'MEDULLA' resolved to 'medulla'
+ℹ️  INFO: [gpe] input 'STRIATUM' resolved to 'striatum'
+ℹ️  INFO: [gpe] output 'STN' resolved to 'stn'
+ℹ️  INFO: [gpe] output 'GPi' resolved to 'gpi'
+ℹ️  INFO: [gpi] input 'STRIATUM' resolved to 'striatum'
+ℹ️  INFO: [gpi] input 'STN' resolved to 'stn'
+ℹ️  INFO: [gpi] output 'MD' resolved to 'md'
+ℹ️  INFO: [snc] output 'STRIATUM' resolved to 'striatum'
+ℹ️  INFO: [snc] output 'STRIATUM' resolved to 'striatum'
+ℹ️  INFO: [stn] input 'GPe' resolved to 'gpe'
+ℹ️  INFO: [stn] input 'PFC' resolved to 'pfc'
+ℹ️  INFO: [stn] output 'GPi' resolved to 'gpi'
+ℹ️  INFO: [striatum] input 'PFC' resolved to 'pfc'
+ℹ️  INFO: [striatum] input 'SUBICULUM' resolved to 'subiculum'
+ℹ️  INFO: [striatum] input 'BLA' resolved to 'bla'
+ℹ️  INFO: [striatum] input 'VTA' resolved to 'vta'
+ℹ️  INFO: [striatum] output 'GPi' resolved to 'gpi'
+ℹ️  INFO: [striatum] output 'GPe' resolved to 'gpe'
+ℹ️  INFO: [locus_coeruleus] output 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [locus_coeruleus] output 'THALAMUS' resolved to 'trn'
+ℹ️  INFO: [locus_coeruleus] output 'HIPPOCAMPUS' resolved to 'subiculum'
+ℹ️  INFO: [locus_coeruleus] output 'BASAL_GANGLIA' resolved to 'snc'
+ℹ️  INFO: [vta] output 'STRIATUM' resolved to 'striatum'
+ℹ️  INFO: [vta] output 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [vta] output 'CA1' resolved to 'ca1'
+ℹ️  INFO: [cerebellar_cortex] input 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [cerebellar_cortex] input 'BRAINSTEM' resolved to 'inferior_colliculus'
+ℹ️  INFO: [cerebellar_cortex] output 'DEEP_NUCLEI' resolved to 'deep_nuclei'
+ℹ️  INFO: [deep_nuclei] input 'CEREBELLAR_CORTEX' resolved to 'cerebellar_cortex'
+ℹ️  INFO: [deep_nuclei] output 'THALAMUS' resolved to 'trn'
+ℹ️  INFO: [deep_nuclei] output 'BRAINSTEM' resolved to 'inferior_colliculus'
+ℹ️  INFO: [a1] input 'MGB' resolved to 'mgb'
+ℹ️  INFO: [a1] output 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [a1] output 'PULVINAR' resolved to 'pulvinar'
+ℹ️  INFO: [a1] output 'MGB' resolved to 'mgb'
+ℹ️  INFO: [s1] input 'VPL' resolved to 'vpl'
+ℹ️  INFO: [s1] output 'ASSOCIATION_CORTEX' resolved to 'association_cortex'
+ℹ️  INFO: [s1] output 'THALAMUS' resolved to 'trn'
+ℹ️  INFO: [v1] input 'LGN' resolved to 'lgn'
+ℹ️  INFO: [v1] output 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [v1] output 'PULVINAR' resolved to 'pulvinar'
+ℹ️  INFO: [v1] output 'LGN' resolved to 'lgn'
+ℹ️  INFO: [v1] output 'V1' resolved to 'v1'
+ℹ️  INFO: [ca1] input 'CA3' resolved to 'ca3'
+ℹ️  INFO: [ca1] input 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [ca1] output 'SUBICULUM' resolved to 'subiculum'
+ℹ️  INFO: [ca3] input 'DENTATE_GYRUS' resolved to 'dentate_gyrus'
+ℹ️  INFO: [ca3] output 'CA1' resolved to 'ca1'
+ℹ️  INFO: [dentate_gyrus] output 'CA3' resolved to 'ca3'
+ℹ️  INFO: [subiculum] input 'CA1' resolved to 'ca1'
+ℹ️  INFO: [subiculum] output 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [subiculum] output 'BLA' resolved to 'bla'
+ℹ️  INFO: [association_cortex] input 'V1' resolved to 'v1'
+ℹ️  INFO: [association_cortex] input 'A1' resolved to 'a1'
+ℹ️  INFO: [association_cortex] input 'PULVINAR' resolved to 'pulvinar'
+ℹ️  INFO: [association_cortex] output 'PFC' resolved to 'pfc'
+ℹ️  INFO: [association_cortex] output 'PFC' resolved to 'pfc'
+ℹ️  INFO: [corpus_callosum] input 'ASSOCIATION_CORTEX' resolved to 'association_cortex'
+ℹ️  INFO: [corpus_callosum] input 'PFC' resolved to 'pfc'
+ℹ️  INFO: [corpus_callosum] output 'ASSOCIATION_CORTEX' resolved to 'association_cortex'
+ℹ️  INFO: [corpus_callosum] output 'PFC' resolved to 'pfc'
+ℹ️  INFO: [Intralaminar] input 'LOCUS_COERULEUS' resolved to 'locus_coeruleus'
+ℹ️  INFO: [Intralaminar] input 'RAPHE' resolved to 'raphe'
+ℹ️  INFO: [Intralaminar] input 'GPi' resolved to 'gpi'
+ℹ️  INFO: [Intralaminar] output 'ASSOCIATION_CORTEX' resolved to 'association_cortex'
+ℹ️  INFO: [Intralaminar] output 'PFC' resolved to 'pfc'
+ℹ️  INFO: [pfc] input 'MD' resolved to 'md'
+ℹ️  INFO: [pfc] input 'HIPPOCAMPAL_FORMATION' resolved to 'subiculum'
+ℹ️  INFO: [pfc] output 'MD' resolved to 'md'
+ℹ️  INFO: [pfc] output 'STRIATUM' resolved to 'striatum'
+ℹ️  INFO: [inferior_colliculus] input 'AUDITORY_INPUT' resolved to 'auditory_input'
+ℹ️  INFO: [inferior_colliculus] input 'A1' resolved to 'a1'
+ℹ️  INFO: [inferior_colliculus] output 'MGB' resolved to 'mgb'
+ℹ️  INFO: [inferior_colliculus] output 'TRN' resolved to 'trn'
+ℹ️  INFO: [superior_colliculus] input 'LGN' resolved to 'lgn'
+ℹ️  INFO: [superior_colliculus] input 'V1' resolved to 'v1'
+ℹ️  INFO: [superior_colliculus] output 'PULVINAR' resolved to 'pulvinar'
+ℹ️  INFO: [superior_colliculus] output 'LGN' resolved to 'lgn'
+ℹ️  INFO: [auditory_input] output 'MGB' resolved to 'mgb'
+ℹ️  INFO: [gustatory_input] output 'VPM' resolved to 'vpm'
+ℹ️  INFO: [somato_input] output 'VPL' resolved to 'vpl'
+ℹ️  INFO: [visual_input] output 'LGN' resolved to 'lgn'
+ℹ️  INFO: [hypothalamus] input 'BRAINSTEM' resolved to 'inferior_colliculus'
+ℹ️  INFO: [hypothalamus] input 'AMYGDALA' resolved to 'mea'
+ℹ️  INFO: [hypothalamus] input 'HIPPOCAMPAL_FORMATION' resolved to 'subiculum'
+ℹ️  INFO: [hypothalamus] input 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [hypothalamus] output 'BRAINSTEM' resolved to 'inferior_colliculus'
+ℹ️  INFO: [hypothalamus] output 'THALAMUS' resolved to 'trn'
+ℹ️  INFO: [hypothalamus] output 'PITUITARY' resolved to 'posterior_pituitary'
+ℹ️  INFO: [anterior_pituitary] input 'HYPOTHALAMUS' resolved to 'hypothalamus'
+ℹ️  INFO: [anterior_pituitary] output 'ENDOCRINE_SYSTEM' resolved to 'endocrine_system'
+ℹ️  INFO: [posterior_pituitary] input 'HYPOTHALAMUS' resolved to 'hypothalamus'
+ℹ️  INFO: [posterior_pituitary] output 'ENDOCRINE_SYSTEM' resolved to 'endocrine_system'
+ℹ️  INFO: [lgn] input 'VISUAL_INPUT' resolved to 'visual_input'
+ℹ️  INFO: [lgn] input 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [lgn] output 'V1' resolved to 'v1'
+ℹ️  INFO: [lgn] output 'PULVINAR' resolved to 'pulvinar'
+ℹ️  INFO: [md] input 'PFC' resolved to 'pfc'
+ℹ️  INFO: [md] output 'PFC' resolved to 'pfc'
+ℹ️  INFO: [md] output 'PFC' resolved to 'pfc'
+ℹ️  INFO: [mgb] input 'AUDITORY_INPUT' resolved to 'auditory_input'
+ℹ️  INFO: [mgb] input 'A1' resolved to 'a1'
+ℹ️  INFO: [mgb] output 'A1' resolved to 'a1'
+ℹ️  INFO: [pulvinar] input 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [pulvinar] input 'LGN' resolved to 'lgn'
+ℹ️  INFO: [pulvinar] input 'SUPERIOR_COLLICULUS' resolved to 'superior_colliculus'
+ℹ️  INFO: [pulvinar] output 'V1' resolved to 'v1'
+ℹ️  INFO: [pulvinar] output 'S1' resolved to 's1'
+ℹ️  INFO: [pulvinar] output 'ASSOCIATION_CORTEX' resolved to 'association_cortex'
+ℹ️  INFO: [trn] input 'CORTEX' resolved to 'pfc'
+ℹ️  INFO: [trn] input 'LGN' resolved to 'lgn'
+ℹ️  INFO: [trn] input 'MGB' resolved to 'mgb'
+ℹ️  INFO: [trn] input 'MD' resolved to 'md'
+ℹ️  INFO: [trn] input 'PULVINAR' resolved to 'pulvinar'
+ℹ️  INFO: [trn] output 'LGN' resolved to 'lgn'
+ℹ️  INFO: [trn] output 'MGB' resolved to 'mgb'
+ℹ️  INFO: [trn] output 'VPL' resolved to 'vpl'
+ℹ️  INFO: [trn] output 'VPM' resolved to 'vpm'
+ℹ️  INFO: [trn] output 'MD' resolved to 'md'
+ℹ️  INFO: [trn] output 'PULVINAR' resolved to 'pulvinar'
+ℹ️  INFO: [vpl] input 'SOMATO_INPUT' resolved to 'somato_input'
+ℹ️  INFO: [vpl] input 'S1' resolved to 's1'
+ℹ️  INFO: [vpl] output 'S1' resolved to 's1'
+ℹ️  INFO: [vpm] input 'SOMATO_INPUT' resolved to 'somato_input'
+ℹ️  INFO: [vpm] input 'S1' resolved to 's1'
+ℹ️  INFO: [vpm] output 'S1' resolved to 's1'
+✓ No unresolved references
+
+Validation complete — 0 warning(s), 130 info resolution(s)
+

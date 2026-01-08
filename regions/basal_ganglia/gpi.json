@@ -1,26 +1,85 @@
 {
-  "version": "1.0.0",
+  "version": "1.4.0",
   "type": "RegionSubstructure",
   "region_id": "GPi",
   "parent_region": "BASAL_GANGLIA",
 
-  "function": "thalamic_inhibition",
+  "function": "tonic_output_suppression_and_action_release",
+
+  "spatial_properties": {
+    "tonic_inhibition": true,
+    "high_baseline_activity": true
+  },
 
   "populations": {
+
     "OUTPUT_NEURONS": {
       "count": 25000,
       "neuron_type": "inhibitory",
       "sign": -1.0,
       "baseline_firing_rate_hz": 20.0,
-      "plasticity_profile": "very_low"
+      "plasticity_profile": "very_low",
+
+      "semantic_role": "thalamic_output_gate",
+
+      "subpopulations": {
+
+        "TONIC_SUPPRESSORS": {
+          "fraction": 0.70,
+          "role": "global_action_suppression",
+          "inhibitory_bias": 1.0,
+          "description": "Maintain continuous inhibition over thalamic relay nuclei"
+        },
+
+        "SELECTIVE_RELEASE_UNITS": {
+          "fraction": 0.30,
+          "role": "action_disinhibition",
+          "striatal_sensitivity": 0.8,
+
+          "future_modulation": {
+            "dopamine_sensitivity": 0.6,
+            "status": "inactive_checkpoint_6"
+          },
+
+          "description": "Permit targeted reduction of inhibition for selected action channels"
+        }
+      }
     }
   },
 
+  "inputs": [
+    {
+      "source_region": "STRIATUM",
+      "source_population": "D1_MSN",
+      "signal": "direct_pathway_inhibition",
+      "strength": 0.8
+    },
+    {
+      "source_region": "STN",
+      "signal": "global_excitation",
+      "strength": 0.6
+    }
+  ],
+
   "outputs": [
     {
-      "target_region": "THALAMUS",
-      "target_population": "MD",
+      "target_region": "MD",
+      "signal": "disinhibited_thalamic_drive",
       "strength": 1.0
     }
-  ]
+  ],
+
+  "pathophysiology_modes": {
+    "akinesia": "excess_tonic_inhibition",
+    "impulsivity": "insufficient_suppression",
+    "sedation": "global_output_clamping"
+  },
+
+  "drug_sensitivity": {
+    "dopamine_antagonists": "very_high",
+    "sedatives": "high",
+    "anesthetics": "very_high"
+  },
+
+  "notes": "GPi acts as the final common inhibitory output of the basal ganglia. It tonically suppresses thalamocortical relay nuclei and permits action execution only through selective disinhibition driven by striatal D1 pathways. Subpopulations encode stable suppression versus targeted release. Dopaminergic modulation and learning effects are preserved for future checkpoints but are inert at checkpoint 6 to ensure stability."
 }

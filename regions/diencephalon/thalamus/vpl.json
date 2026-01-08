@@ -1,91 +1,68 @@
 {
-  "version": "1.0.0",
+  "version": "1.3.0",
   "type": "RegionSubstructure",
   "region_id": "VPL",
   "parent_region": "THALAMUS",
 
-  "function": "somatosensory_relay_body",
+  "is_relay": true,
+  "function": "body_somatosensory_relay",
 
   "spatial_properties": {
     "neuron_density_per_mm3": 90000
   },
 
   "populations": {
-
-    "RELAY_NEURONS": {
+    "RELAY_CELLS": {
       "count": 60000,
       "neuron_type": "excitatory",
       "sign": 1.0,
-
-      "channels": {
-        "NaV_FAST": 0.8,
-        "KV_DELAYED_RECTIFIER": 0.7,
-        "CaV_T": 0.55,
-        "HCN": 0.45,
-        "LEAK": 0.5
-      },
-
-      "receptors": {
-        "AMPA": 0.6,
-        "NMDA": 0.3,
-        "GABA_A": 0.4,
-        "GABA_B": 0.25
-      },
-
       "baseline_firing_rate_hz": 5.0,
-      "plasticity_profile": "low"
+      "plasticity_profile": "low",
+      "receives_inhibition_from": ["TRN"]
     },
 
-    "INTERNEURONS": {
+    "LOCAL_INTERNEURONS": {
       "count": 15000,
       "neuron_type": "inhibitory",
       "sign": -1.0,
-
-      "channels": {
-        "NaV_FAST": 0.9,
-        "KV_DELAYED_RECTIFIER": 0.8,
-        "LEAK": 0.4
-      },
-
-      "receptors": {
-        "AMPA": 0.4,
-        "GABA_A": 0.7
-      },
-
-      "baseline_firing_rate_hz": 10.0,
-      "plasticity_profile": "very_low"
+      "baseline_firing_rate_hz": 9.0,
+      "plasticity_profile": "very_low",
+      "role": "local_gain_control"
     }
   },
 
   "inputs": [
     {
-      "source_region": "SENSORY_INTERFACES",
-      "source_population": "SOMATO_INPUT",
+      "source_region": "SOMATO_INPUT",
+      "signal": "body_afferents",
       "strength": 1.0
     },
     {
-      "source_region": "CORTEX",
+      "source_region": "S1",
       "source_population": "L6_PYRAMIDAL",
+      "signal": "corticothalamic_feedback",
       "strength": 0.4
     }
   ],
 
   "outputs": [
     {
-      "target_region": "CORTEX",
-      "target_population": "S1_L4",
+      "target_region": "S1",
+      "target_population": "L4_EXCITATORY",
       "strength": 0.9
     }
   ],
 
   "functional_modes": {
-    "wake": "tonic_firing",
-    "sleep": "burst_firing"
+    "wake": "tonic",
+    "sleep": "burst"
   },
 
   "drug_sensitivity": {
     "anesthetics": "very_high",
     "gabaergic_agents": "high",
     "t_type_ca_blockers": "high"
-  }
+  },
+
+  "notes": "VPL relays somatosensory input from the body to primary somatosensory cortex (S1) layer 4. Relay activity is gated by TRN inhibition and modulated by corticothalamic feedback from S1 layer 6. Local inhibitory interneurons provide intra-nuclear gain control. Functional modes are declarative only and not yet enforced in dynamics."
 }

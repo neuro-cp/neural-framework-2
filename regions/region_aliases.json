@@ -1,32 +1,36 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "RegionAliasRegistry",
 
   "aliases": {
 
-    "CEREBRAL_CORTEX": [
-      "cortex",
-      "cortex_base",
-      "pfc",
-      "m1",
-      "s1",
+    "CORTEX": [
       "v1",
+      "s1",
       "a1",
+      "m1",
       "insula",
-      "association_cortex"
+      "association_cortex",
+      "pfc"
+    ],
+
+    "CEREBRAL_CORTEX": [
+      "v1",
+      "s1",
+      "a1",
+      "m1",
+      "insula",
+      "association_cortex",
+      "pfc"
     ],
 
     "AMYGDALA": [
-      "amygdala",
-      "amyg_base",
       "bla",
       "cea",
       "mea"
     ],
 
     "THALAMUS": [
-      "thalamus",
-      "thalamus_base",
       "lgn",
       "mgb",
       "vpl",
@@ -38,9 +42,6 @@
     ],
 
     "BRAINSTEM": [
-      "brainstem",
-      "brainstem_base",
-      "midbrain",
       "pons",
       "medulla",
       "vta",
@@ -50,9 +51,14 @@
       "inferior_colliculus"
     ],
 
+    "HIPPOCAMPUS": [
+      "dentate_gyrus",
+      "ca3",
+      "ca1",
+      "subiculum"
+    ],
+
     "HIPPOCAMPAL_FORMATION": [
-      "hippocampal_formation",
-      "hip_base",
       "dentate_gyrus",
       "ca3",
       "ca1",
@@ -60,8 +66,6 @@
     ],
 
     "BASAL_GANGLIA": [
-      "basal_ganglia",
-      "bg_base",
       "striatum",
       "gpe",
       "gpi",
@@ -70,19 +74,20 @@
     ],
 
     "CEREBELLUM": [
-      "cerebellum",
-      "cerebellum_base",
       "cerebellar_cortex",
       "deep_nuclei"
     ],
 
     "SENSORY_INTERFACES": [
-      "sensory_interfaces",
-      "sensory_base",
       "visual_input",
       "auditory_input",
       "somato_input",
       "gustatory_input"
+    ],
+
+    "PITUITARY": [
+      "anterior_pituitary",
+      "posterior_pituitary"
     ]
   }
 }

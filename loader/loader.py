@@ -3,29 +3,26 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, Tuple, Optional, Any
+from typing import Dict, Tuple, Optional, Any, List
 
 
 # ============================================================
 # TEMP DEBUG CONTROL
 # ============================================================
-# Scale DOWN population counts to reduce number of assemblies.
-# Set back to 1.0 before final stabilization / publication.
-#
-# Example:
-#   0.1  -> 10% of normal assemblies
-#   0.25 -> 25%
-#   1.0  -> full resolution
-#
 ASSEMBLY_DOWNSCALE: float = 0.01
 # ============================================================
 
 
 class NeuralFrameworkLoader:
     """
-    Loads neuron bases, region definitions, and profile JSON files from a project root.
-    Compiles them into a single 'brain' dict used by BrainRuntime.
+    Loads neuron bases, region definitions, profile JSON files,
+    and global configuration. Produces a compiled, semantically
+    resolved brain definition with deferred routing logic.
     """
+
+    # ----------------------------
+    # Init
+    # ----------------------------
 
     def __init__(self, root_path: str | Path):
         self.root = Path(root_path)
@@ -41,11 +38,16 @@ class NeuralFrameworkLoader:
 
         self.brain_map: Optional[Dict[str, Any]] = None
         self.region_aliases: Optional[Dict[str, Any]] = None
+        self.routing_defaults: Optional[Dict[str, Any]] = None
+
+        # Canonical resolution tables
+        self._alias_to_group: Dict[str, str] = {}
+        self._group_to_regions: Dict[str, List[str]] = {}
 
         self.compiled_brain: Optional[Dict[str, Any]] = None
 
     # ----------------------------
-    # Low-level helpers
+    # File helpers
     # ----------------------------
 
     def _load_json(self, path: Path) -> dict:
@@ -69,43 +71,78 @@ class NeuralFrameworkLoader:
         return data
 
     # ----------------------------
-    # Semantic resolution helpers
+    # Region identity helpers
     # ----------------------------
 
-    def resolve_region_set(self, abstract_region: str) -> list[str]:
+    @staticmethod
+    def _is_base_region(region_id: str) -> bool:
+        return region_id.endswith("_base")
+
+    def _build_alias_tables(self) -> None:
         """
-        Expands abstract anatomical labels into concrete region IDs.
-        This does NOT alter wiring or compilation.
-        Intended for validation, inspection, and future routing logic.
+        Build deterministic alias tables.
+        Aliases map -> semantic group, never directly to regions.
         """
-        if not abstract_region:
+        self._alias_to_group.clear()
+        self._group_to_regions.clear()
+
+        if not self.region_aliases:
+            return
+
+        aliases = self.region_aliases.get("aliases", {})
+        for group, names in aliases.items():
+            group_key = group.upper()
+            self._group_to_regions[group_key] = []
+
+            for name in names:
+                self._alias_to_group[name.lower()] = group_key
+
+        # Populate group → concrete region list
+        for region_id, blob in self.regions.items():
+            if self._is_base_region(region_id):
+                continue
+
+            parent = (blob.get("parent_region") or "").upper()
+            if parent in self._group_to_regions:
+                self._group_to_regions[parent].append(region_id)
+
+            # Allow region_id itself as alias
+            self._alias_to_group[region_id.lower()] = region_id.lower()
+
+    def resolve_region_group(self, name: str) -> Optional[str]:
+        """
+        Resolve an alias to a semantic group name (uppercase),
+        or None if unknown.
+        """
+        if not name:
+            return None
+        return self._alias_to_group.get(name.lower())
+
+    def expand_region_group(self, group: str) -> List[str]:
+        """
+        Expand a semantic group into concrete regions.
+        Never returns base regions.
+        """
+        if not group:
             return []
+        return list(self._group_to_regions.get(group.upper(), []))
 
-        key = abstract_region.upper()
+    def resolve_concrete_region(self, name: str) -> Optional[str]:
+        """
+        Resolve a name to a concrete region ID.
+        Exact match only. Base regions are never returned.
+        """
+        if not name:
+            return None
 
-        if key == "CORTEX":
-            return [
-                r for r, blob in self.regions.items()
-                if blob.get("parent_region") == "CORTEX"
-                or r in {"v1", "s1", "a1", "association_cortex", "pfc"}
-            ]
+        key = name.lower()
+        if key in self.regions and not self._is_base_region(key):
+            return key
 
-        if key == "HIPPOCAMPAL_FORMATION":
-            return ["dentate_gyrus", "ca3", "ca1", "subiculum"]
-
-        if key == "BASAL_GANGLIA":
-            return ["striatum", "gpe", "gpi", "snc", "stn"]
-
-        if key == "SENSORY_INTERFACES":
-            return ["visual_input", "auditory_input", "somato_input", "gustatory_input"]
-
-        if key == "THALAMUS":
-            return ["lgn", "mgb", "vpl", "vpm", "md", "pulvinar", "intralaminar"]
-
-        return [abstract_region.lower()]
+        return None
 
     # ----------------------------
-    # Config
+    # Config loading
     # ----------------------------
 
     def load_global_dynamics(self) -> Tuple[dict, Optional[str]]:
@@ -120,6 +157,12 @@ class NeuralFrameworkLoader:
                 return self._load_json(p), str(p)
         return {}, None
 
+    def load_routing_defaults(self) -> Optional[dict]:
+        path = self.config_path / "routing_defaults.json"
+        if path.exists():
+            return self._load_json(path)
+        return None
+
     # ----------------------------
     # Load phases
     # ----------------------------
@@ -128,11 +171,7 @@ class NeuralFrameworkLoader:
         self.neuron_bases = self._load_folder(self.neuron_path)
 
     def load_regions(self) -> None:
-        """
-        Loads region JSONs.
-        Applies TEMP assembly downscaling to population counts.
-        """
-        self.regions = {}
+        self.regions.clear()
         self.brain_map = None
         self.region_aliases = None
 
@@ -158,10 +197,9 @@ class NeuralFrameworkLoader:
                         if isinstance(pop, dict) and "count" in pop:
                             try:
                                 original = int(pop["count"])
-                                scaled = max(
+                                pop["count"] = max(
                                     1, int(round(original * ASSEMBLY_DOWNSCALE))
                                 )
-                                pop["count"] = scaled
                             except Exception:
                                 pass
 
@@ -174,6 +212,8 @@ class NeuralFrameworkLoader:
 
             self.regions[key] = blob
 
+        self._build_alias_tables()
+
     def load_profiles(self) -> None:
         self.profiles = self._load_folder(self.profiles_path)
 
@@ -183,13 +223,45 @@ class NeuralFrameworkLoader:
 
     def validate(self) -> None:
         if not self.neuron_bases:
-            raise RuntimeError(
-                "Neuron bases not loaded (neuron/ missing or empty)."
-            )
+            raise RuntimeError("Neuron bases not loaded.")
         if not self.regions:
-            raise RuntimeError(
-                "Regions not loaded (regions/ missing or empty)."
-            )
+            raise RuntimeError("Regions not loaded.")
+
+    # ----------------------------
+    # Routing resolution (deferred)
+    # ----------------------------
+
+    def resolve_routing_target(
+        self,
+        abstract_target: str,
+        source_region: Optional[str] = None,
+        context: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Resolve an abstract target (e.g. THALAMUS, CORTEX) to a concrete
+        region using routing defaults. Does not mutate structure.
+        """
+        if not self.routing_defaults or not abstract_target:
+            return None
+
+        rules = self.routing_defaults.get("rules", {})
+        rule = rules.get(abstract_target.upper())
+        if not rule:
+            return None
+
+        # Contextual resolution (sensory / motor)
+        if context and isinstance(rule, dict):
+            ctx = rule.get(context)
+            if isinstance(ctx, dict) and source_region:
+                return ctx.get(source_region.upper())
+            if isinstance(ctx, str):
+                return ctx
+
+        # Default / fallback
+        if isinstance(rule, dict):
+            return rule.get("default_target") or rule.get("fallback")
+
+        return None
 
     # ----------------------------
     # Compilation
@@ -204,21 +276,26 @@ class NeuralFrameworkLoader:
         self.validate()
 
         global_dyn, global_dyn_path = self.load_global_dynamics()
+        self.routing_defaults = self.load_routing_defaults()
 
         self.compiled_brain = {
             "neuron_bases": self.neuron_bases,
             "regions": self.regions,
-
-            "expression_profile": self.profiles.get(expression_profile),
-            "state_profile": self.profiles.get(state_profile),
-            "compound_profile": self.profiles.get(compound_profile),
-
+            "profiles": {
+                "expression": self.profiles.get(expression_profile),
+                "state": self.profiles.get(state_profile),
+                "compound": self.profiles.get(compound_profile),
+            },
             "brain_map": self.brain_map,
             "region_aliases": self.region_aliases,
-
+            "alias_tables": {
+                "alias_to_group": self._alias_to_group,
+                "group_to_regions": self._group_to_regions,
+            },
+            "routing_defaults": self.routing_defaults,
+            "routing_resolver": self.resolve_routing_target,
             "global_dynamics": global_dyn,
             "global_dynamics_loaded_from": global_dyn_path,
-
             "assembly_downscale": ASSEMBLY_DOWNSCALE,
         }
 

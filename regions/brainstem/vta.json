@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "RegionSubstructure",
   "region_id": "VTA",
   "parent_region": "BRAINSTEM",
@@ -74,20 +74,19 @@
 
   "outputs": [
     {
-      "target_region": "BASAL_GANGLIA",
-      "target_population": "STRIATUM",
+      "target_region": "STRIATUM",
       "signal": "dopamine_tone",
       "strength": 1.0
     },
     {
       "target_region": "CORTEX",
-      "target_population": "PFC_L2_3",
+      "target_population": "L2_3_PYRAMIDAL",
       "signal": "dopamine_tone",
       "strength": 0.6
     },
     {
-      "target_region": "HIPPOCAMPAL_FORMATION",
-      "target_population": "CA1_PYRAMIDAL",
+      "target_region": "CA1",
+      "target_population": "PYRAMIDAL_CELLS",
       "signal": "dopamine_tone",
       "strength": 0.4
     }

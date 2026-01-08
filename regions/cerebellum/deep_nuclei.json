@@ -1,10 +1,10 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "RegionSubstructure",
   "region_id": "DEEP_NUCLEI",
   "parent_region": "CEREBELLUM",
 
-  "function": "corrected_motor_output",
+  "function": "corrected_output_dispatch",
 
   "populations": {
     "OUTPUT_NEURONS": {
@@ -19,7 +19,6 @@
   "inputs": [
     {
       "source_region": "CEREBELLAR_CORTEX",
-      "source_population": "PURKINJE_CELLS",
       "strength": 1.0
     }
   ],
@@ -27,12 +26,10 @@
   "outputs": [
     {
       "target_region": "THALAMUS",
-      "target_population": "VL",
       "strength": 0.8
     },
     {
       "target_region": "BRAINSTEM",
-      "target_population": "MOTOR_NUCLEI",
       "strength": 0.6
     }
   ]

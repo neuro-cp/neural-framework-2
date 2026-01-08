@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.2.0",
   "type": "RegionSubstructure",
   "region_id": "V1",
   "parent_region": "CORTEX",
@@ -37,6 +37,7 @@
       "layer": "L2_3",
       "neuron_type": "excitatory",
       "sign": 1.0,
+
       "channels": {
         "NaV_FAST": 0.8,
         "KV_DELAYED_RECTIFIER": 0.7,
@@ -44,14 +45,24 @@
         "HCN": 0.25,
         "LEAK": 0.5
       },
+
       "receptors": {
         "AMPA": 0.55,
         "NMDA": 0.5,
         "GABA_A": 0.35,
         "M1": 0.15
       },
+
       "baseline_firing_rate_hz": 0.8,
-      "plasticity_profile": "high"
+      "plasticity_profile": "high",
+
+      "modulatory_inputs": [
+        {
+          "source_region": "PULVINAR",
+          "role": "contextual_attention_bias",
+          "strength": 0.4
+        }
+      ]
     },
 
     "L5_PYRAMIDAL": {
@@ -115,6 +126,7 @@
   "inputs": [
     {
       "source_region": "LGN",
+      "target_population": "L4_EXCITATORY",
       "strength": 0.9
     }
   ],
@@ -130,7 +142,6 @@
     },
     {
       "target_region": "LGN",
-      "target_population": "RELAY_NEURONS",
       "source_population": "L6_PYRAMIDAL",
       "strength": 0.35
     },
@@ -144,5 +155,7 @@
     "gabaergic_agents": "high",
     "cholinergic_agents": "high",
     "psychedelics": "moderate"
-  }
+  },
+
+  "notes": "V1 extracts visual features via LGN-driven layer 4 input. Pulvinar provides contextual and attentional modulation to supragranular layers (L2/3) without directly driving sensory activation. This preserves feedforward dominance while enabling top-down and cross-modal biasing."
 }

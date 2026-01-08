@@ -1,9 +1,8 @@
-# engine/population_model.py
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 def _f(x: Any, default: float) -> float:
@@ -23,62 +22,77 @@ def _i(x: Any, default: int) -> int:
 @dataclass
 class PopulationModel:
     """
-    A single 'assembly' (subpopulation) dynamics model.
+    Assembly-level dynamics unit.
 
-    DESIGN GOALS:
-    - Tonic baseline (never decays to zero)
-    - Phasic external input
-    - Activity-dependent inhibition (stability)
-    - Soft normalization (prevents lockstep saturation)
+    PHYSIOLOGY MODEL:
+    - Resting baseline (tonic drive)
+    - Slow membrane-like integration
+    - Weak homeostatic correction
+    - Fast activity-dependent inhibition
+    - Soft firing-rate normalization
+
+    CHECKPOINT 5:
+    - One assembly == one semantic role
+    - Semantic bias is soft and bounded
+    - No learning or oscillatory mechanisms
     """
 
-    # --------------------------------------------------
+    # -------------------------
     # Identity
-    # --------------------------------------------------
+    # -------------------------
 
     assembly_id: str = ""
     size: int = 100
     sign: float = 1.0  # +1 excitatory, -1 inhibitory
 
-    # --------------------------------------------------
+    # -------------------------
     # State
-    # --------------------------------------------------
+    # -------------------------
 
     activity: float = 0.0
     firing_rate: float = 0.0
     input: float = 0.0
 
-    # --------------------------------------------------
+    # -------------------------
     # Core dynamics
-    # --------------------------------------------------
+    # -------------------------
 
     baseline: float = 0.0
-    tau: float = 0.05
-    threshold: float = 0.5
+    tau: float = 10.0
+    threshold: float = 0.0
     gain: float = 1.0
-    max_rate: float = 2.0
+    max_rate: float = 10.0
 
-    # NEW: intrinsic stabilization
-    inhibition_gain: float = 0.0     # subtracts activity from drive
-    normalization: float = 0.0        # divisive soft cap
+    inhibition_gain: float = 0.0
+    homeostatic_gain: float = 0.0
+    normalization: float = 0.0
 
-    # --------------------------------------------------
+    # -------------------------
     # Noise
-    # --------------------------------------------------
+    # -------------------------
 
     noise_amplitude: float = 0.0
     noise_distribution: str = "gaussian"
 
-    # --------------------------------------------------
-    # Safety clamps
-    # --------------------------------------------------
+    # -------------------------
+    # Safety
+    # -------------------------
 
     clamp_min: float = 0.0
     clamp_max: float = 1.0
 
-    # --------------------------------------------------
+    # -------------------------
+    # Semantic modifiers (runtime-attached)
+    # -------------------------
+
+    semantic_role: Optional[str] = None
+    semantic_gain: float = 1.0
+    semantic_tau_bias: float = 1.0
+    semantic_inhibition_bias: float = 1.0
+
+    # -------------------------
     # Construction
-    # --------------------------------------------------
+    # -------------------------
 
     @classmethod
     def from_params(
@@ -86,60 +100,75 @@ class PopulationModel:
         params: Dict[str, Any],
         *,
         default_assembly_id: str,
+        global_defaults: Optional[Dict[str, Any]] = None,
     ) -> "PopulationModel":
 
-        assembly_id = str(params.get("assembly_id") or default_assembly_id)
+        g = global_defaults or {}
 
-        size = _i(params.get("size", params.get("neurons", 100)), 100)
-        sign = _f(params.get("sign", 1.0), 1.0)
+        def pick(key: str, default: Any):
+            return params.get(key, g.get(key, default))
 
-        baseline = _f(params.get("baseline", 0.0), 0.0)
-        tau = _f(params.get("tau", 0.05), 0.05)
-        threshold = _f(params.get("threshold", 0.5), 0.5)
-        gain = _f(params.get("gain", 1.0), 1.0)
-        max_rate = _f(params.get("max_rate", 2.0), 2.0)
+        model = cls(
+            assembly_id=str(pick("assembly_id", default_assembly_id)),
+            size=_i(pick("size", pick("neurons", 100)), 100),
+            sign=_f(pick("sign", 1.0), 1.0),
 
-        inhibition_gain = _f(params.get("inhibition_gain", 0.0), 0.0)
-        normalization = _f(params.get("normalization", 0.0), 0.0)
+            baseline=_f(pick("baseline", 0.0), 0.0),
+            tau=_f(pick("tau", 10.0), 10.0),
+            threshold=_f(pick("threshold", 0.0), 0.0),
+            gain=_f(pick("gain", 1.0), 1.0),
+            max_rate=_f(pick("max_rate", 10.0), 10.0),
 
-        noise_amplitude = _f(params.get("noise_amplitude", 0.0), 0.0)
-        noise_distribution = str(params.get("noise_distribution", "gaussian")).lower()
+            inhibition_gain=_f(pick("inhibition_gain", 0.0), 0.0),
+            homeostatic_gain=_f(pick("homeostatic_gain", 0.0), 0.0),
+            normalization=_f(pick("normalization", 0.0), 0.0),
 
-        clamp_min = _f(params.get("clamp_min", 0.0), 0.0)
-        clamp_max = _f(params.get("clamp_max", 1.0), 1.0)
+            noise_amplitude=_f(pick("noise_amplitude", 0.0), 0.0),
+            noise_distribution=str(pick("noise_distribution", "gaussian")).lower(),
 
-        init_activity = _f(params.get("activity", baseline), baseline)
+            clamp_min=_f(pick("clamp_min", 0.0), 0.0),
+            clamp_max=_f(pick("clamp_max", 1.0), 1.0),
 
-        return cls(
-            assembly_id=assembly_id,
-            size=size,
-            sign=sign,
-            activity=init_activity,
-            firing_rate=0.0,
-            input=0.0,
-            baseline=baseline,
-            tau=tau,
-            threshold=threshold,
-            gain=gain,
-            max_rate=max_rate,
-            inhibition_gain=inhibition_gain,
-            normalization=normalization,
-            noise_amplitude=noise_amplitude,
-            noise_distribution=noise_distribution,
-            clamp_min=clamp_min,
-            clamp_max=clamp_max,
+            activity=_f(params.get("activity", pick("baseline", 0.0)), 0.0),
         )
 
-    # --------------------------------------------------
+        # -------------------------
+        # Semantic bias (soft only)
+        # -------------------------
+
+        model.semantic_role = params.get("role")
+
+        model.semantic_gain = max(
+            0.1,
+            1.0
+            + _f(params.get("gain_modulation", 0.0), 0.0)
+            + _f(params.get("novelty_bias", 0.0), 0.0),
+        )
+
+        model.semantic_tau_bias = max(
+            0.1,
+            1.0
+            - _f(params.get("recurrent_bias", 0.0), 0.0)
+            + _f(params.get("fatigue_sensitivity", 0.0), 0.0),
+        )
+
+        model.semantic_inhibition_bias = max(
+            0.1,
+            1.0 + _f(params.get("inhibitory_bias", 0.0), 0.0),
+        )
+
+        return model
+
+    # -------------------------
     # Output
-    # --------------------------------------------------
+    # -------------------------
 
     def output(self) -> float:
         return self.sign * self.firing_rate
 
-    # --------------------------------------------------
+    # -------------------------
     # Noise
-    # --------------------------------------------------
+    # -------------------------
 
     def _sample_noise(self) -> float:
         if self.noise_amplitude <= 0.0:
@@ -148,39 +177,51 @@ class PopulationModel:
             return random.uniform(-self.noise_amplitude, self.noise_amplitude)
         return random.gauss(0.0, self.noise_amplitude)
 
-    # --------------------------------------------------
+    # -------------------------
     # Step
-    # --------------------------------------------------
+    # -------------------------
 
     def step(self, dt: float) -> None:
         """
-        Advance one timestep with intrinsic stabilization.
+        Advance one timestep.
+
+        Semantic modifiers bias dynamics softly.
+        No modifier can override base physiology.
         """
 
-        # Activity-dependent inhibition
-        inhibition = self.inhibition_gain * self.activity
+        # Effective parameters
+        tau = self.tau * self.semantic_tau_bias
+        gain = self.gain * self.semantic_gain
+        inhibition_gain = self.inhibition_gain * self.semantic_inhibition_bias
 
-        # Total drive
+        # Homeostasis (weak)
+        homeo = self.homeostatic_gain * (self.baseline - self.activity)
+
+        # Fast inhibition
+        inhibition = inhibition_gain * self.activity
+
+        # Net drive
         drive = (
             self.baseline
             + self.input
+            + homeo
             - inhibition
             + self._sample_noise()
         )
 
-        # Leaky integration
-        if self.tau > 0.0:
-            self.activity += (dt / self.tau) * (drive - self.activity)
+        # Integrate
+        if tau > 0.0:
+            self.activity += (dt / tau) * (drive - self.activity)
         else:
             self.activity = drive
 
-        # Clamp activity
+        # Clamp
         self.activity = max(self.clamp_min, min(self.activity, self.clamp_max))
 
-        # Threshold + soft normalization
+        # Fire
         above = self.activity - self.threshold
         if above > 0.0:
-            fr = self.gain * above
+            fr = gain * above
             if self.normalization > 0.0:
                 fr /= (1.0 + self.normalization * self.activity)
         else:
@@ -188,5 +229,5 @@ class PopulationModel:
 
         self.firing_rate = max(0.0, min(fr, self.max_rate))
 
-        # Consume phasic input
+        # Clear phasic input
         self.input = 0.0

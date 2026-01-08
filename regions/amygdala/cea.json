@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "RegionSubstructure",
   "region_id": "CEA",
   "parent_region": "AMYGDALA",
@@ -18,8 +18,8 @@
 
   "outputs": [
     {
-      "target_region": "BRAINSTEM",
-      "target_population": "AUTONOMIC_NUCLEI",
+      "target_region": "MEDULLA",
+      "target_population": "AUTONOMIC_NEURONS",
       "strength": 0.8
     }
   ],

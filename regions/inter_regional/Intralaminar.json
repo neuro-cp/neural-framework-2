@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "RegionSubstructure",
   "region_id": "INTRALAMINAR",
   "parent_region": "THALAMUS",
@@ -18,18 +18,24 @@
 
   "inputs": [
     {
-      "source_region": "BRAINSTEM",
-      "strength": 0.6
+      "source_region": "LOCUS_COERULEUS",
+      "signal": "norepinephrine_tone",
+      "strength": 0.4
     },
     {
-      "source_region": "BASAL_GANGLIA",
+      "source_region": "RAPHE",
+      "signal": "serotonin_tone",
+      "strength": 0.2
+    },
+    {
+      "source_region": "GPi",
       "strength": 0.4
     }
   ],
 
   "outputs": [
     {
-      "target_region": "CORTEX",
+      "target_region": "ASSOCIATION_CORTEX",
       "strength": 0.5
     },
     {

@@ -1,4 +1,4 @@
-# test_runtime.py  (Cross-platform interactive runtime)
+# test_runtime.py  (Cross-platform interactive runtime + TCP command server)
 from __future__ import annotations
 
 import time
@@ -8,6 +8,8 @@ from pathlib import Path
 
 from loader.loader import NeuralFrameworkLoader
 from engine.runtime import BrainRuntime
+from engine.command_server import start_command_server
+
 
 # ============================================================
 # PLATFORM INPUT HANDLING
@@ -22,35 +24,30 @@ else:
     import termios
     import tty
 
-    # Put terminal into raw mode so we get characters immediately
     fd = sys.stdin.fileno()
     old_term_settings = termios.tcgetattr(fd)
     tty.setcbreak(fd)
 
 
 def key_available() -> bool:
-    """Non-blocking keyboard check."""
     if IS_WINDOWS:
         return msvcrt.kbhit()
-    else:
-        return bool(select.select([sys.stdin], [], [], 0)[0])
+    return bool(select.select([sys.stdin], [], [], 0)[0])
 
 
 def read_key() -> str:
-    """Read one character."""
     if IS_WINDOWS:
         return msvcrt.getwch()
-    else:
-        return sys.stdin.read(1)
+    return sys.stdin.read(1)
 
 
 # ============================================================
 # UI CONFIG
 # ============================================================
 
-SHOW_ASSEMBLIES = True        # True = show every assembly row, False = aggregate per region
-SHOW_ZERO_REGIONS = False    # Hide regions with 0 assemblies
-UI_INTERVAL = 1.0            # seconds of simulation time between UI refreshes
+SHOW_ASSEMBLIES = True
+SHOW_ZERO_REGIONS = False
+UI_INTERVAL = 1.0
 
 
 # ============================================================
@@ -58,16 +55,10 @@ UI_INTERVAL = 1.0            # seconds of simulation time between UI refreshes
 # ============================================================
 
 def snapshot_aggregate(runtime: BrainRuntime, *, show_zero: bool):
-    """
-    Aggregate activity and firing per region.
-    Returns: (region_id, mean_activity, mean_firing, n_assemblies)
-    """
     rows = []
 
     for region_id, region in runtime.region_states.items():
-        total_act = 0.0
-        total_fr = 0.0
-        count = 0
+        total_act = total_fr = count = 0
 
         for assemblies in region["populations"].values():
             for pop in assemblies:
@@ -82,7 +73,7 @@ def snapshot_aggregate(runtime: BrainRuntime, *, show_zero: bool):
             region_id,
             (total_act / count) if count else 0.0,
             (total_fr / count) if count else 0.0,
-            count
+            count,
         ))
 
     rows.sort(key=lambda x: x[0])
@@ -90,10 +81,6 @@ def snapshot_aggregate(runtime: BrainRuntime, *, show_zero: bool):
 
 
 def snapshot_assemblies(runtime: BrainRuntime, *, region_filter: str | None = None):
-    """
-    Return one row per assembly.
-    Returns: (assembly_id, activity, firing_rate, region_id)
-    """
     rows = []
 
     for region_id, region in runtime.region_states.items():
@@ -109,7 +96,6 @@ def snapshot_assemblies(runtime: BrainRuntime, *, region_filter: str | None = No
 
 
 def dump_region_assemblies(runtime: BrainRuntime, region_id: str) -> str:
-    """Print ALL assemblies for a region."""
     if region_id not in runtime.region_states:
         return f"Unknown region: {region_id}"
 
@@ -129,7 +115,7 @@ def dump_region_assemblies(runtime: BrainRuntime, region_id: str) -> str:
 
 
 # ============================================================
-# COMMAND HANDLING
+# COMMAND HANDLING (SINGLE SOURCE OF TRUTH)
 # ============================================================
 
 def apply_command(runtime: BrainRuntime, cmd: str) -> str:
@@ -141,17 +127,28 @@ def apply_command(runtime: BrainRuntime, cmd: str) -> str:
 
     head = parts[0].lower()
 
+    # -----------------------
+    # Help
+    # -----------------------
+
     if head == "help":
         return (
-            "Commands: "
-            "poke <region|all> <mag> | view assemblies | view regions | "
-            "toggle view | toggle zeros | dump <region> | help"
+            "Commands:\n"
+            "  poke <region|all> <mag>\n"
+            "  state [name]\n"
+            "  view assemblies | view regions\n"
+            "  toggle view | toggle zeros\n"
+            "  dump <region>\n"
+            "  help"
         )
+
+    # -----------------------
+    # Stimulus
+    # -----------------------
 
     if head == "poke":
         if len(parts) != 3:
             return "Usage: poke <region|all> <magnitude>"
-
         try:
             mag = float(parts[2])
         except ValueError:
@@ -160,26 +157,40 @@ def apply_command(runtime: BrainRuntime, cmd: str) -> str:
         if parts[1] == "all":
             for rid in runtime.region_states:
                 runtime.inject_stimulus(rid, magnitude=mag)
-            return f"POKE all (queued) += {mag}"
+            return f"POKE all += {mag}"
 
         runtime.inject_stimulus(parts[1], magnitude=mag)
-        return f"POKE {parts[1]} (queued) += {mag}"
+        return f"POKE {parts[1]} += {mag}"
 
-    if head == "view":
-        if len(parts) != 2:
-            return "Usage: view assemblies | view regions"
-        SHOW_ASSEMBLIES = (parts[1].lower() == "assemblies")
-        return f"View set to {'ASSEMBLIES' if SHOW_ASSEMBLIES else 'REGIONS'}."
+    # -----------------------
+    # Brain state (INERT)
+    # -----------------------
 
-    if head == "toggle":
-        if len(parts) != 2:
-            return "Usage: toggle view | toggle zeros"
+    if head == "state":
+        if len(parts) == 1:
+            return f"brain_state = {runtime.get_state()}"
+        runtime.set_state(parts[1])
+        return f"brain_state -> {runtime.get_state()}"
+
+    # -----------------------
+    # View controls
+    # -----------------------
+
+    if head == "view" and len(parts) == 2:
+        SHOW_ASSEMBLIES = (parts[1] == "assemblies")
+        return f"View = {'ASSEMBLIES' if SHOW_ASSEMBLIES else 'REGIONS'}"
+
+    if head == "toggle" and len(parts) == 2:
         if parts[1] == "view":
             SHOW_ASSEMBLIES = not SHOW_ASSEMBLIES
-            return f"Toggled view -> {'ASSEMBLIES' if SHOW_ASSEMBLIES else 'REGIONS'}."
+            return f"Toggled view -> {'ASSEMBLIES' if SHOW_ASSEMBLIES else 'REGIONS'}"
         if parts[1] == "zeros":
             SHOW_ZERO_REGIONS = not SHOW_ZERO_REGIONS
-            return f"Toggled zeros -> {'SHOW' if SHOW_ZERO_REGIONS else 'HIDE'} empty regions."
+            return f"Toggled zeros -> {'SHOW' if SHOW_ZERO_REGIONS else 'HIDE'}"
+
+    # -----------------------
+    # Dump
+    # -----------------------
 
     if head == "dump" and len(parts) == 2:
         return dump_region_assemblies(runtime, parts[1])
@@ -203,12 +214,19 @@ loader.load_profiles()
 brain = loader.compile(
     expression_profile="human_default",
     state_profile="awake",
-    compound_profile="experimental"
+    compound_profile="experimental",
 )
 
 runtime = BrainRuntime(brain, dt=0.01)
 
+# Expose command handler to TCP server
+runtime.apply_command = lambda cmd: apply_command(runtime, cmd)
+
+# Start TCP command server
+start_command_server(runtime)
+
 print("\nLIVE RUNTIME")
+print("Keyboard + TCP input enabled (port 5557)")
 print("Ctrl+C to quit | type 'help' for commands")
 print("-" * 80)
 
@@ -247,7 +265,7 @@ try:
             next_ui_time += UI_INTERVAL
 
             print("\n" + "-" * 80)
-            print(f"t={runtime.time:.2f}s")
+            print(f"t={runtime.time:.2f}s | state={runtime.get_state()}")
 
             if SHOW_ASSEMBLIES:
                 print(f"{'ASSEMBLY ID':55} {'ACT':>10} {'FR':>10}")

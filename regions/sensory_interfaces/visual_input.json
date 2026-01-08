@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "SensoryInterface",
   "region_id": "VISUAL_INPUT",
   "parent_region": "SENSORY_INTERFACES",
@@ -25,8 +25,7 @@
 
   "outputs": [
     {
-      "target_region": "THALAMUS",
-      "target_population": "LGN_PROXY",
+      "target_region": "LGN",
       "strength": 1.0
     }
   ],

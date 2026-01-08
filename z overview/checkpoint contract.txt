@@ -1,0 +1,678 @@
+🧠 NEURAL FRAMEWORK CONTINUATION CONTRACT
+
+Checkpoint Name: Cognitive Core v1.0
+Date: Current
+Status: Stable, warning-free
+Scope: Population-level cognition with subpopulation semantics
+Owner Intent: Maximize biological and cognitive complexity over time (not compute minimization)
+
+1. PROJECT GOAL (UNCHANGED)
+
+Build a neurally grounded, region-based cognitive system that:
+
+Thinks over time (stateful, not stateless inference)
+
+Maintains working memory
+
+Generates, evaluates, suppresses, and commits actions
+
+Learns from reward and punishment
+
+Is modulated by neuromodulators and compounds
+
+Can later scale to 100k–1M neurons per region
+
+Supports eventual 3D wiring, neuron-level simulation, and GPU acceleration
+
+Remains modular and extensible, not a monolith
+
+Language models are interfaces/compressors later, not the cognitive core.
+
+2. CURRENT ARCHITECTURAL LEVEL (VERY IMPORTANT)
+
+We are explicitly operating at the population + subpopulation level, not at single neurons.
+
+This level is:
+
+✔ Biologically meaningful
+
+✔ Cognitively expressive
+
+✔ Computationally stable
+
+✔ Forward-compatible with neuron-level instantiation
+
+This level is NOT:
+
+❌ A toy abstraction
+
+❌ A dead end
+
+❌ In conflict with later 3D wiring
+
+This is the correct layer to establish:
+
+semantics
+
+competition
+
+learning rules
+
+state transitions
+
+modulation hooks
+
+3. WHAT IS IMPLEMENTED (HARD FACTS)
+3.1 Loader & Infrastructure
+
+loader/loader.py
+
+Loads neuron bases, regions, profiles, config
+
+Deterministic alias resolution
+
+Group → region expansion
+
+Base regions excluded from concrete resolution
+
+Assembly downscaling supported for debug
+
+routing_defaults.json
+
+Installed in /config
+
+Default routing behavior now centralized
+
+Alias warnings resolved
+
+No unresolved references
+
+3.2 Region Graph (Functional Wiring Complete)
+
+The following regions are defined and wired coherently:
+
+PFC (Prefrontal Cortex)
+
+STRIATUM
+
+MD (Mediodorsal Thalamus)
+
+GPi / GPe
+
+STN
+
+TRN
+
+VPL
+
+S1
+
+ASSOCIATION_CORTEX
+
+HIPPOCAMPAL FORMATION (CA1, Subiculum inputs)
+
+BLA
+
+VTA
+
+Thalamic sensory nuclei (LGN, MGB, Pulvinar)
+
+This forms closed cortico–basal–thalamic loops.
+
+4. KEY REGIONS AT THIS CHECKPOINT
+4.1 PFC (v1.3.1)
+
+Role: Executive control, working memory, policy generation
+
+Population structure:
+
+L2/3 pyramidal neurons
+
+Subpopulations:
+
+Context maintainers
+
+Associative integrators
+
+Distractor suppressors
+
+L5 pyramidal neurons
+
+Subpopulations:
+
+Action planners
+
+Competing policy encoders
+
+Inhibitory control drivers
+
+L6 pyramidal neurons
+
+Subpopulations:
+
+Thalamic gates
+
+State monitors
+
+Interneurons
+
+Subpopulations:
+
+Fast-spiking
+
+Adaptive inhibitors
+
+Global dampeners
+
+Key guarantees:
+
+Explicit separation of:
+
+memory maintenance
+
+policy generation
+
+policy suppression
+
+Subpopulations are semantic, not spatial
+
+Designed to later map onto columns or voxels
+
+4.2 STRIATUM (v1.2.1)
+
+Role: Action selection + value learning
+
+Populations:
+
+D1 MSNs (direct pathway)
+
+D2 MSNs (indirect pathway)
+
+Inhibitory interneurons
+
+Mechanics implemented conceptually:
+
+Parallel action channels
+
+Winner-take-most competition
+
+Eligibility traces
+
+Dopamine-modulated plasticity
+
+Direct vs indirect pathway logic
+
+Critical constraint:
+
+Dopamine modulates learning and bias — it does NOT directly trigger actions.
+
+5. WHAT THE MODEL CAN DO NOW
+
+At the population level, the system can:
+
+Maintain internal state across time
+
+Hold and update working memory
+
+Generate multiple competing action policies
+
+Suppress or delay action execution
+
+Gate actions through basal ganglia loops
+
+Learn from reward and punishment
+
+Be influenced by neuromodulators and drugs
+
+Enter failure modes (indecision, suppression, runaway dampening)
+
+This is genuine cognition, not reflex chaining.
+
+6. WHAT IS EXPLICITLY NOT DONE YET (DO NOT JUMP AHEAD)
+
+The following are intentionally deferred:
+
+❌ Single-neuron simulation
+
+❌ 3D spatial coordinates
+
+❌ Synapse-level plasticity
+
+❌ Ion-channel differential equations
+
+❌ GPU kernels / CUDA
+
+❌ Million-neuron instantiation
+
+Reason:
+Those layers require stable semantics first.
+We now have those semantics.
+
+7. INTENDED TRAJECTORY (LOCKED ORDER)
+Phase 1 — Population Mechanics Engine ← NEXT
+
+Implement runtime logic for:
+
+Competition (winner-take-most)
+
+Eligibility traces
+
+Persistence and decay
+
+Commitment thresholds
+
+Suppression vs facilitation
+
+Temporal dynamics (without spikes yet)
+
+Start with:
+
+STRIATUM → GPi gating behavior
+
+Phase 2 — Neuromodulator Fields
+
+Introduce global and regional modulation:
+
+Dopamine
+
+Norepinephrine
+
+Serotonin
+
+Acetylcholine
+
+Applied as bias fields over populations and subpopulations.
+
+Phase 3 — Compound Profiles
+
+Map compounds to modulation effects:
+
+Antipsychotics
+
+Stimulants
+
+Psychedelics
+
+Sedatives
+
+Neurotoxins (later)
+
+No hardcoding into regions — use profiles.
+
+Phase 4 — State Profiles
+
+Global system states:
+
+Wake / fatigue
+
+Stress
+
+Focus
+
+Anesthesia
+
+Pathological states
+
+Phase 5 — Structural Expansion
+
+Only after all above are stable:
+
+Columns
+
+Voxels
+
+Projection matrices
+
+Neuron instantiation
+
+GPU acceleration
+
+Massive scaling (100k+ neurons per region)
+
+8. RESUME POINT (EXACT)
+
+Resume from:
+Implement population-level dynamics, beginning with STRIATUM action competition and GPi gating, including eligibility traces, decay, and commitment thresholds.
+
+This is the next file to write, not regions.
+
+9. CONSTRAINTS FOR FUTURE SESSIONS
+
+Do NOT refactor region JSON unless semantics change
+
+Do NOT add neuron-level detail early
+
+Do NOT collapse subpopulations into blobs
+
+Preserve forward-compatibility hooks
+
+Prefer configuration over hardcoded logic
+
+Maintain biological plausibility, not biological literalism
+
+10. PHILOSOPHY (DO NOT LOSE THIS)
+
+This system is not trying to:
+
+“simulate a brain”
+
+“optimize inference speed”
+
+“minimize compute”
+
+It is trying to:
+
+think
+
+hesitate
+
+learn
+
+fail
+
+recover
+
+be influenced
+
+develop internal structure over time
+
+That requires discipline in abstraction, not premature detail.
+
+✅ END OF CONTRACT
+
+When you open the next chat, start with:
+
+“Here is the Cognitive Core v1.0 continuation contract. Resume from the population mechanics engine, starting with STRIATUM → GPi gating.”
+
+From there, we build the engine that makes this thing -----live. old checkpoint----
+
+
+---newest checkpoint below----
+CHECKPOINT UPDATE
+
+Project: Neural Framework
+Checkpoint Name: Global Poke Sweep Validation
+Date: 2026-01-07
+
+What was completed in this checkpoint
+1. Structural rewrites and stabilization
+
+During this checkpoint, multiple core regions were fully rewritten or normalized to ensure:
+
+Consistent schema usage
+
+Declarative future dynamics only (no runtime enforcement yet)
+
+No accidental feedback amplification
+
+Forward compatibility with later learning, oscillatory, and state logic
+
+Key rewritten / validated regions include (non-exhaustive):
+
+Thalamus & gating
+
+LGN
+
+MD
+
+MGB
+
+Pulvinar
+
+TRN
+
+VPL / VPM
+
+Primary & association cortex
+
+V1
+
+A1
+
+S1
+
+Association Cortex
+
+PFC
+
+Basal ganglia
+
+Striatum
+
+GPe
+
+GPi
+
+STN
+
+SNc
+
+Neuromodulators
+
+VTA
+
+Locus Coeruleus
+
+Raphe
+
+Hippocampal formation
+
+CA1
+
+CA3
+
+Dentate Gyrus
+
+Subiculum
+
+Midbrain & brainstem
+
+Inferior Colliculus
+
+Superior Colliculus
+
+Homeostatic / endocrine
+
+Hypothalamus
+
+Anterior Pituitary
+
+Posterior Pituitary
+
+Autonomic System
+
+Cerebellar system
+
+Cerebellar Cortex
+
+Deep Nuclei
+
+All regions now load cleanly via the loader with alias resolution intact and no unresolved references.
+
+2. Full-system poke sweep executed
+
+A sequential, timed global perturbation sweep was performed across nearly all instantiated regions.
+
+Sweep characteristics:
+
+Fixed poke strength: 20
+
+Fixed delay between pokes: 5 seconds
+
+One poke per region
+
+Ordered to traverse:
+
+Thalamus → Cortex → Association → PFC
+
+Basal ganglia
+
+Neuromodulators
+
+Hippocampus
+
+Endocrine / autonomic
+
+Cerebellum
+
+Result:
+
+No crashes
+
+No deadlocks
+
+No runaway excitation
+
+No silent failures
+
+Runtime remained responsive throughout
+
+This validates:
+
+Global connectivity integrity
+
+Correct inhibitory topology
+
+Safe feedback loops
+
+Proper separation of relay vs modulatory roles
+
+3. Runtime & loader status
+
+test_loader.py reports all regions loaded
+
+Population counts are scaled (hundreds → thousands) as intended
+
+Connectivity summary shows bidirectional loops behaving sanely
+
+One previously identified warning (A1 L6 reference) was resolved via rewrite
+
+Runtime logs now capture poke timing and region identity cleanly
+
+Where we are leaving off
+
+At the end of this checkpoint:
+
+The system is structurally stable
+
+All declared subpopulations exist as semantic labels only
+
+No learning, oscillations, or state transitions are enforced yet
+
+Pokes propagate but do not permanently alter internal state
+
+Profiles (state / expression / compound) are loadable but not yet exploited
+
+This is the final moment before introducing dynamics.
+
+📜 CONTINUATION CONTRACT (FOR NEXT CONVERSATION)
+Canonical project state
+
+You are working with a region-based neural simulation framework that models large-scale brain architecture using declarative JSON definitions and a Python runtime.
+
+The system currently supports:
+
+Region loading and alias resolution
+
+Population instantiation
+
+Directed weighted connectivity
+
+External perturbation (“poke”) injection
+
+Stepwise runtime propagation
+
+Observational logging
+
+The system does not yet enforce:
+
+Learning rules
+
+Oscillatory dynamics
+
+State-dependent gating
+
+Subpopulation-specific behavior
+
+Those features are intentionally deferred.
+
+Files that will be provided in the next conversation
+
+You should assume the user will attach:
+
+runtime_log.txt
+
+Contains timestamped output from the full poke sweep
+
+Poke sweep script
+
+Sequential region stimulation logic
+
+test_loader.py output
+
+Confirms region load order, populations, connectivity, alias resolution
+
+Region JSON bundle
+
+All rewritten regions listed above
+
+You must use these files as ground truth and not infer missing behavior.
+
+Rules for continuation
+
+Do not delete or simplify fields that appear unused
+(they are future-intent declarations)
+
+Do not activate subpopulation mechanics automatically
+
+Do not add learning, oscillations, or state logic unless explicitly instructed
+
+Treat JSON as architectural contracts, not runtime code
+
+When modifying Python:
+
+Preserve all existing variables
+
+Extend, don’t replace
+
+Avoid hard-coding region-specific logic
+
+Immediate next goals (after this checkpoint)
+
+These are planned but not yet executed:
+
+Differential poke analysis
+
+Same region, multiple strengths
+
+Paired perturbations
+
+Short-interval multi-region pokes
+
+State overlay testing
+
+Repeat pokes under awake, sleep, anesthetized
+
+Runtime instrumentation
+
+Better visibility into propagation paths
+
+Only after the above:
+
+Begin implementing one dynamic mechanism (likely thalamic gating or BG competition)
+
+What this checkpoint represents
+
+This checkpoint marks the transition from:
+
+“Does the brain load?”
+to
+“Does the brain behave as a system?”
+
+The answer, based on evidence so far, is yes.
+
+When you’re ready, open the next conversation, paste or attach the artifacts, and say something like:
+
+“Load checkpoint: Global Poke Sweep Validation.”
+
+I’ll treat that as the canonical handoff and we’ll continue cleanly from there.

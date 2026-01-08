@@ -1,7 +1,7 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.1",
   "type": "RegionBase",
-  "region_id": "CORTEX",
+  "region_id": "CORTEX_BASE",
   "category": "laminar_cortex",
   "reference_models": ["human", "mouse", "primate"],
 
@@ -19,6 +19,54 @@
       "L5": "subcortical_output",
       "L6": "feedback_modulation"
     }
+  },
+
+  "populations": {
+    "L2_3_PYRAMIDAL": {
+      "layer": "L2_3",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.5,
+      "plasticity_profile": "high"
+    },
+
+    "L4_EXCITATORY": {
+      "layer": "L4",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.6,
+      "plasticity_profile": "medium"
+    },
+
+    "L5_PYRAMIDAL": {
+      "layer": "L5",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.7,
+      "plasticity_profile": "high"
+    },
+
+    "L6_PYRAMIDAL": {
+      "layer": "L6",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.4,
+      "plasticity_profile": "medium"
+    },
+
+    "INTERNEURONS": {
+      "layer": "all",
+      "neuron_type": "inhibitory",
+      "sign": -1.0,
+      "baseline_firing_rate_hz": 6.0,
+      "plasticity_profile": "low"
+    }
+  },
+
+  "population_aliases": {
+    "L3_PYRAMIDAL": "L2_3_PYRAMIDAL",
+    "PFC_L2_3": "L2_3_PYRAMIDAL",
+    "S1_L4": "L4_EXCITATORY"
   },
 
   "default_neuron_template": {
@@ -59,5 +107,5 @@
     "BRAINSTEM"
   ],
 
-  "notes": "Neocortex supports laminar processing, recurrent excitation, long-range integration, and plastic learning."
+  "notes": "Canonical cortical laminar template. All cortical subregions inherit populations and aliases unless overridden."
 }

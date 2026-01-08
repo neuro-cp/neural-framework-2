@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.1.0",
   "type": "RegionSubstructure",
   "region_id": "CA1",
   "parent_region": "HIPPOCAMPAL_FORMATION",
@@ -83,7 +83,7 @@
     },
     {
       "source_region": "CORTEX",
-      "source_population": "L3_PYRAMIDAL",
+      "source_population": "L2_3_PYRAMIDAL",
       "pathway": "temporoammonic",
       "strength": 0.4
     }
@@ -101,5 +101,7 @@
     "cholinergic_agents": "high",
     "nmda_antagonists": "high",
     "gabaergic_agents": "moderate"
-  }
+  },
+
+  "notes": "CA1 integrates Schaffer collateral input from CA3 and temporoammonic input from cortex before projecting to subiculum."
 }
