@@ -9,7 +9,7 @@ from pathlib import Path
 HOST = "127.0.0.1"
 PORT = 5557
 
-POKE_VALUE = 20
+POKE_VALUE = 2000000
 DELAY_SECONDS = 5.0
 
 LOG_PATH = Path(r"C:\Users\Admin\Desktop\neural framework\runtime_log.txt")

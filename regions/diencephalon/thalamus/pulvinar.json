@@ -1,14 +1,16 @@
 {
-  "version": "1.2.1",
+  "version": "1.3.0",
   "type": "RegionSubstructure",
   "region_id": "PULVINAR",
   "parent_region": "THALAMUS",
 
-  "function": "visual_attention_and_cross_modal_coordination",
+  "function": "associative_thalamic_attention_and_cross_modal_gating",
 
   "spatial_properties": {
     "association_nucleus": true,
     "diffuse_projection": true,
+    "is_relay": true,
+    "relay_type": "associative",
     "non_primary_relay": true
   },
 
@@ -20,28 +22,31 @@
       "baseline_firing_rate_hz": 3.0,
       "plasticity_profile": "medium",
 
-      "receives_inhibition_from": ["TRN"],
+      "receives_inhibition_from": ["TRN", "GPi"],
 
       "subpopulations": {
         "VISUAL_COORDINATION_UNITS": {
           "fraction": 0.50,
           "role": "visual_context_alignment",
-          "target_bias": "visual_cortex",
-          "gain": 0.8
+          "semantic_target_bias": "visual_cortex",
+          "gain_modulation": -0.2,
+          "notes": "Biases relay output toward visual cortical coordination under top-down attention."
         },
 
         "CROSS_MODAL_ALIGNMENT_UNITS": {
           "fraction": 0.30,
           "role": "cross_modal_feature_synchronization",
-          "target_bias": "association_cortex",
-          "gain": 0.6
+          "semantic_target_bias": "association_cortex",
+          "gain_modulation": -0.4,
+          "notes": "Supports synchronization of features across sensory modalities."
         },
 
         "SALIENCE_RELAY_UNITS": {
           "fraction": 0.20,
           "role": "salience_weighting",
           "context_sensitivity": 0.7,
-          "gain": 0.5
+          "gain_modulation": -0.5,
+          "notes": "Relays salience-weighted signals influenced by subcortical inputs."
         }
       }
     }
@@ -79,7 +84,6 @@
     },
     {
       "target_region": "ASSOCIATION_CORTEX",
-      "signal": "salience_bias",
       "strength": 0.5
     }
   ],
@@ -111,5 +115,5 @@
     "cholinergic_agents": "high"
   },
 
-  "notes": "Pulvinar is an associative thalamic nucleus that coordinates attentional alignment and cross-modal synchronization rather than primary sensory relay. It preferentially targets cortical L2/3 populations and association cortex, operating under TRN inhibition and corticothalamic guidance. Subpopulation roles and state descriptors are declarative and reserved for later enforcement by attentional and oscillatory control systems."
+  "notes": "Pulvinar is modeled as an associative thalamic relay nucleus that modulates attentional alignment and cross-modal coordination rather than primary sensory throughput. It is gated by TRN and basal ganglia output (GPi), receives strong corticothalamic input, and preferentially targets cortical L2/3 populations and association cortex. Subpopulation fields encode semantic intent only and are reserved for later attentional, oscillatory, and state-dependent enforcement."
 }

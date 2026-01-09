@@ -9,7 +9,7 @@ from typing import Dict, Tuple, Optional, Any, List
 # ============================================================
 # TEMP DEBUG CONTROL
 # ============================================================
-ASSEMBLY_DOWNSCALE: float = 0.01
+ASSEMBLY_DOWNSCALE: float = 1.0
 # ============================================================
 
 
@@ -79,14 +79,11 @@ class NeuralFrameworkLoader:
         return region_id.endswith("_base")
 
     def _build_alias_tables(self) -> None:
-        """
-        Build deterministic alias tables.
-        Aliases map -> semantic group, never directly to regions.
-        """
         self._alias_to_group.clear()
         self._group_to_regions.clear()
 
         if not self.region_aliases:
+            print("[DEBUG] No region alias registry found.")
             return
 
         aliases = self.region_aliases.get("aliases", {})
@@ -97,7 +94,6 @@ class NeuralFrameworkLoader:
             for name in names:
                 self._alias_to_group[name.lower()] = group_key
 
-        # Populate group → concrete region list
         for region_id, blob in self.regions.items():
             if self._is_base_region(region_id):
                 continue
@@ -109,126 +105,8 @@ class NeuralFrameworkLoader:
             # Allow region_id itself as alias
             self._alias_to_group[region_id.lower()] = region_id.lower()
 
-    def resolve_region_group(self, name: str) -> Optional[str]:
-        """
-        Resolve an alias to a semantic group name (uppercase),
-        or None if unknown.
-        """
-        if not name:
-            return None
-        return self._alias_to_group.get(name.lower())
-
-    def expand_region_group(self, group: str) -> List[str]:
-        """
-        Expand a semantic group into concrete regions.
-        Never returns base regions.
-        """
-        if not group:
-            return []
-        return list(self._group_to_regions.get(group.upper(), []))
-
-    def resolve_concrete_region(self, name: str) -> Optional[str]:
-        """
-        Resolve a name to a concrete region ID.
-        Exact match only. Base regions are never returned.
-        """
-        if not name:
-            return None
-
-        key = name.lower()
-        if key in self.regions and not self._is_base_region(key):
-            return key
-
-        return None
-
     # ----------------------------
-    # Config loading
-    # ----------------------------
-
-    def load_global_dynamics(self) -> Tuple[dict, Optional[str]]:
-        candidates = [
-            self.config_path / "global_dynamics.json",
-            self.config_path / "global_config.json",
-            self.root / "global_dynamics.json",
-            self.root / "global_config.json",
-        ]
-        for p in candidates:
-            if p.exists():
-                return self._load_json(p), str(p)
-        return {}, None
-
-    def load_routing_defaults(self) -> Optional[dict]:
-        path = self.config_path / "routing_defaults.json"
-        if path.exists():
-            return self._load_json(path)
-        return None
-
-    # ----------------------------
-    # Load phases
-    # ----------------------------
-
-    def load_neuron_bases(self) -> None:
-        self.neuron_bases = self._load_folder(self.neuron_path)
-
-    def load_regions(self) -> None:
-        self.regions.clear()
-        self.brain_map = None
-        self.region_aliases = None
-
-        if not self.regions_path.exists():
-            return
-
-        for file in self.regions_path.rglob("*.json"):
-            blob = self._load_json(file)
-            t = str(blob.get("type", "") or "")
-
-            if t == "BrainMap":
-                self.brain_map = blob
-                continue
-
-            if t == "RegionAliasRegistry":
-                self.region_aliases = blob
-                continue
-
-            if ASSEMBLY_DOWNSCALE != 1.0:
-                pops = blob.get("populations")
-                if isinstance(pops, dict):
-                    for pop in pops.values():
-                        if isinstance(pop, dict) and "count" in pop:
-                            try:
-                                original = int(pop["count"])
-                                pop["count"] = max(
-                                    1, int(round(original * ASSEMBLY_DOWNSCALE))
-                                )
-                            except Exception:
-                                pass
-
-            key = file.stem
-            if key in self.regions:
-                rel = str(file.relative_to(self.regions_path)).replace("\\", "/")
-                raise RuntimeError(
-                    f"Duplicate region stem '{key}' under regions/ (conflict at: {rel})"
-                )
-
-            self.regions[key] = blob
-
-        self._build_alias_tables()
-
-    def load_profiles(self) -> None:
-        self.profiles = self._load_folder(self.profiles_path)
-
-    # ----------------------------
-    # Validation
-    # ----------------------------
-
-    def validate(self) -> None:
-        if not self.neuron_bases:
-            raise RuntimeError("Neuron bases not loaded.")
-        if not self.regions:
-            raise RuntimeError("Regions not loaded.")
-
-    # ----------------------------
-    # Routing resolution (deferred)
+    # Routing resolution (DEFERRED, NON-MUTATING)
     # ----------------------------
 
     def resolve_routing_target(
@@ -262,6 +140,108 @@ class NeuralFrameworkLoader:
             return rule.get("default_target") or rule.get("fallback")
 
         return None
+
+    # ----------------------------
+    # Config loading
+    # ----------------------------
+
+    def load_global_dynamics(self) -> Tuple[dict, Optional[str]]:
+        candidates = [
+            self.config_path / "global_dynamics.json",
+            self.config_path / "global_config.json",
+            self.root / "global_dynamics.json",
+            self.root / "global_config.json",
+        ]
+        for p in candidates:
+            if p.exists():
+                print(f"[DEBUG] Global dynamics loaded from {p}")
+                return self._load_json(p), str(p)
+        print("[DEBUG] No global dynamics config found.")
+        return {}, None
+
+    def load_routing_defaults(self) -> Optional[dict]:
+        path = self.config_path / "routing_defaults.json"
+        if path.exists():
+            print(f"[DEBUG] Routing defaults loaded from {path}")
+            return self._load_json(path)
+        print("[DEBUG] No routing defaults found.")
+        return None
+
+    # ----------------------------
+    # Load phases
+    # ----------------------------
+
+    def load_neuron_bases(self) -> None:
+        self.neuron_bases = self._load_folder(self.neuron_path)
+        print(f"[DEBUG] Neuron bases loaded: {len(self.neuron_bases)}")
+
+    def load_regions(self) -> None:
+        self.regions.clear()
+        self.brain_map = None
+        self.region_aliases = None
+
+        print(f"[DEBUG] Loading regions from: {self.regions_path}")
+
+        if not self.regions_path.exists():
+            print("[DEBUG] Regions path does not exist.")
+            return
+
+        for file in self.regions_path.rglob("*.json"):
+            blob = self._load_json(file)
+            t = str(blob.get("type", "") or "")
+
+            if t == "BrainMap":
+                self.brain_map = blob
+                print(f"[DEBUG] BrainMap loaded from {file.name}")
+                continue
+
+            if t == "RegionAliasRegistry":
+                self.region_aliases = blob
+                print(f"[DEBUG] RegionAliasRegistry loaded from {file.name}")
+                continue
+
+            if ASSEMBLY_DOWNSCALE != 1.0:
+                pops = blob.get("populations")
+                if isinstance(pops, dict):
+                    for pop in pops.values():
+                        if isinstance(pop, dict) and "count" in pop:
+                            try:
+                                original = int(pop["count"])
+                                pop["count"] = max(
+                                    1, int(round(original * ASSEMBLY_DOWNSCALE))
+                                )
+                            except Exception:
+                                pass
+
+            key = file.stem
+            if key in self.regions:
+                rel = str(file.relative_to(self.regions_path)).replace("\\", "/")
+                raise RuntimeError(
+                    f"Duplicate region stem '{key}' under regions/ (conflict at: {rel})"
+                )
+
+            self.regions[key] = blob
+            print(
+                f"[DEBUG] Loaded region: {key} "
+                f"| populations={len(blob.get('populations', {}))}"
+            )
+
+        self._build_alias_tables()
+        print(f"[DEBUG] Total regions loaded: {len(self.regions)}")
+
+    def load_profiles(self) -> None:
+        self.profiles = self._load_folder(self.profiles_path)
+        print(f"[DEBUG] Profiles loaded: {len(self.profiles)}")
+
+    # ----------------------------
+    # Validation
+    # ----------------------------
+
+    def validate(self) -> None:
+        if not self.neuron_bases:
+            raise RuntimeError("Neuron bases not loaded.")
+        if not self.regions:
+            raise RuntimeError("Regions not loaded.")
 
     # ----------------------------
     # Compilation
@@ -298,5 +278,9 @@ class NeuralFrameworkLoader:
             "global_dynamics_loaded_from": global_dyn_path,
             "assembly_downscale": ASSEMBLY_DOWNSCALE,
         }
+
+        print("[DEBUG] Compile complete.")
+        print(f"  Regions: {len(self.regions)}")
+        print(f"  Assembly downscale: {ASSEMBLY_DOWNSCALE}")
 
         return self.compiled_brain

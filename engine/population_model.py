@@ -5,6 +5,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 
+# ------------------------------------------------------------
+# Utilities
+# ------------------------------------------------------------
+
 def _f(x: Any, default: float) -> float:
     try:
         return float(x)
@@ -19,22 +23,21 @@ def _i(x: Any, default: int) -> int:
         return int(default)
 
 
+# ------------------------------------------------------------
+# Population Model (GROUND-TRUTH STABLE)
+# ------------------------------------------------------------
+
 @dataclass
 class PopulationModel:
     """
     Assembly-level dynamics unit.
 
-    PHYSIOLOGY MODEL:
-    - Resting baseline (tonic drive)
-    - Slow membrane-like integration
-    - Weak homeostatic correction
-    - Fast activity-dependent inhibition
-    - Soft firing-rate normalization
-
-    CHECKPOINT 5:
-    - One assembly == one semantic role
-    - Semantic bias is soft and bounded
-    - No learning or oscillatory mechanisms
+    CORE INVARIANTS:
+    - Activity is membrane-like (signed, integrative)
+    - Inhibition acts DURING integration, not after
+    - Firing rate is rectified and bounded
+    - No oscillators, no learning, no hidden state
+    - Competition injects lateral inhibition only
     """
 
     # -------------------------
@@ -51,7 +54,10 @@ class PopulationModel:
 
     activity: float = 0.0
     firing_rate: float = 0.0
+
+    # Transient inputs (cleared each step)
     input: float = 0.0
+    lateral_inhibition: float = 0.0
 
     # -------------------------
     # Core dynamics
@@ -78,7 +84,7 @@ class PopulationModel:
     # Safety
     # -------------------------
 
-    clamp_min: float = 0.0
+    clamp_min: float = -1.0
     clamp_max: float = 1.0
 
     # -------------------------
@@ -90,9 +96,9 @@ class PopulationModel:
     semantic_tau_bias: float = 1.0
     semantic_inhibition_bias: float = 1.0
 
-    # -------------------------
+    # ------------------------------------------------------------
     # Construction
-    # -------------------------
+    # ------------------------------------------------------------
 
     @classmethod
     def from_params(
@@ -108,12 +114,17 @@ class PopulationModel:
         def pick(key: str, default: Any):
             return params.get(key, g.get(key, default))
 
+        baseline = _f(
+            pick("baseline", pick("baseline_firing_rate_hz", 0.0)),
+            0.0,
+        )
+
         model = cls(
             assembly_id=str(pick("assembly_id", default_assembly_id)),
             size=_i(pick("size", pick("neurons", 100)), 100),
             sign=_f(pick("sign", 1.0), 1.0),
 
-            baseline=_f(pick("baseline", 0.0), 0.0),
+            baseline=baseline,
             tau=_f(pick("tau", 10.0), 10.0),
             threshold=_f(pick("threshold", 0.0), 0.0),
             gain=_f(pick("gain", 1.0), 1.0),
@@ -126,16 +137,13 @@ class PopulationModel:
             noise_amplitude=_f(pick("noise_amplitude", 0.0), 0.0),
             noise_distribution=str(pick("noise_distribution", "gaussian")).lower(),
 
-            clamp_min=_f(pick("clamp_min", 0.0), 0.0),
+            clamp_min=_f(pick("clamp_min", -1.0), -1.0),
             clamp_max=_f(pick("clamp_max", 1.0), 1.0),
 
-            activity=_f(params.get("activity", pick("baseline", 0.0)), 0.0),
+            activity=_f(params.get("activity", baseline), baseline),
         )
 
-        # -------------------------
-        # Semantic bias (soft only)
-        # -------------------------
-
+        # Semantic modifiers (soft, bounded)
         model.semantic_role = params.get("role")
 
         model.semantic_gain = max(
@@ -159,16 +167,21 @@ class PopulationModel:
 
         return model
 
-    # -------------------------
+    # ------------------------------------------------------------
     # Output
-    # -------------------------
+    # ------------------------------------------------------------
 
     def output(self) -> float:
-        return self.sign * self.firing_rate
+        """
+        Signed synaptic output.
+        Sign is already handled during integration,
+        so output is pure firing rate.
+        """
+        return self.firing_rate
 
-    # -------------------------
+    # ------------------------------------------------------------
     # Noise
-    # -------------------------
+    # ------------------------------------------------------------
 
     def _sample_noise(self) -> float:
         if self.noise_amplitude <= 0.0:
@@ -177,57 +190,57 @@ class PopulationModel:
             return random.uniform(-self.noise_amplitude, self.noise_amplitude)
         return random.gauss(0.0, self.noise_amplitude)
 
-    # -------------------------
+    # ------------------------------------------------------------
     # Step
-    # -------------------------
+    # ------------------------------------------------------------
 
     def step(self, dt: float) -> None:
         """
         Advance one timestep.
 
-        Semantic modifiers bias dynamics softly.
-        No modifier can override base physiology.
+        CRITICAL DESIGN:
+        - Inhibition applies during integration
+        - Activity is signed
+        - Firing rate is rectified
         """
 
-        # Effective parameters
         tau = self.tau * self.semantic_tau_bias
         gain = self.gain * self.semantic_gain
         inhibition_gain = self.inhibition_gain * self.semantic_inhibition_bias
 
-        # Homeostasis (weak)
         homeo = self.homeostatic_gain * (self.baseline - self.activity)
+        self_inhib = inhibition_gain * self.activity
 
-        # Fast inhibition
-        inhibition = inhibition_gain * self.activity
+        # SIGN APPLIED HERE (FIX)
+        net_drive = self.sign * (self.input - self.lateral_inhibition)
 
-        # Net drive
         drive = (
             self.baseline
-            + self.input
+            + net_drive
             + homeo
-            - inhibition
+            - self_inhib
             + self._sample_noise()
         )
 
-        # Integrate
         if tau > 0.0:
             self.activity += (dt / tau) * (drive - self.activity)
         else:
             self.activity = drive
 
-        # Clamp
+        # Clamp membrane potential
         self.activity = max(self.clamp_min, min(self.activity, self.clamp_max))
 
-        # Fire
+        # Rectified firing rate
         above = self.activity - self.threshold
         if above > 0.0:
             fr = gain * above
             if self.normalization > 0.0:
-                fr /= (1.0 + self.normalization * self.activity)
+                fr /= (1.0 + self.normalization * abs(self.activity))
         else:
             fr = 0.0
 
         self.firing_rate = max(0.0, min(fr, self.max_rate))
 
-        # Clear phasic input
+        # Clear transient inputs
         self.input = 0.0
+        self.lateral_inhibition = 0.0

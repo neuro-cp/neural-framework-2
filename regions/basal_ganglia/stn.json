@@ -62,7 +62,7 @@
   "outputs": [
     {
       "target_region": "GPi",
-      "target_population": "OUTPUT_NEURONS",
+      "target_population": "GPi_OUTPUT",
       "signal": "global_brake",
       "strength": 0.9
     }

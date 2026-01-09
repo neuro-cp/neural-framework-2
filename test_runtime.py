@@ -1,10 +1,14 @@
-# test_runtime.py  (Cross-platform interactive runtime + TCP command server)
+# test_runtime.py
+# Interactive runtime + TCP command server (instrumentation-only)
+
 from __future__ import annotations
 
 import time
 import os
 import sys
+import math
 from pathlib import Path
+from typing import Optional, List
 
 from loader.loader import NeuralFrameworkLoader
 from engine.runtime import BrainRuntime
@@ -23,7 +27,6 @@ else:
     import select
     import termios
     import tty
-
     fd = sys.stdin.fileno()
     old_term_settings = termios.tcgetattr(fd)
     tty.setcbreak(fd)
@@ -42,84 +45,98 @@ def read_key() -> str:
 
 
 # ============================================================
-# UI CONFIG
+# UI CONFIG (DEFAULTS)
 # ============================================================
 
-SHOW_ASSEMBLIES = True
-SHOW_ZERO_REGIONS = False
+VIEW_MODE = "populations"   # regions | populations | assemblies
+SHOW_ZERO = False
 UI_INTERVAL = 1.0
 
 
 # ============================================================
-# SNAPSHOT FUNCTIONS
+# STATS HELPERS
 # ============================================================
 
-def snapshot_aggregate(runtime: BrainRuntime, *, show_zero: bool):
+def _basic_stats(values: List[float]):
+    if not values:
+        return None
+    mean = sum(values) / len(values)
+    var = sum((v - mean) ** 2 for v in values) / len(values)
+    return mean, math.sqrt(var)
+
+
+def region_stats(runtime: BrainRuntime, region_id: str):
+    region = runtime.region_states.get(region_id)
+    if not region:
+        return None
+
+    acts, outs = [], []
+    for plist in region["populations"].values():
+        for pop in plist:
+            acts.append(pop.activity)
+            outs.append(pop.output())
+
+    if not acts:
+        return None
+
+    mean, std = _basic_stats(acts)
+    return {
+        "mass": sum(outs),
+        "mean": mean,
+        "std": std,
+        "n": len(acts),
+    }
+
+
+def population_stats(runtime: BrainRuntime):
     rows = []
 
-    for region_id, region in runtime.region_states.items():
-        total_act = total_fr = count = 0
+    for rid, region in runtime.region_states.items():
+        for pop_name, plist in region["populations"].items():
+            acts = [p.activity for p in plist]
+            outs = [p.output() for p in plist]
 
-        for assemblies in region["populations"].values():
-            for pop in assemblies:
-                total_act += pop.activity
-                total_fr += pop.firing_rate
-                count += 1
+            if not acts and not SHOW_ZERO:
+                continue
 
-        if count == 0 and not show_zero:
-            continue
+            if not acts:
+                rows.append((rid, pop_name, 0, 0.0, 0.0))
+                continue
 
-        rows.append((
-            region_id,
-            (total_act / count) if count else 0.0,
-            (total_fr / count) if count else 0.0,
-            count,
-        ))
+            mean, _ = _basic_stats(acts)
+            rows.append((
+                rid,
+                pop_name,
+                len(plist),
+                sum(outs),
+                mean,
+            ))
 
-    rows.sort(key=lambda x: x[0])
     return rows
 
 
-def snapshot_assemblies(runtime: BrainRuntime, *, region_filter: str | None = None):
+def assembly_rows(runtime: BrainRuntime, region_filter: Optional[str] = None):
     rows = []
-
-    for region_id, region in runtime.region_states.items():
-        if region_filter and region_id != region_filter:
+    for rid, region in runtime.region_states.items():
+        if region_filter and rid != region_filter:
             continue
-
-        for assemblies in region["populations"].values():
-            for pop in assemblies:
-                rows.append((pop.assembly_id, pop.activity, pop.firing_rate, region_id))
-
-    rows.sort(key=lambda x: x[0])
+        for plist in region["populations"].values():
+            for pop in plist:
+                rows.append((
+                    pop.assembly_id,
+                    pop.activity,
+                    pop.output(),
+                    rid,
+                ))
     return rows
 
 
-def dump_region_assemblies(runtime: BrainRuntime, region_id: str) -> str:
-    if region_id not in runtime.region_states:
-        return f"Unknown region: {region_id}"
-
-    rows = snapshot_assemblies(runtime, region_filter=region_id)
-    if not rows:
-        return f"{region_id} has 0 assemblies."
-
-    print("\n" + "=" * 90)
-    print(f"DUMP REGION: {region_id}  (assemblies={len(rows)})")
-    print(f"{'ASSEMBLY ID':55} {'ACT':>10} {'FR':>10}")
-    print("-" * 90)
-    for aid, act, fr, _ in rows:
-        print(f"{aid:55} {act:10.4f} {fr:10.4f}")
-    print("=" * 90 + "\n")
-
-    return f"Dumped {len(rows)} assemblies for {region_id}."
-
-
 # ============================================================
-# COMMAND HANDLING (SINGLE SOURCE OF TRUTH)
+# COMMAND HANDLING
 # ============================================================
 
 def apply_command(runtime: BrainRuntime, cmd: str) -> str:
-    global SHOW_ASSEMBLIES, SHOW_ZERO_REGIONS
+    global VIEW_MODE, SHOW_ZERO
 
     parts = cmd.strip().split()
     if not parts:
@@ -127,85 +144,62 @@ def apply_command(runtime: BrainRuntime, cmd: str) -> str:
 
     head = parts[0].lower()
 
-    # -----------------------
-    # Help
-    # -----------------------
-
     if head == "help":
         return (
             "Commands:\n"
             "  poke <region|all> <mag>\n"
-            "  state [name]\n"
-            "  view assemblies | view regions\n"
-            "  toggle view | toggle zeros\n"
+            "  view regions | populations | assemblies\n"
+            "  toggle zeros\n"
+            "  stats <region>\n"
             "  dump <region>\n"
             "  help"
         )
 
-    # -----------------------
-    # Stimulus
-    # -----------------------
-
-    if head == "poke":
-        if len(parts) != 3:
-            return "Usage: poke <region|all> <magnitude>"
-        try:
-            mag = float(parts[2])
-        except ValueError:
-            return "Magnitude must be numeric"
-
+    if head == "poke" and len(parts) == 3:
+        mag = float(parts[2])
         if parts[1] == "all":
-            for rid in runtime.region_states:
-                runtime.inject_stimulus(rid, magnitude=mag)
+            for r in runtime.region_states:
+                runtime.inject_stimulus(r, magnitude=mag)
             return f"POKE all += {mag}"
-
         runtime.inject_stimulus(parts[1], magnitude=mag)
         return f"POKE {parts[1]} += {mag}"
 
-    # -----------------------
-    # Brain state (INERT)
-    # -----------------------
-
-    if head == "state":
-        if len(parts) == 1:
-            return f"brain_state = {runtime.get_state()}"
-        runtime.set_state(parts[1])
-        return f"brain_state -> {runtime.get_state()}"
-
-    # -----------------------
-    # View controls
-    # -----------------------
-
     if head == "view" and len(parts) == 2:
-        SHOW_ASSEMBLIES = (parts[1] == "assemblies")
-        return f"View = {'ASSEMBLIES' if SHOW_ASSEMBLIES else 'REGIONS'}"
+        if parts[1] in ("regions", "populations", "assemblies"):
+            VIEW_MODE = parts[1]
+            return f"View -> {VIEW_MODE.upper()}"
+        return "Invalid view."
 
-    if head == "toggle" and len(parts) == 2:
-        if parts[1] == "view":
-            SHOW_ASSEMBLIES = not SHOW_ASSEMBLIES
-            return f"Toggled view -> {'ASSEMBLIES' if SHOW_ASSEMBLIES else 'REGIONS'}"
-        if parts[1] == "zeros":
-            SHOW_ZERO_REGIONS = not SHOW_ZERO_REGIONS
-            return f"Toggled zeros -> {'SHOW' if SHOW_ZERO_REGIONS else 'HIDE'}"
+    if head == "toggle" and parts[1] == "zeros":
+        SHOW_ZERO = not SHOW_ZERO
+        return f"Show zeros -> {SHOW_ZERO}"
 
-    # -----------------------
-    # Dump
-    # -----------------------
+    if head == "stats" and len(parts) == 2:
+        s = region_stats(runtime, parts[1])
+        if not s:
+            return "No data."
+        return (
+            f"{parts[1]} "
+            f"MASS={s['mass']:.4f} "
+            f"MEAN={s['mean']:.4f} "
+            f"STD={s['std']:.4f}"
+        )
 
     if head == "dump" and len(parts) == 2:
-        return dump_region_assemblies(runtime, parts[1])
+        rows = assembly_rows(runtime, parts[1])
+        print("\nASSEMBLIES:")
+        for aid, act, out, _ in rows:
+            print(f"{aid:55} {act:10.6f} {out:10.6f}")
+        return f"Dumped {len(rows)} assemblies."
 
-    return "Unknown command (type: help)"
+    return "Unknown command."
 
 
 # ============================================================
-# LOAD BRAIN
+# LOAD + RUN
 # ============================================================
 
-DEFAULT_ROOT = Path("C:/Users/Admin/Desktop/neural framework")
-FALLBACK_ROOT = Path(__file__).resolve().parent
-root = DEFAULT_ROOT if DEFAULT_ROOT.exists() else FALLBACK_ROOT
-
+root = Path("C:/Users/Admin/Desktop/neural framework")
 loader = NeuralFrameworkLoader(root)
 loader.load_neuron_bases()
 loader.load_regions()
@@ -218,24 +212,20 @@ brain = loader.compile(
 )
 
 runtime = BrainRuntime(brain, dt=0.01)
-
-# Expose command handler to TCP server
-runtime.apply_command = lambda cmd: apply_command(runtime, cmd)
-
-# Start TCP command server
+runtime.apply_command = lambda c: apply_command(runtime, c)
 start_command_server(runtime)
 
-print("\nLIVE RUNTIME")
-print("Keyboard + TCP input enabled (port 5557)")
-print("Ctrl+C to quit | type 'help' for commands")
-print("-" * 80)
+print("\nLIVE RUNTIME | TCP + Keyboard")
+print("Port 5557 | Ctrl+C to quit")
+print("Default view: POPULATIONS")
+print("-" * 110)
 
 
 # ============================================================
 # MAIN LOOP
 # ============================================================
 
-next_ui_time = UI_INTERVAL
+next_ui = UI_INTERVAL
 t0 = time.perf_counter()
 cmd_buffer = ""
 last_msg = "Ready."
@@ -246,46 +236,51 @@ try:
 
         while key_available():
             ch = read_key()
-
-            if ch in ("\r", "\n"):
+            if ch in ("\n", "\r"):
                 if cmd_buffer.strip():
                     last_msg = apply_command(runtime, cmd_buffer)
                 cmd_buffer = ""
-
-            elif ch in ("\x7f", "\b"):
+            elif ch in ("\b", "\x7f"):
                 cmd_buffer = cmd_buffer[:-1]
-
             elif ch == "\x03":
                 raise KeyboardInterrupt
-
             elif ch.isprintable():
                 cmd_buffer += ch
 
-        if runtime.time >= next_ui_time:
-            next_ui_time += UI_INTERVAL
+        if runtime.time >= next_ui:
+            next_ui += UI_INTERVAL
+            print("\n" + "-" * 110)
+            print(f"t={runtime.time:.2f}s | view={VIEW_MODE}")
 
-            print("\n" + "-" * 80)
-            print(f"t={runtime.time:.2f}s | state={runtime.get_state()}")
+            if VIEW_MODE == "regions":
+                print(f"{'REGION':20} {'MASS':>10} {'MEAN':>10} {'STD':>10} {'N':>6}")
+                for rid in runtime.region_states:
+                    s = region_stats(runtime, rid)
+                    if not s and not SHOW_ZERO:
+                        continue
+                    if not s:
+                        print(f"{rid:20} {0:10.4f} {0:10.4f} {0:10.4f} {0:6}")
+                    else:
+                        print(
+                            f"{rid:20} "
+                            f"{s['mass']:10.4f} "
+                            f"{s['mean']:10.4f} "
+                            f"{s['std']:10.4f} "
+                            f"{s['n']:6}"
+                        )
 
-            if SHOW_ASSEMBLIES:
-                print(f"{'ASSEMBLY ID':55} {'ACT':>10} {'FR':>10}")
-                print("-" * 80)
-                for aid, act, fr, _ in snapshot_assemblies(runtime):
-                    print(f"{aid:55} {act:10.4f} {fr:10.4f}")
-            else:
-                print(f"{'REGION':20} {'MEAN_ACT':>10} {'MEAN_FR':>10} {'ASSEMBLIES':>10}")
-                print("-" * 80)
-                for rid, act, fr, n in snapshot_aggregate(runtime, show_zero=SHOW_ZERO_REGIONS):
-                    print(f"{rid:20} {act:10.4f} {fr:10.4f} {n:10d}")
+            elif VIEW_MODE == "populations":
+                print(f"{'REGION':15} {'POPULATION':25} {'ASM':>5} {'MASS':>10} {'MEAN':>10}")
+                for rid, pop, n, mass, mean in population_stats(runtime):
+                    print(f"{rid:15} {pop:25} {n:5d} {mass:10.4f} {mean:10.4f}")
 
-            print("-" * 80)
+            print("-" * 110)
             print(f"last: {last_msg}")
             print(f"> {cmd_buffer}", end="", flush=True)
 
-        target_wall = runtime.time
         elapsed = time.perf_counter() - t0
-        if target_wall > elapsed:
-            time.sleep(target_wall - elapsed)
+        if runtime.time > elapsed:
+            time.sleep(runtime.time - elapsed)
 
 except KeyboardInterrupt:
     print("\nStopped.")
