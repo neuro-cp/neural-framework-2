@@ -45,12 +45,12 @@ def read_key() -> str:
 
 
 # ============================================================
-# UI CONFIG (DEFAULTS)
+# UI CONFIG
 # ============================================================
 
 VIEW_MODE = "populations"   # regions | populations | assemblies
 SHOW_ZERO = False
-UI_INTERVAL = 1.0
+UI_INTERVAL = 0.1
 
 
 # ============================================================
@@ -132,16 +132,25 @@ def assembly_rows(runtime: BrainRuntime, region_filter: Optional[str] = None):
 
 
 # ============================================================
-# COMMAND HANDLING
+# COMMAND HANDLING (INSTRUMENTED)
 # ============================================================
 
 def apply_command(runtime: BrainRuntime, cmd: str) -> str:
     global VIEW_MODE, SHOW_ZERO
 
-    parts = cmd.strip().split()
-    if not parts:
+    cmd = cmd.strip()
+    if not cmd:
         return "."
 
+    # ---- CRITICAL INSTRUMENTATION ----
+    print(
+        f"\n>>> CMD RECEIVED | "
+        f"t={runtime.time:.3f}s | "
+        f"step={runtime.step_count} | "
+        f"{cmd}"
+    )
+
+    parts = cmd.split()
     head = parts[0].lower()
 
     if head == "help":

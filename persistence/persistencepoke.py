@@ -1,6 +1,8 @@
 import socket
 import time
 from pathlib import Path
+from typing import Iterable
+
 
 # ============================================================
 # CONFIG
@@ -11,23 +13,21 @@ PORT = 5557
 
 LOG_PATH = Path(r"C:\Users\Admin\Desktop\neural framework\runtime_log.txt")
 
-BASELINE_WAIT = 6.0
+BASELINE_STEPS = 300        # ~3s @ dt=0.01
+SHORT_DELAY = 150           # ~1.5s
+RECOVERY_DELAY = 400        # ~4s
+
 POKE_MAG = 25.0
-POST_WAIT = 4.0
 TOP_N = 5
 
+REGIONS = ("vpl", "s1", "trn")
+
+
 # ============================================================
-# HELPERS
+# SOCKET HELPERS
 # ============================================================
 
-def log(line: str):
-    ts = time.strftime("%Y-%m-%d %H:%M:%S")
-    msg = f"[{ts}] {line}"
-    print(msg)
-    with open(LOG_PATH, "a", encoding="utf-8") as f:
-        f.write(msg + "\n")
-
-def send(cmd: str, expect_reply: bool = True) -> str:
+def _send(cmd: str, expect_reply: bool = True) -> str:
     with socket.create_connection((HOST, PORT), timeout=3) as sock:
         sock.sendall((cmd + "\n").encode("utf-8"))
         if not expect_reply:
@@ -38,88 +38,92 @@ def send(cmd: str, expect_reply: bool = True) -> str:
         except Exception:
             return ""
 
+
+# ============================================================
+# LOGGING
+# ============================================================
+
+def log(line: str):
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    msg = f"[{ts}] {line}"
+    print(msg)
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(msg + "\n")
+
+
+def snapshot(label: str, regions: Iterable[str]):
+    log(f"[SNAPSHOT] {label}")
+    for r in regions:
+        stats = _send(f"stats {r}")
+        if stats:
+            log(f"[STATS] {stats}")
+        top = _send(f"top {r} {TOP_N}")
+        if top:
+            log(f"[TOP] {r} :: {top}")
+
+
 def poke(region: str, mag: float):
-    send(f"poke {region} {mag}", expect_reply=False)
+    _send(f"poke {region} {mag}", expect_reply=False)
     log(f"[POKE] {region} {mag}")
 
-def snapshot(label: str, region: str):
-    log(f"[SNAPSHOT] {label} :: {region}")
 
-    stats = send(f"stats {region}")
-    if stats:
-        log(f"[STATS] {stats}")
+def wait_steps(n: int):
+    # runtime runs independently; we just wait wall time
+    time.sleep(n * 0.01)
 
-    top = send(f"top {region} {TOP_N}")
-    if top:
-        log(f"[TOP] {top}")
 
 # ============================================================
-# EXPERIMENTS
+# EXPERIMENT
 # ============================================================
 
-log("=== BEGIN THALAMOCORTICAL GATING EXPERIMENT ===")
+log("=== BEGIN THALAMOCORTICAL GATING PROBE ===")
 
 # ------------------------------------------------------------
 # A. BASELINE
 # ------------------------------------------------------------
 
 log("[A] Baseline stabilization")
-time.sleep(BASELINE_WAIT)
-
-snapshot("baseline", "vpl")
-snapshot("baseline", "s1")
-snapshot("baseline", "trn")
+wait_steps(BASELINE_STEPS)
+snapshot("baseline", REGIONS)
 
 # ------------------------------------------------------------
-# B. VPL RELAY TEST
+# B. VPL RELAY DRIVE
 # ------------------------------------------------------------
 
-log("[B] VPL relay excitation")
+log("[B] VPL relay excitation (feedforward sensory)")
 poke("vpl", POKE_MAG)
 
-time.sleep(1.5)
-snapshot("post_vpl_short", "vpl")
-snapshot("post_vpl_short", "s1")
-snapshot("post_vpl_short", "trn")
+wait_steps(SHORT_DELAY)
+snapshot("post_vpl_short", REGIONS)
 
-time.sleep(POST_WAIT)
-snapshot("post_vpl_recovery", "vpl")
-snapshot("post_vpl_recovery", "s1")
-snapshot("post_vpl_recovery", "trn")
+wait_steps(RECOVERY_DELAY)
+snapshot("post_vpl_recovery", REGIONS)
 
 # ------------------------------------------------------------
-# C. TRN SUPPRESSION TEST
+# C. TRN INHIBITION
 # ------------------------------------------------------------
 
-log("[C] TRN inhibitory pulse")
+log("[C] TRN inhibitory pulse (gating suppression)")
 poke("trn", POKE_MAG)
 
-time.sleep(1.5)
-snapshot("post_trn_short", "vpl")
-snapshot("post_trn_short", "s1")
-snapshot("post_trn_short", "trn")
+wait_steps(SHORT_DELAY)
+snapshot("post_trn_short", REGIONS)
 
-time.sleep(POST_WAIT)
-snapshot("post_trn_recovery", "vpl")
-snapshot("post_trn_recovery", "s1")
-snapshot("post_trn_recovery", "trn")
+wait_steps(RECOVERY_DELAY)
+snapshot("post_trn_recovery", REGIONS)
 
 # ------------------------------------------------------------
-# D. CORTICOTHALAMIC FEEDBACK TEST
+# D. CORTICOTHALAMIC FEEDBACK
 # ------------------------------------------------------------
 
-log("[D] S1 corticothalamic feedback bias")
+log("[D] S1 corticothalamic feedback (top-down bias)")
 poke("s1", POKE_MAG)
 
-time.sleep(1.5)
-snapshot("post_s1_short", "vpl")
-snapshot("post_s1_short", "s1")
-snapshot("post_s1_short", "trn")
+wait_steps(SHORT_DELAY)
+snapshot("post_s1_short", REGIONS)
 
-time.sleep(POST_WAIT)
-snapshot("post_s1_recovery", "vpl")
-snapshot("post_s1_recovery", "s1")
-snapshot("post_s1_recovery", "trn")
+wait_steps(RECOVERY_DELAY)
+snapshot("post_s1_recovery", REGIONS)
 
 # ------------------------------------------------------------
 # END

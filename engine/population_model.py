@@ -24,7 +24,7 @@ def _i(x: Any, default: int) -> int:
 
 
 # ------------------------------------------------------------
-# Population Model (GROUND-TRUTH STABLE)
+# Population Model (GROUND-TRUTH, SELF-SUSTAINING)
 # ------------------------------------------------------------
 
 @dataclass
@@ -33,11 +33,11 @@ class PopulationModel:
     Assembly-level dynamics unit.
 
     CORE INVARIANTS:
-    - Activity is membrane-like (signed, integrative)
-    - Inhibition acts DURING integration, not after
+    - Activity is signed and membrane-like
+    - Inhibition acts during integration
     - Firing rate is rectified and bounded
+    - Populations have intrinsic tonic state
     - No oscillators, no learning, no hidden state
-    - Competition injects lateral inhibition only
     """
 
     # -------------------------
@@ -58,6 +58,14 @@ class PopulationModel:
     # Transient inputs (cleared each step)
     input: float = 0.0
     lateral_inhibition: float = 0.0
+
+    # -------------------------
+    # Intrinsic tonic state (NEW)
+    # -------------------------
+
+    tonic: float = 0.0                 # persistent current
+    tonic_target: float = 0.0          # preferred resting level
+    tonic_gain: float = 0.05           # VERY slow adaptation
 
     # -------------------------
     # Core dynamics
@@ -88,7 +96,7 @@ class PopulationModel:
     clamp_max: float = 1.0
 
     # -------------------------
-    # Semantic modifiers (runtime-attached)
+    # Semantic modifiers
     # -------------------------
 
     semantic_role: Optional[str] = None
@@ -119,6 +127,12 @@ class PopulationModel:
             0.0,
         )
 
+        # --- NEW: tonic target defaults ---
+        tonic_target = _f(
+            pick("tonic_target", baseline),
+            baseline,
+        )
+
         model = cls(
             assembly_id=str(pick("assembly_id", default_assembly_id)),
             size=_i(pick("size", pick("neurons", 100)), 100),
@@ -141,9 +155,13 @@ class PopulationModel:
             clamp_max=_f(pick("clamp_max", 1.0), 1.0),
 
             activity=_f(params.get("activity", baseline), baseline),
+
+            tonic_target=tonic_target,
+            tonic=tonic_target,
+            tonic_gain=_f(pick("tonic_gain", 0.02), 0.02),
         )
 
-        # Semantic modifiers (soft, bounded)
+        # Semantic modifiers (unchanged)
         model.semantic_role = params.get("role")
 
         model.semantic_gain = max(
@@ -172,11 +190,6 @@ class PopulationModel:
     # ------------------------------------------------------------
 
     def output(self) -> float:
-        """
-        Signed synaptic output.
-        Sign is already handled during integration,
-        so output is pure firing rate.
-        """
         return self.firing_rate
 
     # ------------------------------------------------------------
@@ -198,11 +211,13 @@ class PopulationModel:
         """
         Advance one timestep.
 
-        CRITICAL DESIGN:
-        - Inhibition applies during integration
-        - Activity is signed
-        - Firing rate is rectified
+        Key property:
+        - Tonic state adapts slowly
+        - Activity does NOT collapse to zero
         """
+
+        # --- Slow tonic adaptation (NEW) ---
+        self.tonic += self.tonic_gain * (self.tonic_target - self.activity)
 
         tau = self.tau * self.semantic_tau_bias
         gain = self.gain * self.semantic_gain
@@ -211,11 +226,11 @@ class PopulationModel:
         homeo = self.homeostatic_gain * (self.baseline - self.activity)
         self_inhib = inhibition_gain * self.activity
 
-        # SIGN APPLIED HERE (FIX)
         net_drive = self.sign * (self.input - self.lateral_inhibition)
 
         drive = (
             self.baseline
+            + self.tonic
             + net_drive
             + homeo
             - self_inhib
@@ -227,10 +242,8 @@ class PopulationModel:
         else:
             self.activity = drive
 
-        # Clamp membrane potential
         self.activity = max(self.clamp_min, min(self.activity, self.clamp_max))
 
-        # Rectified firing rate
         above = self.activity - self.threshold
         if above > 0.0:
             fr = gain * above
@@ -241,6 +254,5 @@ class PopulationModel:
 
         self.firing_rate = max(0.0, min(fr, self.max_rate))
 
-        # Clear transient inputs
         self.input = 0.0
         self.lateral_inhibition = 0.0

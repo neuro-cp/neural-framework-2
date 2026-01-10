@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional
 
 
 class CompetitionKernel:
@@ -10,7 +10,7 @@ class CompetitionKernel:
     PURPOSE:
     - Induce lateral competition among assemblies
     - Support competition across semantic channels (e.g. D1 vs D2)
-    - Produce a clean dominance scalar for downstream gating (GPi)
+    - Produce stable dominance signals for downstream gating
 
     DESIGN GUARANTEES:
     - No learning
@@ -31,17 +31,6 @@ class CompetitionKernel:
         epsilon_bias: float = 0.0,
         channel_key: str = "subpopulation",
     ):
-        """
-        inhibition_strength : lateral suppression strength
-        persistence_gain    : resistance to suppression for dominant channels
-        dominance_tau       : smoothing constant for dominance
-        min_activity        : clamp floor
-        dominance_floor     : prevents frozen zero states
-        contrast_gain       : sharpens deviation from mean
-        epsilon_bias        : tiny deterministic symmetry breaker (OFF by default)
-        channel_key         : attribute used to group assemblies into channels
-        """
-
         self.inhibition_strength = inhibition_strength
         self.persistence_gain = persistence_gain
         self.dominance_tau = dominance_tau
@@ -51,24 +40,31 @@ class CompetitionKernel:
         self.epsilon_bias = epsilon_bias
         self.channel_key = channel_key
 
-        # Channel-level dominance (smoothed)
+        # Smoothed dominance per semantic channel
         self._dominance: Dict[str, float] = {}
 
-        # Exposed diagnostics
+        # Diagnostics (public, read-only by convention)
         self.last_global_dominance: float = 0.0
-        self.last_winner_id: Optional[str] = None
+        self.last_winner_channel: Optional[str] = None
         self.last_dominance_map: Dict[str, float] = {}
 
     # ------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------
 
-    def apply(self, assemblies: List, dt: float) -> float:
+    def apply(
+        self,
+        assemblies: List,
+        dt: float,
+        external_gain: Optional[Dict[str, float]] = None,
+    ) -> float:
         """
         Apply competition across semantic channels.
 
-        Assemblies are grouped by `channel_key` (e.g. subpopulation).
-        Inhibition is applied across channels, not within them.
+        external_gain:
+            Optional per-assembly multiplicative bias applied
+            ONLY to effective activity during competition.
+            This does NOT modify state, weights, or parameters.
         """
 
         if not assemblies:
@@ -76,23 +72,29 @@ class CompetitionKernel:
             return 0.0
 
         # --------------------------------------------------
-        # Step 1: group assemblies into channels
+        # Step 1: group assemblies into semantic channels
         # --------------------------------------------------
         channels: Dict[str, List] = {}
 
         for a in assemblies:
-            key = getattr(a, self.channel_key, None)
-            if key is None:
-                key = "default"
-            channels.setdefault(key, []).append(a)
+            ch = getattr(a, self.channel_key, None) or "default"
+            channels.setdefault(ch, []).append(a)
 
         # --------------------------------------------------
-        # Step 2: compute channel outputs
+        # Step 2: compute channel outputs (ephemeral bias)
         # --------------------------------------------------
         channel_output: Dict[str, float] = {}
 
         for ch, plist in channels.items():
-            total = sum(max(p.output(), self.min_activity) for p in plist)
+            total = 0.0
+            for p in plist:
+                gain = 1.0
+                if external_gain is not None:
+                    gain = external_gain.get(p.assembly_id, 1.0)
+
+                val = max(p.output(), self.min_activity)
+                total += val * gain
+
             channel_output[ch] = max(total, self.dominance_floor)
 
         total_output = sum(channel_output.values())
@@ -103,12 +105,9 @@ class CompetitionKernel:
         # --------------------------------------------------
         # Step 3: instantaneous normalized dominance
         # --------------------------------------------------
-        inst = {
-            ch: val / total_output
-            for ch, val in channel_output.items()
-        }
+        inst = {ch: v / total_output for ch, v in channel_output.items()}
 
-        # Optional deterministic epsilon bias
+        # Optional deterministic symmetry breaker
         if self.epsilon_bias > 0.0:
             for i, ch in enumerate(sorted(inst)):
                 inst[ch] += self.epsilon_bias * (i + 1)
@@ -118,7 +117,7 @@ class CompetitionKernel:
         inst = {ch: v / norm for ch, v in inst.items()}
 
         # --------------------------------------------------
-        # Step 4: smooth dominance (persistence)
+        # Step 4: smooth dominance (pure inertia, no learning)
         # --------------------------------------------------
         for ch, d in inst.items():
             prev = self._dominance.get(ch, d)
@@ -134,9 +133,8 @@ class CompetitionKernel:
 
             suppress = 0.0
             for och, od in self._dominance.items():
-                if och == ch:
-                    continue
-                suppress += max(od - own, 0.0)
+                if och != ch:
+                    suppress += max(od - own, 0.0)
 
             inhibition = self.inhibition_strength * suppress
             resistance = self.persistence_gain * max(
@@ -149,16 +147,16 @@ class CompetitionKernel:
                 p.input -= net / max(len(plist), 1)
 
         # --------------------------------------------------
-        # Step 6: expose dominance signals
+        # Step 6: expose dominance diagnostics
         # --------------------------------------------------
-        winner_id = max(self._dominance, key=self._dominance.get)
-        winner_value = self._dominance[winner_id]
+        winner_ch = max(self._dominance, key=self._dominance.get)
+        winner_val = self._dominance[winner_ch]
 
-        self.last_global_dominance = winner_value
-        self.last_winner_id = winner_id
+        self.last_global_dominance = winner_val
+        self.last_winner_channel = winner_ch
         self.last_dominance_map = dict(self._dominance)
 
-        return winner_value
+        return winner_val
 
     # ------------------------------------------------------------
     # Helpers
@@ -166,5 +164,5 @@ class CompetitionKernel:
 
     def _clear_outputs(self) -> None:
         self.last_global_dominance = 0.0
-        self.last_winner_id = None
+        self.last_winner_channel = None
         self.last_dominance_map = {}
