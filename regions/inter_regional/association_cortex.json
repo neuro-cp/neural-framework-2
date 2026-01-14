@@ -1,5 +1,5 @@
 {
-  "version": "1.3.1",
+  "version": "1.3.2",
   "type": "RegionSubstructure",
   "region_id": "ASSOCIATION_CORTEX",
   "parent_region": "CORTEX",
@@ -22,19 +22,16 @@
       "plasticity_profile": "very_high",
 
       "subpopulations": {
-
         "FEATURE_BINDING_UNITS": {
           "fraction": 0.45,
           "role": "cross_modal_feature_linking",
           "integration_window_ms": 120
         },
-
         "ABSTRACTION_UNITS": {
           "fraction": 0.35,
           "role": "concept_formation",
           "temporal_invariance": "high"
         },
-
         "TRANSIENT_REPRESENTATION_UNITS": {
           "fraction": 0.20,
           "role": "ephemeral_workspace_entries",
@@ -43,21 +40,41 @@
       }
     },
 
-    "L5_PYRAMIDAL": {
-      "count": 80000,
+    "L5_PYRAMIDAL_A": {
+      "count": 40000,
       "layer": "L5",
       "neuron_type": "excitatory",
       "sign": 1.0,
       "baseline_firing_rate_hz": 0.7,
       "plasticity_profile": "high",
+      "tags": ["candidate_A", "competing_representation"],
 
       "subpopulations": {
-
         "STABLE_PATTERN_UNITS": {
           "fraction": 0.60,
           "role": "long_lived_representation_export"
         },
+        "COMPETITIVE_SELECTION_UNITS": {
+          "fraction": 0.40,
+          "role": "pattern_competition_and_resolution"
+        }
+      }
+    },
 
+    "L5_PYRAMIDAL_B": {
+      "count": 40000,
+      "layer": "L5",
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+      "baseline_firing_rate_hz": 0.7,
+      "plasticity_profile": "high",
+      "tags": ["candidate_B", "competing_representation"],
+
+      "subpopulations": {
+        "STABLE_PATTERN_UNITS": {
+          "fraction": 0.60,
+          "role": "long_lived_representation_export"
+        },
         "COMPETITIVE_SELECTION_UNITS": {
           "fraction": 0.40,
           "role": "pattern_competition_and_resolution"
@@ -74,17 +91,14 @@
       "plasticity_profile": "medium",
 
       "subpopulations": {
-
         "LOCAL_COMPETITION_UNITS": {
           "fraction": 0.50,
           "role": "local_pattern_suppression"
         },
-
         "GLOBAL_NORMALIZATION_UNITS": {
           "fraction": 0.30,
           "role": "activity_scaling_and_stability"
         },
-
         "TEMPORAL_GATING_UNITS": {
           "fraction": 0.20,
           "role": "timing_control_and_sequence_separation",
@@ -121,8 +135,14 @@
     },
     {
       "target_region": "PFC",
-      "target_population": "L5_PYRAMIDAL",
-      "signal": "resolved_candidate_action",
+      "target_population": "L5_PYRAMIDAL_A",
+      "signal": "candidate_A",
+      "strength": 0.4
+    },
+    {
+      "target_region": "PFC",
+      "target_population": "L5_PYRAMIDAL_B",
+      "signal": "candidate_B",
       "strength": 0.4
     }
   ],
@@ -152,5 +172,5 @@
     "sedatives": "moderate"
   },
 
-  "notes": "Association cortex serves as a multimodal integration and workspace region where sensory-derived features are bound, abstracted, transiently maintained, and competitively resolved. Subpopulations define representational roles rather than active dynamics. Pulvinar input provides salience and contextual bias without directly driving activity. Outputs to prefrontal cortex support executive abstraction and candidate action selection."
+  "notes": "Association cortex functions as a multimodal integration and workspace region. L5 pyramidal populations are explicitly split into parallel candidate representations (A/B) to support downstream basal ganglia competition and gating without introducing new dynamics or learning. All other structure is preserved to maintain biological interpretability and experimental continuity."
 }

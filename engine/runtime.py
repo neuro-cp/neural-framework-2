@@ -1,4 +1,3 @@
-# engine/runtime.py
 from __future__ import annotations
 
 import json
@@ -51,20 +50,20 @@ class BrainRuntime:
         self.time = 0.0
         self.step_count = 0
 
-        # -----------------------------
+        # --------------------------------------------------
         # Global defaults
-        # -----------------------------
+        # --------------------------------------------------
         gd = brain.get("global_dynamics", {}) or {}
         self.global_pop_dyn = gd.get("population_defaults", {})
 
-        # -----------------------------
+        # --------------------------------------------------
         # Assembly authority
-        # -----------------------------
+        # --------------------------------------------------
         self.assembly_control = self._load_assembly_control()
 
-        # -----------------------------
+        # --------------------------------------------------
         # Competition kernel
-        # -----------------------------
+        # --------------------------------------------------
         self.enable_competition = True
         self.competition_kernel = CompetitionKernel(
             inhibition_strength=0.55,
@@ -72,18 +71,18 @@ class BrainRuntime:
             dominance_tau=0.75,
         )
 
-        # -----------------------------
+        # --------------------------------------------------
         # Basal ganglia persistence
-        # -----------------------------
+        # --------------------------------------------------
         self.enable_persistence = True
         self.bg_persistence = BasalGangliaPersistence(
             decay_tau=30.0,
             bias_gain=0.15,
         )
 
-        # -----------------------------
+        # --------------------------------------------------
         # Runtime context
-        # -----------------------------
+        # --------------------------------------------------
         self.enable_context = True
         self.context = RuntimeContext(decay_tau=5.0)
 
@@ -94,17 +93,19 @@ class BrainRuntime:
             target_domain="global",
         )
 
-        # -----------------------------
+        # --------------------------------------------------
         # GPi disinhibition / gating
-        # -----------------------------
+        # --------------------------------------------------
         self.enable_gpi_disinhibition = True
+
+        # Calibrated for MEAN GPi output, not summed assemblies
         self.gpi_gain = 0.6
         self.gpi_floor = 0.25
         self._last_gate_strength: float = 1.0
 
-        # -----------------------------
+        # --------------------------------------------------
         # Runtime state
-        # -----------------------------
+        # --------------------------------------------------
         self.region_states: Dict[str, Dict[str, Any]] = {}
         self._all_pops: List[PopulationModel] = []
         self._stim_queue: List[Tuple[str, Optional[str], Optional[int], float]] = []
@@ -120,6 +121,7 @@ class BrainRuntime:
         path = Path(__file__).parent.parent / "config" / "assembly_control.json"
         if not path.exists():
             return {}
+
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
 
@@ -240,7 +242,7 @@ class BrainRuntime:
         relief = self._compute_gpi_relief()
         self._last_gate_strength = relief
 
-        # 7. Connectivity propagation + Thalamic gating
+        # 7. Connectivity + Thalamic gating
         self._propagate_connectivity(relief)
 
         self.time += self.dt
@@ -262,22 +264,15 @@ class BrainRuntime:
         if not striatum:
             return
 
-    # --------------------------------------------------
-    # Collect striatal assemblies (D1 / D2 etc.)
-    # --------------------------------------------------
         assemblies = [
             p
-            for _, plist in striatum["populations"].items()
+            for plist in striatum["populations"].values()
             for p in plist
             if getattr(p, "subpopulation", None) is not None
         ]
-
         if not assemblies:
             return
 
-    # --------------------------------------------------
-    # Context → competition modulation
-    # --------------------------------------------------
         external_gain = None
         external_bias = None
 
@@ -287,29 +282,28 @@ class BrainRuntime:
 
             for p in assemblies:
                 external_gain[p.assembly_id] = self.context.get_gain(p.assembly_id)
-                external_bias[p.assembly_id] = self.context.get_bias(p.assembly_id)
+                ch = getattr(p, "subpopulation", None) or "default"
+                b = self.context.get_bias(p.assembly_id)
+                if b is not None:
+                    external_bias.setdefault(ch, []).append(float(b))
 
-    # --------------------------------------------------
-    # Striatal competition
-    # --------------------------------------------------
+            for ch, vals in list(external_bias.items()):
+                external_bias[ch] = sum(vals) / len(vals) if vals else 0.0
+
         self.competition_kernel.apply(
             assemblies,
             self.dt,
             external_gain=external_gain,
             external_bias=external_bias,
         )
-    # --------------------------------------------------
-    # Snapshot for diagnostics
-    # --------------------------------------------------
+
         self._last_striatum_snapshot = {
             "winner": self.competition_kernel.last_winner_channel,
             "dominance": dict(self.competition_kernel.last_dominance_map),
             "instant": dict(self.competition_kernel.last_instantaneous_map),
             "time": self.time,
         }
-    # --------------------------------------------------
-    # Basal ganglia persistence (winner reinforcement)
-    # --------------------------------------------------
+
         if self.enable_persistence:
             max_out = max(p.output() for p in assemblies)
             for p in assemblies:
@@ -317,58 +311,49 @@ class BrainRuntime:
                     self.bg_persistence.reinforce(p.assembly_id, amount=0.02)
             self.bg_persistence.step(self.dt)
 
-
-
     def _compute_gpi_relief(self) -> float:
-        """Return disinhibition factor from GPi."""
         if not self.enable_gpi_disinhibition:
             return 1.0
+
         gpi = self.region_states.get("gpi")
         if not gpi:
             return 1.0
-        activity = sum(p.output()
-                       for plist in gpi["populations"].values()
-                       for p in plist)
-        return max(self.gpi_floor, 1.0 - self.gpi_gain * activity)
+
+        outs = [float(p.output()) for plist in gpi["populations"].values() for p in plist]
+        if not outs:
+            return 1.0
+
+        gpi_mean = sum(outs) / len(outs)
+        relief = 1.0 - self.gpi_gain * gpi_mean
+        return max(self.gpi_floor, min(1.0, relief))
 
     # ============================================================
     # Connectivity + Thalamic Gating
     # ============================================================
 
     def _propagate_connectivity(self, relief: float) -> None:
-        """Route signals according to region-def outputs, applying GPi→MD gating."""
         for src_key, state in self.region_states.items():
-            src_def = state.get("def", {})
-            outputs = src_def.get("outputs", [])
+            outputs = state.get("def", {}).get("outputs", [])
             if not outputs:
                 continue
 
-            # compute mean output activity of source region
             src_pops = [p for plist in state["populations"].values() for p in plist]
             if not src_pops:
                 continue
             src_drive = sum(p.output() for p in src_pops) / len(src_pops)
 
             for out in outputs:
-                tgt_label = out.get("target") or out.get("region") or out.get("id")
-                strength = float(out.get("strength", 1.0))
-                if not tgt_label:
-                    continue
-                tgt_key = self._resolve_region_key(tgt_label)
+                tgt_key = self._resolve_region_key(out.get("target") or out.get("region") or "")
                 if not tgt_key or tgt_key not in self.region_states:
                     continue
 
-                # special case: GPi→MD gating
+                strength = float(out.get("strength", 1.0))
+
                 if src_key.lower() == "gpi" and tgt_key.lower() == "md":
-                    gated_gain = relief  # low GPi → high relay
-                    self._last_gate_strength = gated_gain
-                    self._apply_input_to_region(tgt_key, src_drive * strength * gated_gain)
-                    continue
+                    self._apply_input_to_region(tgt_key, src_drive * strength * relief)
+                else:
+                    self._apply_input_to_region(tgt_key, src_drive * strength)
 
-                # normal projection
-                self._apply_input_to_region(tgt_key, src_drive * strength)
-
-        # After connectivity, thalamic relay to cortex through MD if open
         self._drive_thalamus(relief)
 
     def _apply_input_to_region(self, region_key: str, amount: float) -> None:
@@ -380,15 +365,14 @@ class BrainRuntime:
                 p.input += amount
 
     def _drive_thalamus(self, relief: float) -> None:
-        """Apply corrected thalamic drive with gating."""
         cortex = self.region_states.get("association_cortex")
         if not cortex:
             return
+
         src = [p for plist in cortex["populations"].values() for p in plist]
         if not src:
             return
 
-        # corrected: variance-based drive magnitude
         mean = sum(p.output() for p in src) / len(src)
         drive = sum(abs(p.output() - mean) for p in src) / len(src)
 
@@ -404,8 +388,7 @@ class BrainRuntime:
     # Diagnostics
     # ============================================================
 
-    def snapshot_gate_state(self) -> Dict[str, float]:
-        """Return minimal gate diagnostics for external monitoring."""
+    def snapshot_gate_state(self) -> Dict[str, Any]:
         return {
             "time": self.time,
             "relief": self._last_gate_strength,

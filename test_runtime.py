@@ -17,7 +17,7 @@ import os
 import sys
 import math
 from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List, Tuple, Dict
 
 from loader.loader import NeuralFrameworkLoader
 from engine.runtime import BrainRuntime
@@ -310,6 +310,22 @@ brain = loader.compile(
 )
 
 runtime = BrainRuntime(brain, dt=0.01)
+
+# ------------------------------------------------------------------
+# CSV TRACE DE-CONFLICT (IMPORTANT)
+# ------------------------------------------------------------------
+# CompetitionKernel writes a detailed per-channel trace by default.
+# Your external probe script (testingpoke.py) writes a *different schema*
+# to dominance_trace.csv. If both point at the same file, it will look like
+# "corruption" but it's really two incompatible writers.
+#
+# We avoid that by giving the kernel trace its own filename.
+try:
+    runtime.competition_kernel.TRACE_PATH = root / "kernel_dominance_trace.csv"
+except Exception:
+    # If the kernel object or attribute ever changes, we fail safe:
+    # command server must still run.
+    pass
 
 # Attach local command handler (keyboard UI)
 runtime.apply_command = lambda c: apply_command(runtime, c)  # type: ignore[attr-defined]

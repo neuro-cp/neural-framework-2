@@ -22,10 +22,10 @@ class PFCContextHook:
     - Stateless (no memory inside the hook)
     - Decay handled exclusively by RuntimeContext
 
-    IMPORTANT SEMANTIC FIX:
-    - By default, writes into GLOBAL_CONTEXT_KEY so downstream regions
-      (e.g., striatum) can consume the signal without requiring assembly-id
-      alignment across regions.
+    SEMANTIC CONTRACT:
+    - Assembly IDs from PFC are NOT assumed to align with downstream regions
+    - By default, all injections target GLOBAL_CONTEXT_KEY
+    - 'domain' selects the context channel, not the target assembly
     """
 
     def __init__(
@@ -35,6 +35,7 @@ class PFCContextHook:
         target_domain: str = "global",
         max_inject_per_step: Optional[float] = None,
         inject_to_global: bool = True,
+        enable_diagnostics: bool = False,
     ):
         # Threshold above baseline cortical noise
         self.activity_threshold = float(activity_threshold)
@@ -42,7 +43,7 @@ class PFCContextHook:
         # Linear gain applied to suprathreshold activity
         self.injection_gain = float(injection_gain)
 
-        # Explicit domain this hook writes into
+        # Context domain (e.g. "global")
         self.target_domain = str(target_domain)
 
         # Optional safety cap (None = uncapped)
@@ -52,6 +53,13 @@ class PFCContextHook:
 
         # If True, inject into GLOBAL_CONTEXT_KEY instead of per-assembly IDs
         self.inject_to_global = bool(inject_to_global)
+
+        # Optional observability (off by default)
+        self.enable_diagnostics = bool(enable_diagnostics)
+
+        # Diagnostics (ephemeral, overwritten each apply)
+        self.last_total_injected: float = 0.0
+        self.last_contributors: int = 0
 
     # ------------------------------------------------------------
     # Public API
@@ -67,18 +75,25 @@ class PFCContextHook:
         Inspect PFC assemblies and inject context bias for those
         exceeding the activity threshold.
 
-        NOTES:
+        MECHANISM:
         - Soft gating: (activity - threshold)
-        - Context accumulation + decay handled by RuntimeContext
-        - Default injection target is GLOBAL_CONTEXT_KEY to avoid silent
-          consumer mismatch (PFC assembly ids != striatum assembly ids).
+        - Linear scaling via injection_gain
+        - Optional per-step cap
+        - All decay handled by RuntimeContext
+
+        TARGETING:
+        - Default target is GLOBAL_CONTEXT_KEY to avoid silent consumer mismatch
+        - 'domain' selects context channel, not assembly identity
         """
         dom = self.target_domain if domain is None else str(domain)
 
-        for p in pfc_assemblies:
-            activity = p.output()
+        total_injected = 0.0
+        contributors = 0
 
-            # Soft thresholding
+        for p in pfc_assemblies:
+            activity = float(p.output())
+
+            # Soft threshold
             excess = activity - self.activity_threshold
             if excess <= 0.0:
                 continue
@@ -88,10 +103,17 @@ class PFCContextHook:
             if self.max_inject_per_step is not None:
                 amount = min(amount, self.max_inject_per_step)
 
-            target = GLOBAL_CONTEXT_KEY if self.inject_to_global else p.assembly_id
+            target_id = GLOBAL_CONTEXT_KEY if self.inject_to_global else p.assembly_id
 
             context.inject(
-                assembly_id=target,
+                assembly_id=target_id,
                 amount=amount,
                 domain=dom,
             )
+
+            total_injected += amount
+            contributors += 1
+
+        if self.enable_diagnostics:
+            self.last_total_injected = total_injected
+            self.last_contributors = contributors
