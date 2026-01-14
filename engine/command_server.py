@@ -1,54 +1,253 @@
+# engine/command_server.py
 from __future__ import annotations
+
 import socket
 import threading
-from typing import Any
+from typing import List, Optional, Tuple
 
 
-def start_command_server(runtime, host="127.0.0.1", port=5557):
+# ============================================================
+# Helpers
+# ============================================================
+
+def _basic_stats(values: List[float]) -> Optional[Tuple[float, float]]:
+    if not values:
+        return None
+    mean = sum(values) / len(values)
+    var = sum((v - mean) ** 2 for v in values) / len(values)
+    return mean, var ** 0.5
+
+
+def _resolve_region(runtime, region_label: str) -> str:
+    """
+    Resolve user-supplied region label to runtime region key.
+
+    - Uses runtime resolver if present
+    - Falls back to raw label
+    """
+    if hasattr(runtime, "_resolve_region_key"):
+        rk = runtime._resolve_region_key(region_label)  # type: ignore[attr-defined]
+        if rk:
+            return rk
+    return region_label
+
+
+def _region_stats(runtime, region_label: str) -> str:
+    region_id = _resolve_region(runtime, region_label)
+    region = runtime.region_states.get(region_id)
+    if not region:
+        return f"ERROR: unknown region '{region_label}' (resolved='{region_id}')"
+
+    acts, outs = [], []
+    for plist in region["populations"].values():
+        for pop in plist:
+            acts.append(float(getattr(pop, "activity", 0.0)))
+            outs.append(float(pop.output()))
+
+    if not acts:
+        return f"{region_id} MASS=0.0000 MEAN=0.0000 STD=0.0000 N=0"
+
+    stats = _basic_stats(acts)
+    if not stats:
+        return f"{region_id} MASS=0.0000 MEAN=0.0000 STD=0.0000 N=0"
+
+    mean, std = stats
+    return (
+        f"{region_id} "
+        f"MASS={sum(outs):.4f} "
+        f"MEAN={mean:.4f} "
+        f"STD={std:.4f} "
+        f"N={len(acts)}"
+    )
+
+
+def _top_assemblies(runtime, region_label: str, n: int) -> str:
+    region_id = _resolve_region(runtime, region_label)
+    region = runtime.region_states.get(region_id)
+    if not region:
+        return f"ERROR: unknown region '{region_label}' (resolved='{region_id}')"
+
+    rows = []
+    for plist in region["populations"].values():
+        for pop in plist:
+            rows.append((pop.assembly_id, float(pop.output())))
+
+    if not rows:
+        return "EMPTY"
+
+    rows.sort(key=lambda x: x[1], reverse=True)
+    top = rows[: max(1, n)]
+    return " | ".join(f"{aid} :: {val:.4f}" for aid, val in top)
+
+
+def _dump_context(runtime) -> str:
+    if not hasattr(runtime, "context"):
+        return "CONTEXT: runtime has no context"
+
+    ctx = runtime.context.dump()
+    if not ctx:
+        return "CONTEXT EMPTY"
+
+    region_totals = {}
+    region_counts = {}
+    region_domains = {}
+
+    for assembly_id, domains in ctx.items():
+        if assembly_id == "__global__":
+            region = "__global__"
+        else:
+            region = assembly_id.split(":", 1)[0]
+
+        region_counts[region] = region_counts.get(region, 0) + 1
+        region_totals.setdefault(region, 0.0)
+
+        for d, v in domains.items():
+            region_totals[region] += float(v)
+            region_domains.setdefault(region, set()).add(str(d))
+
+    lines = ["CONTEXT:"]
+    for region in sorted(region_totals):
+        lines.append(
+            f"  {region:<12} "
+            f"assemblies={region_counts.get(region, 0):<4} "
+            f"total={region_totals[region]:.4f} "
+            f"domains={','.join(sorted(region_domains.get(region, [])))}"
+        )
+
+    return "\n".join(lines)
+
+
+def _dump_context_full(runtime) -> str:
+    if not hasattr(runtime, "context"):
+        return "CONTEXT: runtime has no context"
+    return runtime.context.stats()
+
+
+def _dump_striatum(runtime) -> str:
+    snap = getattr(runtime, "_last_striatum_snapshot", None)
+    if not snap:
+        return "STRIATUM: no data"
+
+    dominance = snap.get("dominance", {})
+    if not dominance:
+        return "STRIATUM: empty"
+
+    lines = [f"STRIATUM @ t={snap.get('time', 0.0):.3f}"]
+    if snap.get("winner") is not None:
+        lines.append(f"winner={snap['winner']}")
+
+    for ch, val in sorted(dominance.items(), key=lambda x: x[1], reverse=True):
+        lines.append(f"{ch}={float(val):.4f}")
+
+    return "\n".join(lines)
+
+
+def _dump_striatum_diag(runtime) -> str:
+    ck = getattr(runtime, "competition_kernel", None)
+    if ck is None:
+        return "STRIATUM_DIAG: no competition kernel"
+
+    try:
+        return ck.format_diagnostics(precision=7)
+    except Exception as e:
+        return f"STRIATUM_DIAG: error ({e})"
+
+
+def _dump_gate(runtime) -> str:
+    if hasattr(runtime, "snapshot_gate_state"):
+        try:
+            s = runtime.snapshot_gate_state()
+            return (
+                "GATE:\n"
+                f"  t={float(s.get('time', 0.0)):.3f}\n"
+                f"  relief={float(s.get('relief', 1.0)):.4f}\n"
+                f"  winner={s.get('winner', None)}"
+            )
+        except Exception as e:
+            return f"GATE: error ({e})"
+
+    relief = getattr(runtime, "_last_gate_strength", None)
+    if relief is None:
+        return "GATE: no data"
+
+    winner = getattr(runtime, "_last_striatum_snapshot", {}).get("winner")
+    return (
+        "GATE:\n"
+        f"  t={getattr(runtime, 'time', 0.0):.3f}\n"
+        f"  relief={float(relief):.4f}\n"
+        f"  winner={winner}"
+    )
+
+
+# ============================================================
+# TCP Server
+# ============================================================
+
+def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
+    """
+    Lightweight TCP command server for runtime instrumentation.
+    """
+
+    def help_text() -> str:
+        return (
+            "Commands:\n"
+            "  poke <region> <mag>\n"
+            "  stats <region>\n"
+            "  top <region> <N>\n"
+            "  context | ctx\n"
+            "  ctxfull\n"
+            "  striatum\n"
+            "  striatum_diag\n"
+            "  gate\n"
+            "  help"
+        )
+
     def handle_command(cmd: str) -> str:
-        parts = cmd.strip().split()
-        if not parts:
+        cmd = (cmd or "").strip()
+        if not cmd:
             return "ERROR: empty command"
 
+        parts = cmd.split()
         op = parts[0].lower()
 
-        # ----------------------------
-        # POKE
-        # ----------------------------
+        if op in ("help", "?"):
+            return help_text()
+
         if op == "poke":
-            if len(parts) < 3:
-                return "ERROR: poke <region> <magnitude>"
-            region = parts[1]
+            if len(parts) != 3:
+                return "ERROR: poke <region> <mag>"
             try:
                 mag = float(parts[2])
             except ValueError:
                 return "ERROR: magnitude must be float"
-            runtime.inject_stimulus(region_id=region, magnitude=mag)
-            return f"OK poke {region} {mag}"
+            runtime.inject_stimulus(region_id=parts[1], magnitude=mag)
+            return f"OK poke {parts[1]} {mag}"
 
-        # ----------------------------
-        # STATS
-        # ----------------------------
-        if op == "stats":
-            if len(parts) < 2:
-                return "ERROR: stats <region>"
-            region = parts[1]
-            return runtime.stats(region)
+        if op == "stats" and len(parts) == 2:
+            return _region_stats(runtime, parts[1])
 
-        # ----------------------------
-        # TOP
-        # ----------------------------
-        if op == "top":
-            if len(parts) < 3:
-                return "ERROR: top <region> <N>"
-            region = parts[1]
+        if op == "top" and len(parts) == 3:
             try:
-                n = int(parts[2])
+                return _top_assemblies(runtime, parts[1], int(parts[2]))
             except ValueError:
                 return "ERROR: N must be int"
-            return runtime.top(region, n)
 
-        return "Unknown command."
+        if op in ("context", "ctx"):
+            return _dump_context(runtime)
+
+        if op == "ctxfull":
+            return _dump_context_full(runtime)
+
+        if op in ("striatum", "stri"):
+            return _dump_striatum(runtime)
+
+        if op in ("striatum_diag", "stri_diag"):
+            return _dump_striatum_diag(runtime)
+
+        if op == "gate":
+            return _dump_gate(runtime)
+
+        return "ERROR: unknown command"
 
     def server_loop():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -64,11 +263,10 @@ def start_command_server(runtime, host="127.0.0.1", port=5557):
                         data = conn.recv(4096)
                         if not data:
                             continue
-                        cmd = data.decode("utf-8").strip()
-                        result = handle_command(cmd)
+                        result = handle_command(data.decode("utf-8").strip())
                     except Exception as e:
                         result = f"ERROR: {e}"
+
                     conn.sendall((result + "\n").encode("utf-8"))
 
-    thread = threading.Thread(target=server_loop, daemon=True)
-    thread.start()
+    threading.Thread(target=server_loop, daemon=True).start()

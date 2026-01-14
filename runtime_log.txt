@@ -1,0 +1,1176 @@
+[2026-01-13 17:29:31] === BEGIN TEST 2 — TIME INTEGRATION ONLY ===
+[2026-01-13 17:29:31] [BASELINE] Stabilization
+[2026-01-13 17:29:37] [SNAPSHOT] baseline :: pfc
+[2026-01-13 17:29:37] pfc MASS=12.5609 MEAN=0.0163 STD=0.0001 N=800
+[2026-01-13 17:29:37] [SNAPSHOT] baseline :: striatum
+[2026-01-13 17:29:38] striatum MASS=2.3547 MEAN=0.0163 STD=0.0001 N=150
+[2026-01-13 17:29:38] [SNAPSHOT] baseline :: gpi
+[2026-01-13 17:29:38] gpi MASS=23.6579 MEAN=0.8561 STD=0.0003 N=25
+[2026-01-13 17:29:38] [CONTEXT] baseline
+[2026-01-13 17:29:38] CONTEXT EMPTY
+[2026-01-13 17:29:38] [STRIATUM] baseline
+[2026-01-13 17:29:38] STRIATUM @ t=4.130
+winner=D1
+D1=0.4994
+D2=0.4968
+[2026-01-13 17:29:38] [STRIATUM_DIAG] baseline
+[2026-01-13 17:29:38] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.7881341
+    D2: 0.7828441
+  Instantaneous dominance:
+    D1: 0.5016837
+    D2: 0.4983163
+  Smoothed dominance:
+    D1: 0.4994453
+    D2: 0.4967971
+  Dominance delta (D1 - D2): 0.0026483
+  Winner: D1
+  Winner value: 0.4994453
+[2026-01-13 17:29:38] [TEST 2] Time-integration (many small striatal pokes)
+[2026-01-13 17:29:38] [POKE] striatum 1.0
+[2026-01-13 17:29:38] [POKE] striatum 1.0
+[2026-01-13 17:29:38] [POKE] striatum 1.0
+[2026-01-13 17:29:38] [POKE] striatum 1.0
+[2026-01-13 17:29:39] [POKE] striatum 1.0
+[2026-01-13 17:29:39] [STRIATUM] integrate_5
+[2026-01-13 17:29:39] STRIATUM @ t=4.910
+winner=D1
+D1=0.5015
+D2=0.4971
+[2026-01-13 17:29:39] [STRIATUM_DIAG] integrate_5
+[2026-01-13 17:29:39] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.5574283
+    D2: 0.5499083
+  Instantaneous dominance:
+    D1: 0.5033955
+    D2: 0.4966045
+  Smoothed dominance:
+    D1: 0.5015523
+    D2: 0.4971288
+  Dominance delta (D1 - D2): 0.0044234
+  Winner: D1
+  Winner value: 0.5015523
+[2026-01-13 17:29:39] [POKE] striatum 1.0
+[2026-01-13 17:29:39] [POKE] striatum 1.0
+[2026-01-13 17:29:40] [POKE] striatum 1.0
+[2026-01-13 17:29:40] [POKE] striatum 1.0
+[2026-01-13 17:29:40] [POKE] striatum 1.0
+[2026-01-13 17:29:40] [STRIATUM] integrate_10
+[2026-01-13 17:29:40] STRIATUM @ t=5.610
+winner=D1
+D1=0.5029
+D2=0.4966
+[2026-01-13 17:29:40] [STRIATUM_DIAG] integrate_10
+[2026-01-13 17:29:40] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3340685
+    D2: 0.3286279
+  Instantaneous dominance:
+    D1: 0.5041049
+    D2: 0.4958951
+  Smoothed dominance:
+    D1: 0.5029332
+    D2: 0.4965514
+  Dominance delta (D1 - D2): 0.0063818
+  Winner: D1
+  Winner value: 0.5029332
+[2026-01-13 17:29:40] [POKE] striatum 1.0
+[2026-01-13 17:29:41] [POKE] striatum 1.0
+[2026-01-13 17:29:41] [POKE] striatum 1.0
+[2026-01-13 17:29:41] [POKE] striatum 1.0
+[2026-01-13 17:29:41] [POKE] striatum 1.0
+[2026-01-13 17:29:42] [STRIATUM] integrate_15
+[2026-01-13 17:29:42] STRIATUM @ t=6.290
+winner=D1
+D1=0.5043
+D2=0.4955
+[2026-01-13 17:29:42] [STRIATUM_DIAG] integrate_15
+[2026-01-13 17:29:42] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.1277613
+    D2: 0.1252992
+  Instantaneous dominance:
+    D1: 0.5048648
+    D2: 0.4951352
+  Smoothed dominance:
+    D1: 0.5043441
+    D2: 0.4954490
+  Dominance delta (D1 - D2): 0.0088951
+  Winner: D1
+  Winner value: 0.5043441
+[2026-01-13 17:29:42] [POKE] striatum 1.0
+[2026-01-13 17:29:42] [POKE] striatum 1.0
+[2026-01-13 17:29:42] [POKE] striatum 1.0
+[2026-01-13 17:29:42] [POKE] striatum 1.0
+[2026-01-13 17:29:43] [POKE] striatum 1.0
+[2026-01-13 17:29:43] [STRIATUM] integrate_20
+[2026-01-13 17:29:43] STRIATUM @ t=7.050
+winner=D1
+D1=0.5078
+D2=0.4921
+[2026-01-13 17:29:43] [STRIATUM_DIAG] integrate_20
+[2026-01-13 17:29:43] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.0000010
+    D2: 0.0000010
+  Instantaneous dominance:
+    D1: 0.5000000
+    D2: 0.5000000
+  Smoothed dominance:
+    D1: 0.5076868
+    D2: 0.4922376
+  Dominance delta (D1 - D2): 0.0154492
+  Winner: D1
+  Winner value: 0.5076868
+[2026-01-13 17:29:47] [STRIATUM] integrate_decay
+[2026-01-13 17:29:47] STRIATUM @ t=8.810
+winner=D1
+D1=0.5054
+D2=0.4946
+[2026-01-13 17:29:47] [STRIATUM_DIAG] integrate_decay
+[2026-01-13 17:29:47] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.2359755
+    D2: 0.2370670
+  Instantaneous dominance:
+    D1: 0.4988463
+    D2: 0.5011537
+  Smoothed dominance:
+    D1: 0.5053541
+    D2: 0.4946387
+  Dominance delta (D1 - D2): 0.0107154
+  Winner: D1
+  Winner value: 0.5053541
+[2026-01-13 17:29:47] [TEST 2] Complete
+[2026-01-13 17:29:47] === TEST COMPLETE ===
+[2026-01-13 17:52:24] === BEGIN TEST 2 — TIME INTEGRATION ONLY ===
+[2026-01-13 17:52:24] [BASELINE] Stabilization
+[2026-01-13 17:52:30] [SNAPSHOT] baseline :: pfc
+[2026-01-13 17:52:30] pfc MASS=12.5902 MEAN=0.0163 STD=0.0001 N=800
+[2026-01-13 17:52:30] [SNAPSHOT] baseline :: striatum
+[2026-01-13 17:52:30] striatum MASS=2.3587 MEAN=0.0163 STD=0.0001 N=150
+[2026-01-13 17:52:30] [SNAPSHOT] baseline :: gpi
+[2026-01-13 17:52:30] gpi MASS=23.5581 MEAN=0.8522 STD=0.0003 N=25
+[2026-01-13 17:52:30] [CONTEXT] baseline
+[2026-01-13 17:52:30] CONTEXT EMPTY
+[2026-01-13 17:52:30] [STRIATUM] baseline
+[2026-01-13 17:52:30] STRIATUM @ t=4.230
+winner=D2
+D2=0.4997
+D1=0.4970
+[2026-01-13 17:52:30] [STRIATUM_DIAG] baseline
+[2026-01-13 17:52:30] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.7820454
+    D2: 0.7875782
+  Instantaneous dominance:
+    D1: 0.4982375
+    D2: 0.5017625
+  Smoothed dominance:
+    D1: 0.4969742
+    D2: 0.4996958
+  Dominance delta (D1 - D2): -0.0027216
+  Winner: D2
+  Winner value: 0.4996958
+[2026-01-13 17:52:30] [TEST 2] Time-integration (many small striatal pokes)
+[2026-01-13 17:52:30] [POKE] striatum 1.0
+[2026-01-13 17:52:30] [POKE] striatum 1.0
+[2026-01-13 17:52:30] [POKE] striatum 1.0
+[2026-01-13 17:52:30] [POKE] striatum 1.0
+[2026-01-13 17:52:31] [POKE] striatum 1.0
+[2026-01-13 17:52:31] [STRIATUM] integrate_5
+[2026-01-13 17:52:31] STRIATUM @ t=5.000
+winner=D2
+D2=0.5009
+D1=0.4979
+[2026-01-13 17:52:31] [STRIATUM_DIAG] integrate_5
+[2026-01-13 17:52:31] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.5511331
+    D2: 0.5537714
+  Instantaneous dominance:
+    D1: 0.4988061
+    D2: 0.5011939
+  Smoothed dominance:
+    D1: 0.4979376
+    D2: 0.5008779
+  Dominance delta (D1 - D2): -0.0029403
+  Winner: D2
+  Winner value: 0.5008779
+[2026-01-13 17:52:31] [POKE] striatum 1.0
+[2026-01-13 17:52:31] [POKE] striatum 1.0
+[2026-01-13 17:52:32] [POKE] striatum 1.0
+[2026-01-13 17:52:32] [POKE] striatum 1.0
+[2026-01-13 17:52:32] [POKE] striatum 1.0
+[2026-01-13 17:52:32] [STRIATUM] integrate_10
+[2026-01-13 17:52:32] STRIATUM @ t=5.700
+winner=D2
+D2=0.5012
+D1=0.4983
+[2026-01-13 17:52:32] [STRIATUM_DIAG] integrate_10
+[2026-01-13 17:52:32] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3301959
+    D2: 0.3313972
+  Instantaneous dominance:
+    D1: 0.4990921
+    D2: 0.5009079
+  Smoothed dominance:
+    D1: 0.4983778
+    D2: 0.5011716
+  Dominance delta (D1 - D2): -0.0027938
+  Winner: D2
+  Winner value: 0.5011716
+[2026-01-13 17:52:32] [POKE] striatum 1.0
+[2026-01-13 17:52:33] [POKE] striatum 1.0
+[2026-01-13 17:52:33] [POKE] striatum 1.0
+[2026-01-13 17:52:33] [POKE] striatum 1.0
+[2026-01-13 17:52:33] [POKE] striatum 1.0
+[2026-01-13 17:52:34] [STRIATUM] integrate_15
+[2026-01-13 17:52:34] STRIATUM @ t=6.460
+winner=D2
+D2=0.5007
+D1=0.4992
+[2026-01-13 17:52:34] [STRIATUM_DIAG] integrate_15
+[2026-01-13 17:52:34] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.1306816
+    D2: 0.1307542
+  Instantaneous dominance:
+    D1: 0.4998611
+    D2: 0.5001389
+  Smoothed dominance:
+    D1: 0.4991719
+    D2: 0.5006635
+  Dominance delta (D1 - D2): -0.0014916
+  Winner: D2
+  Winner value: 0.5006635
+[2026-01-13 17:52:34] [POKE] striatum 1.0
+[2026-01-13 17:52:34] [POKE] striatum 1.0
+[2026-01-13 17:52:34] [POKE] striatum 1.0
+[2026-01-13 17:52:34] [POKE] striatum 1.0
+[2026-01-13 17:52:35] [POKE] striatum 1.0
+[2026-01-13 17:52:35] [STRIATUM] integrate_20
+[2026-01-13 17:52:35] STRIATUM @ t=7.250
+winner=D1
+D1=0.5003
+D2=0.4996
+[2026-01-13 17:52:35] [STRIATUM_DIAG] integrate_20
+[2026-01-13 17:52:35] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.0000010
+    D2: 0.0000010
+  Instantaneous dominance:
+    D1: 0.5000000
+    D2: 0.5000000
+  Smoothed dominance:
+    D1: 0.5003023
+    D2: 0.4996406
+  Dominance delta (D1 - D2): 0.0006617
+  Winner: D1
+  Winner value: 0.5003023
+[2026-01-13 17:52:39] [STRIATUM] integrate_decay
+[2026-01-13 17:52:39] STRIATUM @ t=9.510
+winner=D1
+D1=0.5057
+D2=0.4943
+[2026-01-13 17:52:39] [STRIATUM_DIAG] integrate_decay
+[2026-01-13 17:52:39] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3500147
+    D2: 0.3438057
+  Instantaneous dominance:
+    D1: 0.5044745
+    D2: 0.4955255
+  Smoothed dominance:
+    D1: 0.5056990
+    D2: 0.4942983
+  Dominance delta (D1 - D2): 0.0114007
+  Winner: D1
+  Winner value: 0.5056990
+[2026-01-13 17:52:39] [TEST 2] Complete
+[2026-01-13 17:52:39] === TEST COMPLETE ===
+[2026-01-13 17:54:40] === BEGIN TEST 2 — TIME INTEGRATION ONLY ===
+[2026-01-13 17:54:40] [BASELINE] Stabilization
+[2026-01-13 17:54:46] [SNAPSHOT] baseline :: pfc
+[2026-01-13 17:54:46] pfc MASS=12.5430 MEAN=0.0163 STD=0.0001 N=800
+[2026-01-13 17:54:46] [SNAPSHOT] baseline :: striatum
+[2026-01-13 17:54:46] striatum MASS=2.3535 MEAN=0.0163 STD=0.0001 N=150
+[2026-01-13 17:54:46] [SNAPSHOT] baseline :: gpi
+[2026-01-13 17:54:46] gpi MASS=23.6654 MEAN=0.8564 STD=0.0003 N=25
+[2026-01-13 17:54:46] [CONTEXT] baseline
+[2026-01-13 17:54:46] CONTEXT EMPTY
+[2026-01-13 17:54:46] [STRIATUM] baseline
+[2026-01-13 17:54:46] STRIATUM @ t=4.110
+winner=D1
+D1=0.4987
+D2=0.4974
+[2026-01-13 17:54:46] [STRIATUM_DIAG] baseline
+[2026-01-13 17:54:46] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.7856565
+    D2: 0.7851742
+  Instantaneous dominance:
+    D1: 0.5001535
+    D2: 0.4998465
+  Smoothed dominance:
+    D1: 0.4987091
+    D2: 0.4974310
+  Dominance delta (D1 - D2): 0.0012781
+  Winner: D1
+  Winner value: 0.4987091
+[2026-01-13 17:54:46] [TEST 2] Time-integration (many small striatal pokes)
+[2026-01-13 17:54:46] [POKE] striatum 1.0
+[2026-01-13 17:54:46] [POKE] striatum 1.0
+[2026-01-13 17:54:47] [POKE] striatum 1.0
+[2026-01-13 17:54:47] [POKE] striatum 1.0
+[2026-01-13 17:54:47] [POKE] striatum 1.0
+[2026-01-13 17:54:48] [STRIATUM] integrate_5
+[2026-01-13 17:54:48] STRIATUM @ t=4.830
+winner=D1
+D1=0.4993
+D2=0.4992
+[2026-01-13 17:54:48] [STRIATUM_DIAG] integrate_5
+[2026-01-13 17:54:48] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.5486849
+    D2: 0.5519636
+  Instantaneous dominance:
+    D1: 0.4985105
+    D2: 0.5014895
+  Smoothed dominance:
+    D1: 0.4992455
+    D2: 0.4992662
+  Dominance delta (D1 - D2): -0.0000207
+  Winner: D2
+  Winner value: 0.4992662
+[2026-01-13 17:54:48] [POKE] striatum 1.0
+[2026-01-13 17:54:48] [POKE] striatum 1.0
+[2026-01-13 17:54:48] [POKE] striatum 1.0
+[2026-01-13 17:54:48] [POKE] striatum 1.0
+[2026-01-13 17:54:49] [POKE] striatum 1.0
+[2026-01-13 17:54:49] [STRIATUM] integrate_10
+[2026-01-13 17:54:49] STRIATUM @ t=5.580
+winner=D2
+D2=0.5011
+D1=0.4983
+[2026-01-13 17:54:49] [STRIATUM_DIAG] integrate_10
+[2026-01-13 17:54:49] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3277346
+    D2: 0.3309895
+  Instantaneous dominance:
+    D1: 0.4975293
+    D2: 0.5024707
+  Smoothed dominance:
+    D1: 0.4983127
+    D2: 0.5011435
+  Dominance delta (D1 - D2): -0.0028308
+  Winner: D2
+  Winner value: 0.5011435
+[2026-01-13 17:54:49] [POKE] striatum 1.0
+[2026-01-13 17:54:49] [POKE] striatum 1.0
+[2026-01-13 17:54:49] [POKE] striatum 1.0
+[2026-01-13 17:54:50] [POKE] striatum 1.0
+[2026-01-13 17:54:50] [POKE] striatum 1.0
+[2026-01-13 17:54:50] [STRIATUM] integrate_15
+[2026-01-13 17:54:50] STRIATUM @ t=6.200
+winner=D2
+D2=0.5030
+D1=0.4968
+[2026-01-13 17:54:50] [STRIATUM_DIAG] integrate_15
+[2026-01-13 17:54:50] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.1189873
+    D2: 0.1222309
+  Instantaneous dominance:
+    D1: 0.4932767
+    D2: 0.5067233
+  Smoothed dominance:
+    D1: 0.4966845
+    D2: 0.5030820
+  Dominance delta (D1 - D2): -0.0063975
+  Winner: D2
+  Winner value: 0.5030820
+[2026-01-13 17:54:50] [POKE] striatum 1.0
+[2026-01-13 17:54:50] [POKE] striatum 1.0
+[2026-01-13 17:54:51] [POKE] striatum 1.0
+[2026-01-13 17:54:51] [POKE] striatum 1.0
+[2026-01-13 17:54:51] [POKE] striatum 1.0
+[2026-01-13 17:54:52] [STRIATUM] integrate_20
+[2026-01-13 17:54:52] STRIATUM @ t=6.950
+winner=D2
+D2=0.5199
+D1=0.4800
+[2026-01-13 17:54:52] [STRIATUM_DIAG] integrate_20
+[2026-01-13 17:54:52] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.0000010
+    D2: 0.0000010
+  Instantaneous dominance:
+    D1: 0.5000000
+    D2: 0.5000000
+  Smoothed dominance:
+    D1: 0.4802872
+    D2: 0.5196263
+  Dominance delta (D1 - D2): -0.0393391
+  Winner: D2
+  Winner value: 0.5196263
+[2026-01-13 17:54:56] [STRIATUM] integrate_decay
+[2026-01-13 17:54:56] STRIATUM @ t=8.900
+winner=D2
+D2=0.5139
+D1=0.4861
+[2026-01-13 17:54:56] [STRIATUM_DIAG] integrate_decay
+[2026-01-13 17:54:56] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.2674118
+    D2: 0.2698897
+  Instantaneous dominance:
+    D1: 0.4976941
+    D2: 0.5023059
+  Smoothed dominance:
+    D1: 0.4862836
+    D2: 0.5137101
+  Dominance delta (D1 - D2): -0.0274264
+  Winner: D2
+  Winner value: 0.5137101
+[2026-01-13 17:54:56] [TEST 2] Complete
+[2026-01-13 17:54:56] === TEST COMPLETE ===
+[2026-01-13 17:56:29] === BEGIN TEST 2 — TIME INTEGRATION ONLY ===
+[2026-01-13 17:56:29] [BASELINE] Stabilization
+[2026-01-13 17:56:35] [SNAPSHOT] baseline :: pfc
+[2026-01-13 17:56:35] pfc MASS=12.5254 MEAN=0.0163 STD=0.0001 N=800
+[2026-01-13 17:56:35] [SNAPSHOT] baseline :: striatum
+[2026-01-13 17:56:35] striatum MASS=2.3495 MEAN=0.0163 STD=0.0001 N=150
+[2026-01-13 17:56:35] [SNAPSHOT] baseline :: gpi
+[2026-01-13 17:56:35] gpi MASS=23.7777 MEAN=0.8608 STD=0.0002 N=25
+[2026-01-13 17:56:35] [CONTEXT] baseline
+[2026-01-13 17:56:35] CONTEXT EMPTY
+[2026-01-13 17:56:35] [STRIATUM] baseline
+[2026-01-13 17:56:35] STRIATUM @ t=4.000
+winner=D1
+D1=0.4977
+D2=0.4977
+[2026-01-13 17:56:35] [STRIATUM_DIAG] baseline
+[2026-01-13 17:56:35] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.7839326
+    D2: 0.7846540
+  Instantaneous dominance:
+    D1: 0.4997700
+    D2: 0.5002300
+  Smoothed dominance:
+    D1: 0.4977647
+    D2: 0.4977009
+  Dominance delta (D1 - D2): 0.0000638
+  Winner: D1
+  Winner value: 0.4977647
+[2026-01-13 17:56:35] [TEST 2] Time-integration (many small striatal pokes)
+[2026-01-13 17:56:35] [POKE] striatum 1.0
+[2026-01-13 17:56:35] [POKE] striatum 1.0
+[2026-01-13 17:56:36] [POKE] striatum 1.0
+[2026-01-13 17:56:36] [POKE] striatum 1.0
+[2026-01-13 17:56:36] [POKE] striatum 1.0
+[2026-01-13 17:56:36] [STRIATUM] integrate_5
+[2026-01-13 17:56:36] STRIATUM @ t=4.750
+winner=D2
+D2=0.4993
+D1=0.4991
+[2026-01-13 17:56:36] [STRIATUM_DIAG] integrate_5
+[2026-01-13 17:56:36] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.5530160
+    D2: 0.5536646
+  Instantaneous dominance:
+    D1: 0.4997069
+    D2: 0.5002931
+  Smoothed dominance:
+    D1: 0.4990760
+    D2: 0.4992891
+  Dominance delta (D1 - D2): -0.0002131
+  Winner: D2
+  Winner value: 0.4992891
+[2026-01-13 17:56:36] [POKE] striatum 1.0
+[2026-01-13 17:56:37] [POKE] striatum 1.0
+[2026-01-13 17:56:37] [POKE] striatum 1.0
+[2026-01-13 17:56:37] [POKE] striatum 1.0
+[2026-01-13 17:56:38] [POKE] striatum 1.0
+[2026-01-13 17:56:38] [STRIATUM] integrate_10
+[2026-01-13 17:56:38] STRIATUM @ t=5.530
+winner=D1
+D1=0.4999
+D2=0.4995
+[2026-01-13 17:56:38] [STRIATUM_DIAG] integrate_10
+[2026-01-13 17:56:38] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3353206
+    D2: 0.3345494
+  Instantaneous dominance:
+    D1: 0.5005756
+    D2: 0.4994244
+  Smoothed dominance:
+    D1: 0.4999294
+    D2: 0.4994890
+  Dominance delta (D1 - D2): 0.0004403
+  Winner: D1
+  Winner value: 0.4999294
+[2026-01-13 17:56:38] [POKE] striatum 1.0
+[2026-01-13 17:56:38] [POKE] striatum 1.0
+[2026-01-13 17:56:38] [POKE] striatum 1.0
+[2026-01-13 17:56:39] [POKE] striatum 1.0
+[2026-01-13 17:56:39] [POKE] striatum 1.0
+[2026-01-13 17:56:39] [STRIATUM] integrate_15
+[2026-01-13 17:56:39] STRIATUM @ t=6.180
+winner=D1
+D1=0.5005
+D2=0.4993
+[2026-01-13 17:56:39] [STRIATUM_DIAG] integrate_15
+[2026-01-13 17:56:39] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.1309857
+    D2: 0.1302006
+  Instantaneous dominance:
+    D1: 0.5015029
+    D2: 0.4984971
+  Smoothed dominance:
+    D1: 0.5005133
+    D2: 0.4992469
+  Dominance delta (D1 - D2): 0.0012664
+  Winner: D1
+  Winner value: 0.5005133
+[2026-01-13 17:56:39] [POKE] striatum 1.0
+[2026-01-13 17:56:39] [POKE] striatum 1.0
+[2026-01-13 17:56:40] [POKE] striatum 1.0
+[2026-01-13 17:56:40] [POKE] striatum 1.0
+[2026-01-13 17:56:40] [POKE] striatum 1.0
+[2026-01-13 17:56:40] [STRIATUM] integrate_20
+[2026-01-13 17:56:40] STRIATUM @ t=6.840
+winner=D2
+D2=0.5116
+D1=0.4883
+[2026-01-13 17:56:40] [STRIATUM_DIAG] integrate_20
+[2026-01-13 17:56:40] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.0000010
+    D2: 0.0000010
+  Instantaneous dominance:
+    D1: 0.5000000
+    D2: 0.5000000
+  Smoothed dominance:
+    D1: 0.4884243
+    D2: 0.5114755
+  Dominance delta (D1 - D2): -0.0230512
+  Winner: D2
+  Winner value: 0.5114755
+[2026-01-13 17:56:44] [STRIATUM] integrate_decay
+[2026-01-13 17:56:44] STRIATUM @ t=9.030
+winner=D2
+D2=0.5014
+D1=0.4985
+[2026-01-13 17:56:44] [STRIATUM_DIAG] integrate_decay
+[2026-01-13 17:56:45] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3130468
+    D2: 0.3124837
+  Instantaneous dominance:
+    D1: 0.5004501
+    D2: 0.4995499
+  Smoothed dominance:
+    D1: 0.4985962
+    D2: 0.5013986
+  Dominance delta (D1 - D2): -0.0028024
+  Winner: D2
+  Winner value: 0.5013986
+[2026-01-13 17:56:45] [TEST 2] Complete
+[2026-01-13 17:56:45] === TEST COMPLETE ===
+[2026-01-13 17:58:29] === BEGIN TEST 2 — TIME INTEGRATION ONLY ===
+[2026-01-13 17:58:29] [BASELINE] Stabilization
+[2026-01-13 17:58:35] [SNAPSHOT] baseline :: pfc
+[2026-01-13 17:58:35] pfc MASS=12.4411 MEAN=0.0163 STD=0.0001 N=800
+[2026-01-13 17:58:35] [SNAPSHOT] baseline :: striatum
+[2026-01-13 17:58:35] striatum MASS=2.3315 MEAN=0.0163 STD=0.0001 N=150
+[2026-01-13 17:58:35] [SNAPSHOT] baseline :: gpi
+[2026-01-13 17:58:35] gpi MASS=23.9417 MEAN=0.8673 STD=0.0003 N=25
+[2026-01-13 17:58:35] [CONTEXT] baseline
+[2026-01-13 17:58:35] CONTEXT EMPTY
+[2026-01-13 17:58:35] [STRIATUM] baseline
+[2026-01-13 17:58:35] STRIATUM @ t=3.750
+winner=D2
+D2=0.4973
+D1=0.4962
+[2026-01-13 17:58:35] [STRIATUM_DIAG] baseline
+[2026-01-13 17:58:35] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.7767567
+    D2: 0.7802209
+  Instantaneous dominance:
+    D1: 0.4988875
+    D2: 0.5011125
+  Smoothed dominance:
+    D1: 0.4963069
+    D2: 0.4974352
+  Dominance delta (D1 - D2): -0.0011283
+  Winner: D2
+  Winner value: 0.4974352
+[2026-01-13 17:58:35] [TEST 2] Time-integration (many small striatal pokes)
+[2026-01-13 17:58:35] [POKE] striatum 1.0
+[2026-01-13 17:58:35] [POKE] striatum 1.0
+[2026-01-13 17:58:36] [POKE] striatum 1.0
+[2026-01-13 17:58:36] [POKE] striatum 1.0
+[2026-01-13 17:58:36] [POKE] striatum 1.0
+[2026-01-13 17:58:37] [STRIATUM] integrate_5
+[2026-01-13 17:58:37] STRIATUM @ t=4.410
+winner=D2
+D2=0.4998
+D1=0.4975
+[2026-01-13 17:58:37] [STRIATUM_DIAG] integrate_5
+[2026-01-13 17:58:37] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.5454760
+    D2: 0.5499754
+  Instantaneous dominance:
+    D1: 0.4979463
+    D2: 0.5020537
+  Smoothed dominance:
+    D1: 0.4975267
+    D2: 0.4998581
+  Dominance delta (D1 - D2): -0.0023314
+  Winner: D2
+  Winner value: 0.4998581
+[2026-01-13 17:58:37] [POKE] striatum 1.0
+[2026-01-13 17:58:37] [POKE] striatum 1.0
+[2026-01-13 17:58:37] [POKE] striatum 1.0
+[2026-01-13 17:58:37] [POKE] striatum 1.0
+[2026-01-13 17:58:38] [POKE] striatum 1.0
+[2026-01-13 17:58:38] [STRIATUM] integrate_10
+[2026-01-13 17:58:38] STRIATUM @ t=5.140
+winner=D2
+D2=0.5013
+D1=0.4977
+[2026-01-13 17:58:38] [STRIATUM_DIAG] integrate_10
+[2026-01-13 17:58:38] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3277457
+    D2: 0.3313564
+  Instantaneous dominance:
+    D1: 0.4972609
+    D2: 0.5027391
+  Smoothed dominance:
+    D1: 0.4976985
+    D2: 0.5013199
+  Dominance delta (D1 - D2): -0.0036214
+  Winner: D2
+  Winner value: 0.5013199
+[2026-01-13 17:58:38] [POKE] striatum 1.0
+[2026-01-13 17:58:38] [POKE] striatum 1.0
+[2026-01-13 17:58:38] [POKE] striatum 1.0
+[2026-01-13 17:58:39] [POKE] striatum 1.0
+[2026-01-13 17:58:39] [POKE] striatum 1.0
+[2026-01-13 17:58:39] [STRIATUM] integrate_15
+[2026-01-13 17:58:39] STRIATUM @ t=5.830
+winner=D2
+D2=0.5034
+D1=0.4962
+[2026-01-13 17:58:39] [STRIATUM_DIAG] integrate_15
+[2026-01-13 17:58:39] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.1290606
+    D2: 0.1314544
+  Instantaneous dominance:
+    D1: 0.4954056
+    D2: 0.5045944
+  Smoothed dominance:
+    D1: 0.4962318
+    D2: 0.5033794
+  Dominance delta (D1 - D2): -0.0071476
+  Winner: D2
+  Winner value: 0.5033794
+[2026-01-13 17:58:39] [POKE] striatum 1.0
+[2026-01-13 17:58:39] [POKE] striatum 1.0
+[2026-01-13 17:58:40] [POKE] striatum 1.0
+[2026-01-13 17:58:40] [POKE] striatum 1.0
+[2026-01-13 17:58:40] [POKE] striatum 1.0
+[2026-01-13 17:58:41] [STRIATUM] integrate_20
+[2026-01-13 17:58:41] STRIATUM @ t=6.540
+winner=D2
+D2=0.5097
+D1=0.4901
+[2026-01-13 17:58:41] [STRIATUM_DIAG] integrate_20
+[2026-01-13 17:58:41] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.0000010
+    D2: 0.0000010
+  Instantaneous dominance:
+    D1: 0.5000000
+    D2: 0.5000000
+  Smoothed dominance:
+    D1: 0.4902546
+    D2: 0.5095955
+  Dominance delta (D1 - D2): -0.0193410
+  Winner: D2
+  Winner value: 0.5095955
+[2026-01-13 17:58:45] [STRIATUM] integrate_decay
+[2026-01-13 17:58:45] STRIATUM @ t=8.690
+winner=D2
+D2=0.5017
+D1=0.4983
+[2026-01-13 17:58:45] [STRIATUM_DIAG] integrate_decay
+[2026-01-13 17:58:45] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3218171
+    D2: 0.3215597
+  Instantaneous dominance:
+    D1: 0.5002000
+    D2: 0.4998000
+  Smoothed dominance:
+    D1: 0.4982883
+    D2: 0.5017033
+  Dominance delta (D1 - D2): -0.0034150
+  Winner: D2
+  Winner value: 0.5017033
+[2026-01-13 17:58:45] [TEST 2] Complete
+[2026-01-13 17:58:45] === TEST COMPLETE ===
+[2026-01-13 18:00:36] === BEGIN TEST 2 — TIME INTEGRATION ONLY ===
+[2026-01-13 18:00:36] [BASELINE] Stabilization
+[2026-01-13 18:00:42] [SNAPSHOT] baseline :: pfc
+[2026-01-13 18:00:42] pfc MASS=12.5540 MEAN=0.0163 STD=0.0001 N=800
+[2026-01-13 18:00:42] [SNAPSHOT] baseline :: striatum
+[2026-01-13 18:00:42] striatum MASS=2.3603 MEAN=0.0163 STD=0.0001 N=150
+[2026-01-13 18:00:42] [SNAPSHOT] baseline :: gpi
+[2026-01-13 18:00:42] gpi MASS=23.6034 MEAN=0.8540 STD=0.0003 N=25
+[2026-01-13 18:00:42] [CONTEXT] baseline
+[2026-01-13 18:00:42] CONTEXT EMPTY
+[2026-01-13 18:00:42] [STRIATUM] baseline
+[2026-01-13 18:00:42] STRIATUM @ t=4.200
+winner=D2
+D2=0.4987
+D1=0.4978
+[2026-01-13 18:00:42] [STRIATUM_DIAG] baseline
+[2026-01-13 18:00:42] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.7842606
+    D2: 0.7876294
+  Instantaneous dominance:
+    D1: 0.4989284
+    D2: 0.5010716
+  Smoothed dominance:
+    D1: 0.4978274
+    D2: 0.4987520
+  Dominance delta (D1 - D2): -0.0009246
+  Winner: D2
+  Winner value: 0.4987520
+[2026-01-13 18:00:42] [TEST 2] Time-integration (many small striatal pokes)
+[2026-01-13 18:00:42] [POKE] striatum 1.0
+[2026-01-13 18:00:43] [POKE] striatum 1.0
+[2026-01-13 18:00:43] [POKE] striatum 1.0
+[2026-01-13 18:00:43] [POKE] striatum 1.0
+[2026-01-13 18:00:43] [POKE] striatum 1.0
+[2026-01-13 18:00:44] [STRIATUM] integrate_5
+[2026-01-13 18:00:44] STRIATUM @ t=4.860
+winner=D2
+D2=0.5003
+D1=0.4982
+[2026-01-13 18:00:44] [STRIATUM_DIAG] integrate_5
+[2026-01-13 18:00:44] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.5495422
+    D2: 0.5523068
+  Instantaneous dominance:
+    D1: 0.4987455
+    D2: 0.5012545
+  Smoothed dominance:
+    D1: 0.4982378
+    D2: 0.5003327
+  Dominance delta (D1 - D2): -0.0020949
+  Winner: D2
+  Winner value: 0.5003327
+[2026-01-13 18:00:44] [POKE] striatum 1.0
+[2026-01-13 18:00:44] [POKE] striatum 1.0
+[2026-01-13 18:00:44] [POKE] striatum 1.0
+[2026-01-13 18:00:44] [POKE] striatum 1.0
+[2026-01-13 18:00:45] [POKE] striatum 1.0
+[2026-01-13 18:00:45] [STRIATUM] integrate_10
+[2026-01-13 18:00:45] STRIATUM @ t=5.520
+winner=D2
+D2=0.5007
+D1=0.4987
+[2026-01-13 18:00:45] [STRIATUM_DIAG] integrate_10
+[2026-01-13 18:00:45] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3254397
+    D2: 0.3268987
+  Instantaneous dominance:
+    D1: 0.4988817
+    D2: 0.5011183
+  Smoothed dominance:
+    D1: 0.4987147
+    D2: 0.5007038
+  Dominance delta (D1 - D2): -0.0019891
+  Winner: D2
+  Winner value: 0.5007038
+[2026-01-13 18:00:45] [POKE] striatum 1.0
+[2026-01-13 18:00:45] [POKE] striatum 1.0
+[2026-01-13 18:00:46] [POKE] striatum 1.0
+[2026-01-13 18:00:46] [POKE] striatum 1.0
+[2026-01-13 18:00:46] [POKE] striatum 1.0
+[2026-01-13 18:00:46] [STRIATUM] integrate_15
+[2026-01-13 18:00:46] STRIATUM @ t=6.230
+winner=D2
+D2=0.5015
+D1=0.4982
+[2026-01-13 18:00:46] [STRIATUM_DIAG] integrate_15
+[2026-01-13 18:00:46] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.1226687
+    D2: 0.1241177
+  Instantaneous dominance:
+    D1: 0.4970643
+    D2: 0.5029357
+  Smoothed dominance:
+    D1: 0.4982268
+    D2: 0.5015460
+  Dominance delta (D1 - D2): -0.0033192
+  Winner: D2
+  Winner value: 0.5015460
+[2026-01-13 18:00:46] [POKE] striatum 1.0
+[2026-01-13 18:00:47] [POKE] striatum 1.0
+[2026-01-13 18:00:47] [POKE] striatum 1.0
+[2026-01-13 18:00:47] [POKE] striatum 1.0
+[2026-01-13 18:00:47] [POKE] striatum 1.0
+[2026-01-13 18:00:48] [STRIATUM] integrate_20
+[2026-01-13 18:00:48] STRIATUM @ t=6.860
+winner=D1
+D1=0.5663
+D2=0.4336
+[2026-01-13 18:00:48] [STRIATUM_DIAG] integrate_20
+[2026-01-13 18:00:48] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.0000010
+    D2: 0.0000010
+  Instantaneous dominance:
+    D1: 0.5000000
+    D2: 0.5000000
+  Smoothed dominance:
+    D1: 0.5645046
+    D2: 0.4353992
+  Dominance delta (D1 - D2): 0.1291054
+  Winner: D1
+  Winner value: 0.5645046
+[2026-01-13 18:00:52] [STRIATUM] integrate_decay
+[2026-01-13 18:00:52] STRIATUM @ t=8.610
+winner=D1
+D1=0.5316
+D2=0.4684
+[2026-01-13 18:00:52] [STRIATUM_DIAG] integrate_decay
+[2026-01-13 18:00:52] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.2140881
+    D2: 0.2127101
+  Instantaneous dominance:
+    D1: 0.5016143
+    D2: 0.4983857
+  Smoothed dominance:
+    D1: 0.5312144
+    D2: 0.4687763
+  Dominance delta (D1 - D2): 0.0624382
+  Winner: D1
+  Winner value: 0.5312144
+[2026-01-13 18:00:52] [TEST 2] Complete
+[2026-01-13 18:00:52] === TEST COMPLETE ===
+[2026-01-13 18:02:28] === BEGIN TEST 2 — TIME INTEGRATION ONLY ===
+[2026-01-13 18:02:28] [BASELINE] Stabilization
+[2026-01-13 18:02:34] [SNAPSHOT] baseline :: pfc
+[2026-01-13 18:02:34] pfc MASS=12.6864 MEAN=0.0164 STD=0.0001 N=800
+[2026-01-13 18:02:34] [SNAPSHOT] baseline :: striatum
+[2026-01-13 18:02:34] striatum MASS=2.3761 MEAN=0.0164 STD=0.0001 N=150
+[2026-01-13 18:02:34] [SNAPSHOT] baseline :: gpi
+[2026-01-13 18:02:34] gpi MASS=22.8965 MEAN=0.8263 STD=0.0002 N=25
+[2026-01-13 18:02:34] [CONTEXT] baseline
+[2026-01-13 18:02:34] CONTEXT EMPTY
+[2026-01-13 18:02:34] [STRIATUM] baseline
+[2026-01-13 18:02:34] STRIATUM @ t=4.840
+winner=D1
+D1=0.5007
+D2=0.4978
+[2026-01-13 18:02:34] [STRIATUM_DIAG] baseline
+[2026-01-13 18:02:34] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.7950875
+    D2: 0.7904834
+  Instantaneous dominance:
+    D1: 0.5014519
+    D2: 0.4985481
+  Smoothed dominance:
+    D1: 0.5006964
+    D2: 0.4978548
+  Dominance delta (D1 - D2): 0.0028416
+  Winner: D1
+  Winner value: 0.5006964
+[2026-01-13 18:02:34] [TEST 2] Time-integration (many small striatal pokes)
+[2026-01-13 18:02:34] [POKE] striatum 1.0
+[2026-01-13 18:02:35] [POKE] striatum 1.0
+[2026-01-13 18:02:35] [POKE] striatum 1.0
+[2026-01-13 18:02:35] [POKE] striatum 1.0
+[2026-01-13 18:02:36] [POKE] striatum 1.0
+[2026-01-13 18:02:36] [STRIATUM] integrate_5
+[2026-01-13 18:02:36] STRIATUM @ t=5.550
+winner=D1
+D1=0.5015
+D2=0.4979
+[2026-01-13 18:02:36] [STRIATUM_DIAG] integrate_5
+[2026-01-13 18:02:36] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.5546865
+    D2: 0.5501447
+  Instantaneous dominance:
+    D1: 0.5020555
+    D2: 0.4979445
+  Smoothed dominance:
+    D1: 0.5015428
+    D2: 0.4978911
+  Dominance delta (D1 - D2): 0.0036517
+  Winner: D1
+  Winner value: 0.5015428
+[2026-01-13 18:02:36] [POKE] striatum 1.0
+[2026-01-13 18:02:36] [POKE] striatum 1.0
+[2026-01-13 18:02:36] [POKE] striatum 1.0
+[2026-01-13 18:02:37] [POKE] striatum 1.0
+[2026-01-13 18:02:37] [POKE] striatum 1.0
+[2026-01-13 18:02:37] [STRIATUM] integrate_10
+[2026-01-13 18:02:37] STRIATUM @ t=6.320
+winner=D1
+D1=0.5021
+D2=0.4977
+[2026-01-13 18:02:37] [STRIATUM_DIAG] integrate_10
+[2026-01-13 18:02:37] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3285620
+    D2: 0.3252957
+  Instantaneous dominance:
+    D1: 0.5024977
+    D2: 0.4975023
+  Smoothed dominance:
+    D1: 0.5021225
+    D2: 0.4976761
+  Dominance delta (D1 - D2): 0.0044464
+  Winner: D1
+  Winner value: 0.5021225
+[2026-01-13 18:02:37] [POKE] striatum 1.0
+[2026-01-13 18:02:37] [POKE] striatum 1.0
+[2026-01-13 18:02:38] [POKE] striatum 1.0
+[2026-01-13 18:02:38] [POKE] striatum 1.0
+[2026-01-13 18:02:38] [POKE] striatum 1.0
+[2026-01-13 18:02:38] [STRIATUM] integrate_15
+[2026-01-13 18:02:38] STRIATUM @ t=7.080
+winner=D1
+D1=0.5027
+D2=0.4973
+[2026-01-13 18:02:38] [STRIATUM_DIAG] integrate_15
+[2026-01-13 18:02:38] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.1212690
+    D2: 0.1206157
+  Instantaneous dominance:
+    D1: 0.5013505
+    D2: 0.4986495
+  Smoothed dominance:
+    D1: 0.5026473
+    D2: 0.4972801
+  Dominance delta (D1 - D2): 0.0053673
+  Winner: D1
+  Winner value: 0.5026473
+[2026-01-13 18:02:38] [POKE] striatum 1.0
+[2026-01-13 18:02:39] [POKE] striatum 1.0
+[2026-01-13 18:02:39] [POKE] striatum 1.0
+[2026-01-13 18:02:39] [POKE] striatum 1.0
+[2026-01-13 18:02:40] [POKE] striatum 1.0
+[2026-01-13 18:02:40] [STRIATUM] integrate_20
+[2026-01-13 18:02:40] STRIATUM @ t=7.820
+winner=D1
+D1=0.5231
+D2=0.4769
+[2026-01-13 18:02:40] [STRIATUM_DIAG] integrate_20
+[2026-01-13 18:02:40] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.0000010
+    D2: 0.0000010
+  Instantaneous dominance:
+    D1: 0.5000000
+    D2: 0.5000000
+  Smoothed dominance:
+    D1: 0.5227463
+    D2: 0.4772268
+  Dominance delta (D1 - D2): 0.0455195
+  Winner: D1
+  Winner value: 0.5227463
+[2026-01-13 18:02:44] [STRIATUM] integrate_decay
+[2026-01-13 18:02:44] STRIATUM @ t=9.650
+winner=D2
+D2=0.5059
+D1=0.4941
+[2026-01-13 18:02:44] [STRIATUM_DIAG] integrate_decay
+[2026-01-13 18:02:44] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.2342975
+    D2: 0.2358057
+  Instantaneous dominance:
+    D1: 0.4983959
+    D2: 0.5016041
+  Smoothed dominance:
+    D1: 0.4942316
+    D2: 0.5057661
+  Dominance delta (D1 - D2): -0.0115345
+  Winner: D2
+  Winner value: 0.5057661
+[2026-01-13 18:02:44] [TEST 2] Complete
+[2026-01-13 18:02:44] === TEST COMPLETE ===
+[2026-01-13 18:28:59] === BEGIN TEST 2 — TIME INTEGRATION ONLY ===
+[2026-01-13 18:28:59] [BASELINE] Stabilization
+[2026-01-13 18:29:05] [SNAPSHOT] baseline :: pfc
+[2026-01-13 18:29:05] pfc MASS=12.5620 MEAN=0.0163 STD=0.0001 N=800
+[2026-01-13 18:29:05] [SNAPSHOT] baseline :: striatum
+[2026-01-13 18:29:05] striatum MASS=2.3566 MEAN=0.0163 STD=0.0001 N=150
+[2026-01-13 18:29:05] [SNAPSHOT] baseline :: gpi
+[2026-01-13 18:29:05] gpi MASS=23.6418 MEAN=0.8555 STD=0.0003 N=25
+[2026-01-13 18:29:05] [CONTEXT] baseline
+[2026-01-13 18:29:05] CONTEXT EMPTY
+[2026-01-13 18:29:05] [STRIATUM] baseline
+[2026-01-13 18:29:05] STRIATUM @ t=4.140
+winner=D1
+D1=0.4984
+D2=0.4978
+[2026-01-13 18:29:05] [STRIATUM_DIAG] baseline
+[2026-01-13 18:29:05] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.7872868
+    D2: 0.7860222
+  Instantaneous dominance:
+    D1: 0.5004019
+    D2: 0.4995981
+  Smoothed dominance:
+    D1: 0.4984206
+    D2: 0.4978218
+  Dominance delta (D1 - D2): 0.0005988
+  Winner: D1
+  Winner value: 0.4984206
+[2026-01-13 18:29:05] [TEST 2] Time-integration (many small striatal pokes)
+[2026-01-13 18:29:05] [POKE] striatum 1.0
+[2026-01-13 18:29:05] [POKE] striatum 1.0
+[2026-01-13 18:29:05] [POKE] striatum 1.0
+[2026-01-13 18:29:06] [POKE] striatum 1.0
+[2026-01-13 18:29:06] [POKE] striatum 1.0
+[2026-01-13 18:29:06] [STRIATUM] integrate_5
+[2026-01-13 18:29:06] STRIATUM @ t=4.850
+winner=D1
+D1=0.4997
+D2=0.4988
+[2026-01-13 18:29:06] [STRIATUM_DIAG] integrate_5
+[2026-01-13 18:29:06] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.5523581
+    D2: 0.5500414
+  Instantaneous dominance:
+    D1: 0.5010508
+    D2: 0.4989492
+  Smoothed dominance:
+    D1: 0.4997622
+    D2: 0.4987889
+  Dominance delta (D1 - D2): 0.0009733
+  Winner: D1
+  Winner value: 0.4997622
+[2026-01-13 18:29:06] [POKE] striatum 1.0
+[2026-01-13 18:29:07] [POKE] striatum 1.0
+[2026-01-13 18:29:07] [POKE] striatum 1.0
+[2026-01-13 18:29:07] [POKE] striatum 1.0
+[2026-01-13 18:29:07] [POKE] striatum 1.0
+[2026-01-13 18:29:08] [STRIATUM] integrate_10
+[2026-01-13 18:29:08] STRIATUM @ t=5.560
+winner=D1
+D1=0.5006
+D2=0.4988
+[2026-01-13 18:29:08] [STRIATUM_DIAG] integrate_10
+[2026-01-13 18:29:08] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3295671
+    D2: 0.3282829
+  Instantaneous dominance:
+    D1: 0.5009760
+    D2: 0.4990240
+  Smoothed dominance:
+    D1: 0.5006167
+    D2: 0.4988247
+  Dominance delta (D1 - D2): 0.0017920
+  Winner: D1
+  Winner value: 0.5006167
+[2026-01-13 18:29:08] [POKE] striatum 1.0
+[2026-01-13 18:29:08] [POKE] striatum 1.0
+[2026-01-13 18:29:08] [POKE] striatum 1.0
+[2026-01-13 18:29:08] [POKE] striatum 1.0
+[2026-01-13 18:29:09] [POKE] striatum 1.0
+[2026-01-13 18:29:09] [STRIATUM] integrate_15
+[2026-01-13 18:29:09] STRIATUM @ t=6.290
+winner=D1
+D1=0.5016
+D2=0.4982
+[2026-01-13 18:29:09] [STRIATUM_DIAG] integrate_15
+[2026-01-13 18:29:09] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.1313851
+    D2: 0.1299562
+  Instantaneous dominance:
+    D1: 0.5027337
+    D2: 0.4972663
+  Smoothed dominance:
+    D1: 0.5016884
+    D2: 0.4981075
+  Dominance delta (D1 - D2): 0.0035809
+  Winner: D1
+  Winner value: 0.5016884
+[2026-01-13 18:29:09] [POKE] striatum 1.0
+[2026-01-13 18:29:09] [POKE] striatum 1.0
+[2026-01-13 18:29:09] [POKE] striatum 1.0
+[2026-01-13 18:29:10] [POKE] striatum 1.0
+[2026-01-13 18:29:10] [POKE] striatum 1.0
+[2026-01-13 18:29:10] [STRIATUM] integrate_20
+[2026-01-13 18:29:10] STRIATUM @ t=7.060
+winner=D2
+D2=0.5067
+D1=0.4932
+[2026-01-13 18:29:10] [STRIATUM_DIAG] integrate_20
+[2026-01-13 18:29:10] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.0000010
+    D2: 0.0000651
+  Instantaneous dominance:
+    D1: 0.0151254
+    D2: 0.9848746
+  Smoothed dominance:
+    D1: 0.4868561
+    D2: 0.5130693
+  Dominance delta (D1 - D2): -0.0262133
+  Winner: D2
+  Winner value: 0.5130693
+[2026-01-13 18:29:14] [STRIATUM] integrate_decay
+[2026-01-13 18:29:14] STRIATUM @ t=9.250
+winner=D2
+D2=0.5064
+D1=0.4936
+[2026-01-13 18:29:14] [STRIATUM_DIAG] integrate_decay
+[2026-01-13 18:29:14] CompetitionKernel diagnostics
+  Raw channel output:
+    D1: 0.3282396
+    D2: 0.3255418
+  Instantaneous dominance:
+    D1: 0.5020632
+    D2: 0.4979368
+  Smoothed dominance:
+    D1: 0.4936859
+    D2: 0.5063102
+  Dominance delta (D1 - D2): -0.0126243
+  Winner: D2
+  Winner value: 0.5063102
+[2026-01-13 18:29:14] [TEST 2] Complete
+[2026-01-13 18:29:14] === TEST COMPLETE ===

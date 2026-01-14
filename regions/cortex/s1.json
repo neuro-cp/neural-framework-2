@@ -1,8 +1,8 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "RegionSubstructure",
   "region_id": "S1",
-  "parent_region": "CORTEX",
+  "parent_region": "cortex_base",
 
   "function": "somatosensory_processing",
 
@@ -31,7 +31,7 @@
 
       "modulatory_inputs": [
         {
-          "source_region": "PULVINAR",
+          "source_region": "pulvinar",
           "role": "cross_modal_attention_bias",
           "strength": 0.4
         }
@@ -68,7 +68,7 @@
 
   "inputs": [
     {
-      "source_region": "VPL",
+      "source_region": "vpl",
       "target_population": "L4_EXCITATORY",
       "strength": 1.0
     }
@@ -76,15 +76,15 @@
 
   "outputs": [
     {
-      "target_region": "ASSOCIATION_CORTEX",
+      "target_region": "association_cortex",
       "strength": 0.6
     },
     {
-      "target_region": "THALAMUS",
+      "target_region": "trn",
       "source_population": "L6_PYRAMIDAL",
       "strength": 0.4
     }
   ],
 
-  "notes": "Primary somatosensory cortex. VPL provides feedforward sensory drive to layer 4. Pulvinar supplies modulatory, cross-modal attentional bias to supragranular layers (L2/3) without directly driving sensory activation. Corticothalamic feedback originates from layer 6."
+  "notes": "Primary somatosensory cortex. VPL provides feedforward sensory drive to layer 4. Pulvinar supplies modulatory, cross-modal attentional bias to supragranular layers (L2/3) without directly driving sensory activation. Corticothalamic feedback originates from layer 6 and targets TRN for thalamic gating."
 }

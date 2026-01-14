@@ -18,6 +18,8 @@
       "neuron_type": "inhibitory",
       "sign": -1.0,
 
+      "subpopulation": "D1",
+
       "dynamics": {
         "baseline": 0.02,
         "tau": 15.0,
@@ -47,6 +49,8 @@
       "neuron_type": "inhibitory",
       "sign": -1.0,
 
+      "subpopulation": "D2",
+      
       "dynamics": {
         "baseline": 0.02,
         "tau": 15.0,

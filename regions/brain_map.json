@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "BrainMap",
   "description": "Hierarchical anatomical map of brain regions and substructures",
 
@@ -22,7 +22,6 @@
   },
 
   "regions": {
-
     "CORTEX": {
       "category": "laminar_cortex",
       "folder": "cortex",
@@ -40,13 +39,16 @@
 
     "THALAMUS": {
       "category": "relay_nuclei",
-      "folder": "thalamus",
+      "folder": "diencephalon/thalamus",
       "description": "Thalamic relay and association nuclei",
       "subregions": {
         "VPL": { "file": "vpl.json", "function": "somatosensory_relay" },
         "VPM": { "file": "vpm.json", "function": "facial_sensory_relay" },
         "MD": { "file": "md.json", "function": "prefrontal_relay" },
-        "PULVINAR": { "file": "pulvinar.json", "function": "visual_attention" }
+        "PULVINAR": { "file": "pulvinar.json", "function": "visual_attention" },
+        "LGN": { "file": "lgn.json", "function": "visual_relay" },
+        "MGB": { "file": "mgb.json", "function": "auditory_relay" },
+        "TRN": { "file": "trn.json", "function": "thalamic_inhibition" }
       }
     },
 
@@ -56,10 +58,10 @@
       "description": "Motor and cognitive gating circuits",
       "subregions": {
         "STRIATUM": { "file": "striatum.json", "function": "input_integration" },
-        "GPe": { "file": "gpe.json", "function": "indirect_pathway" },
-        "GPi": { "file": "gpi.json", "function": "output_nucleus" },
+        "GPE": { "file": "gpe.json", "function": "indirect_pathway" },
+        "GPI": { "file": "gpi.json", "function": "output_nucleus" },
         "STN": { "file": "stn.json", "function": "hyperdirect_pathway" },
-        "SNc": { "file": "snc.json", "function": "dopaminergic_modulation" }
+        "SNC": { "file": "snc.json", "function": "dopaminergic_modulation" }
       }
     },
 
@@ -104,7 +106,7 @@
       "folder": "cerebellum",
       "description": "Motor coordination and predictive timing",
       "subregions": {
-        "CEREBELLAR_CORTEX": { "file": "cortex.json", "function": "prediction" },
+        "CEREBELLAR_CORTEX": { "file": "cerebellar_cortex.json", "function": "prediction" },
         "DEEP_NUCLEI": { "file": "deep_nuclei.json", "function": "output" }
       }
     },

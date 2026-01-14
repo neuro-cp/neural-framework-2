@@ -1,8 +1,8 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "RegionSubstructure",
-  "region_id": "CA1",
-  "parent_region": "HIPPOCAMPAL_FORMATION",
+  "region_id": "ca1",
+  "parent_region": "hip_base",
 
   "function": "memory_output_integration",
 
@@ -35,7 +35,7 @@
       },
 
       "baseline_firing_rate_hz": 0.5,
-      "tonic_drive": 0.020,
+      "tonic_drive": 0.02,
       "excitability_gain": 0.75,
       "firing_threshold": 0.06,
       "activity_clamp_max": 4.5,
@@ -63,7 +63,7 @@
       },
 
       "baseline_firing_rate_hz": 7.0,
-      "tonic_drive": 0.010,
+      "tonic_drive": 0.01,
       "excitability_gain": 1.1,
       "firing_threshold": 0.03,
       "activity_clamp_max": 3.5,
@@ -76,13 +76,13 @@
 
   "inputs": [
     {
-      "source_region": "CA3",
+      "source_region": "ca3",
       "source_population": "PYRAMIDAL_CELLS",
       "pathway": "schaffer_collaterals",
       "strength": 0.8
     },
     {
-      "source_region": "CORTEX",
+      "source_region": "pfc",
       "source_population": "L2_3_PYRAMIDAL",
       "pathway": "temporoammonic",
       "strength": 0.4
@@ -91,7 +91,7 @@
 
   "outputs": [
     {
-      "target_region": "SUBICULUM",
+      "target_region": "subiculum",
       "target_population": "PYRAMIDAL_CELLS",
       "strength": 0.9
     }
@@ -103,5 +103,5 @@
     "gabaergic_agents": "moderate"
   },
 
-  "notes": "CA1 integrates Schaffer collateral input from CA3 and temporoammonic input from cortex before projecting to subiculum."
+  "notes": "CA1 integrates Schaffer collateral input from CA3 and temporoammonic-like cortical input (mapped to pfc in this simplified cortex) before projecting to subiculum."
 }

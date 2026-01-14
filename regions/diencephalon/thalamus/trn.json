@@ -1,8 +1,8 @@
 {
-  "version": "1.6.0",
+  "version": "1.6.1",
   "type": "RegionSubstructure",
-  "region_id": "TRN",
-  "parent_region": "THALAMUS",
+  "region_id": "trn",
+  "parent_region": "thalamus_base",
 
   "function": "thalamic_relay_inhibitory_gate",
 
@@ -37,14 +37,12 @@
       "clamp_max": 1.0,
 
       "subpopulations": {
-
         "FOCUSED_GATES": {
           "fraction": 0.55,
           "role": "selective_relay_suppression",
           "target_specificity": "high",
           "scope": "local",
-
-          "description": "Implements focused inhibition of specific thalamic relay nuclei under top-down control"
+          "description": "Implements focused inhibition of specific thalamic relay nuclei under top-down control."
         },
 
         "GLOBAL_GATES": {
@@ -52,8 +50,7 @@
           "role": "global_thalamic_dampening",
           "target_specificity": "broad",
           "scope": "global",
-
-          "description": "Provides diffuse inhibitory suppression across thalamus during overload or disengagement"
+          "description": "Provides diffuse inhibitory suppression across thalamus during overload or disengagement."
         },
 
         "RHYTHMIC_PLACEHOLDERS": {
@@ -64,7 +61,7 @@
           "oscillatory_capable": true,
           "declarative_only": true,
 
-          "description": "Encodes intent for rhythmic gating (e.g. spindles) but generates no oscillations at checkpoint 6"
+          "description": "Encodes intent for rhythmic gating (e.g. spindles) but generates no oscillations at this checkpoint."
         }
       }
     }
@@ -72,29 +69,29 @@
 
   "inputs": [
     {
-      "source_region": "CORTEX",
+      "source_region": "pfc",
       "signal": "top_down_gating_bias",
       "strength": 0.5
     },
     {
-      "source_region": "MD",
+      "source_region": "md",
       "signal": "executive_state_bias",
       "strength": 0.4
     },
     {
-      "source_region": "PULVINAR",
+      "source_region": "pulvinar",
       "signal": "salience_bias",
       "strength": 0.4
     }
   ],
 
   "outputs": [
-    { "target_region": "LGN", "strength": 0.6 },
-    { "target_region": "MGB", "strength": 0.6 },
-    { "target_region": "VPL", "strength": 0.6 },
-    { "target_region": "VPM", "strength": 0.6 },
-    { "target_region": "MD",  "strength": 0.6 },
-    { "target_region": "PULVINAR", "strength": 0.6 }
+    { "target_region": "lgn", "strength": 0.6 },
+    { "target_region": "mgb", "strength": 0.6 },
+    { "target_region": "vpl", "strength": 0.6 },
+    { "target_region": "vpm", "strength": 0.6 },
+    { "target_region": "md",  "strength": 0.6 },
+    { "target_region": "pulvinar", "strength": 0.6 }
   ],
 
   "functional_roles": {
@@ -132,8 +129,8 @@
   "notes": [
     "TRN is a pure inhibitory shell governing thalamic relay nuclei.",
     "It never projects to cortex and never acts as a relay.",
-    "All rhythmic and state-dependent fields are declarative only at checkpoint 6.",
+    "All rhythmic and state-dependent fields are declarative only at this checkpoint.",
     "No internal competition or oscillatory dynamics are implemented.",
-    "TRN enforces thalamocortical gating strictly via inhibitory input injection."
+    "TRN enforces thalamocortical gating strictly via inhibitory output to relay nuclei."
   ]
 }

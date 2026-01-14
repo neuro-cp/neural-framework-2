@@ -1,7 +1,7 @@
 import socket
 import time
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence
 
 
 # ============================================================
@@ -13,6 +13,8 @@ PORT = 5557
 
 LOG_PATH = Path(r"C:\Users\Admin\Desktop\neural framework\runtime_log.txt")
 
+DT = 0.01  # must match BrainRuntime(dt=0.01) in test_runtime/testing harness
+
 BASELINE_STEPS = 300        # ~3s @ dt=0.01
 SHORT_DELAY = 150           # ~1.5s
 RECOVERY_DELAY = 400        # ~4s
@@ -20,21 +22,23 @@ RECOVERY_DELAY = 400        # ~4s
 POKE_MAG = 25.0
 TOP_N = 5
 
-REGIONS = ("vpl", "s1", "trn")
+# For BG→GPi→MD gating semantics (current milestone)
+REGIONS: Sequence[str] = ("striatum", "gpi", "md", "pfc")
 
 
 # ============================================================
 # SOCKET HELPERS
 # ============================================================
 
-def _send(cmd: str, expect_reply: bool = True) -> str:
+def _send(cmd: str) -> str:
+    """
+    Send a single command and return the reply (best effort).
+    """
     with socket.create_connection((HOST, PORT), timeout=3) as sock:
-        sock.sendall((cmd + "\n").encode("utf-8"))
-        if not expect_reply:
-            return ""
-        sock.settimeout(1.0)
+        sock.sendall((cmd.strip() + "\n").encode("utf-8"))
+        sock.settimeout(2.0)
         try:
-            return sock.recv(4096).decode("utf-8").strip()
+            return sock.recv(4096).decode("utf-8", errors="replace").strip()
         except Exception:
             return ""
 
@@ -43,7 +47,7 @@ def _send(cmd: str, expect_reply: bool = True) -> str:
 # LOGGING
 # ============================================================
 
-def log(line: str):
+def log(line: str) -> None:
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     msg = f"[{ts}] {line}"
     print(msg)
@@ -51,82 +55,96 @@ def log(line: str):
         f.write(msg + "\n")
 
 
-def snapshot(label: str, regions: Iterable[str]):
+def snapshot(label: str, regions: Iterable[str]) -> None:
     log(f"[SNAPSHOT] {label}")
+
+    # New: semantic observability
+    gate = _send("gate")
+    if gate:
+        for ln in gate.splitlines():
+            log(f"[GATE] {ln}")
+
+    stri = _send("striatum")
+    if stri:
+        for ln in stri.splitlines():
+            log(f"[STRI] {ln}")
+
+    ctx = _send("ctx")
+    if ctx:
+        for ln in ctx.splitlines():
+            log(f"[CTX] {ln}")
+
+    # Per-region stats + tops
     for r in regions:
         stats = _send(f"stats {r}")
         if stats:
             log(f"[STATS] {stats}")
+
         top = _send(f"top {r} {TOP_N}")
         if top:
             log(f"[TOP] {r} :: {top}")
 
 
-def poke(region: str, mag: float):
-    _send(f"poke {region} {mag}", expect_reply=False)
-    log(f"[POKE] {region} {mag}")
+def poke(region: str, mag: float) -> None:
+    rep = _send(f"poke {region} {mag}")
+    log(f"[POKE] {region} {mag} :: {rep or 'OK'}")
 
 
-def wait_steps(n: int):
+def wait_steps(n: int) -> None:
     # runtime runs independently; we just wait wall time
-    time.sleep(n * 0.01)
+    time.sleep(n * DT)
 
 
 # ============================================================
 # EXPERIMENT
 # ============================================================
 
-log("=== BEGIN THALAMOCORTICAL GATING PROBE ===")
+log("=== BEGIN BG→GPi→MD GATING PROBE ===")
 
 # ------------------------------------------------------------
 # A. BASELINE
 # ------------------------------------------------------------
-
 log("[A] Baseline stabilization")
 wait_steps(BASELINE_STEPS)
 snapshot("baseline", REGIONS)
 
 # ------------------------------------------------------------
-# B. VPL RELAY DRIVE
+# B. STRIATUM DRIVE (force a decision pressure)
 # ------------------------------------------------------------
-
-log("[B] VPL relay excitation (feedforward sensory)")
-poke("vpl", POKE_MAG)
+log("[B] Striatum excitation (decision pressure)")
+poke("striatum", POKE_MAG)
 
 wait_steps(SHORT_DELAY)
-snapshot("post_vpl_short", REGIONS)
+snapshot("post_striatum_short", REGIONS)
 
 wait_steps(RECOVERY_DELAY)
-snapshot("post_vpl_recovery", REGIONS)
+snapshot("post_striatum_recovery", REGIONS)
 
 # ------------------------------------------------------------
-# C. TRN INHIBITION
+# C. GPi PULSE (should suppress MD if your gate is correct)
 # ------------------------------------------------------------
-
-log("[C] TRN inhibitory pulse (gating suppression)")
-poke("trn", POKE_MAG)
+log("[C] GPi inhibitory output pulse (should suppress MD relay)")
+poke("gpi", POKE_MAG)
 
 wait_steps(SHORT_DELAY)
-snapshot("post_trn_short", REGIONS)
+snapshot("post_gpi_short", REGIONS)
 
 wait_steps(RECOVERY_DELAY)
-snapshot("post_trn_recovery", REGIONS)
+snapshot("post_gpi_recovery", REGIONS)
 
 # ------------------------------------------------------------
-# D. CORTICOTHALAMIC FEEDBACK
+# D. MD PULSE (sanity check thalamus responds)
 # ------------------------------------------------------------
-
-log("[D] S1 corticothalamic feedback (top-down bias)")
-poke("s1", POKE_MAG)
+log("[D] MD relay excitation (sanity check)")
+poke("md", POKE_MAG)
 
 wait_steps(SHORT_DELAY)
-snapshot("post_s1_short", REGIONS)
+snapshot("post_md_short", REGIONS)
 
 wait_steps(RECOVERY_DELAY)
-snapshot("post_s1_recovery", REGIONS)
+snapshot("post_md_recovery", REGIONS)
 
 # ------------------------------------------------------------
 # END
 # ------------------------------------------------------------
-
 log("=== EXPERIMENT COMPLETE ===")

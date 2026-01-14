@@ -1,8 +1,8 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "RegionSubstructure",
-  "region_id": "VTA",
-  "parent_region": "BRAINSTEM",
+  "region_id": "vta",
+  "parent_region": "brainstem_base",
 
   "function": "dopaminergic_reward_modulation",
 
@@ -11,10 +11,10 @@
   },
 
   "populations": {
-
     "DOPAMINERGIC_NEURONS": {
       "count": 20000,
       "neuron_type": "neuromodulatory",
+      "sign": 1.0,
 
       "channels": {
         "NaV_FAST": 0.7,
@@ -74,18 +74,18 @@
 
   "outputs": [
     {
-      "target_region": "STRIATUM",
+      "target_region": "striatum",
       "signal": "dopamine_tone",
       "strength": 1.0
     },
     {
-      "target_region": "CORTEX",
+      "target_region": "pfc",
       "target_population": "L2_3_PYRAMIDAL",
       "signal": "dopamine_tone",
       "strength": 0.6
     },
     {
-      "target_region": "CA1",
+      "target_region": "ca1",
       "target_population": "PYRAMIDAL_CELLS",
       "signal": "dopamine_tone",
       "strength": 0.4
@@ -97,5 +97,7 @@
     "opioids": "high",
     "gabaergic_agents": "high",
     "antipsychotics": "very_high"
-  }
+  },
+
+  "notes": "Normalized IDs to match loader/runtime keys: region_id=vta, parent_region=brainstem_base, outputs route 'CORTEX' -> pfc to avoid unresolved target warnings while cortex routing remains hub-based."
 }

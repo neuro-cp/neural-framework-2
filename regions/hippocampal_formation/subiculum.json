@@ -1,8 +1,8 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "RegionSubstructure",
-  "region_id": "SUBICULUM",
-  "parent_region": "HIPPOCAMPAL_FORMATION",
+  "region_id": "subiculum",
+  "parent_region": "hip_base",
 
   "function": "memory_distribution",
 
@@ -15,6 +15,7 @@
     "PYRAMIDAL_CELLS": {
       "count": 30000,
       "neuron_type": "excitatory",
+      "sign": 1.0,
 
       "channels": {
         "NaV_FAST": 0.75,
@@ -38,7 +39,7 @@
 
   "inputs": [
     {
-      "source_region": "CA1",
+      "source_region": "ca1",
       "source_population": "PYRAMIDAL_CELLS",
       "strength": 0.9
     }
@@ -46,12 +47,12 @@
 
   "outputs": [
     {
-      "target_region": "CORTEX",
+      "target_region": "pfc",
       "target_population": "L5_PYRAMIDAL",
       "strength": 0.6
     },
     {
-      "target_region": "BLA",
+      "target_region": "bla",
       "target_population": "PYRAMIDAL_CELLS",
       "strength": 0.4
     }

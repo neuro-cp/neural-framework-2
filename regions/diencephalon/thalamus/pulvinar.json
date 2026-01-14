@@ -1,8 +1,8 @@
 {
-  "version": "1.3.0",
+  "version": "1.3.1",
   "type": "RegionSubstructure",
-  "region_id": "PULVINAR",
-  "parent_region": "THALAMUS",
+  "region_id": "pulvinar",
+  "parent_region": "thalamus_base",
 
   "function": "associative_thalamic_attention_and_cross_modal_gating",
 
@@ -22,7 +22,7 @@
       "baseline_firing_rate_hz": 3.0,
       "plasticity_profile": "medium",
 
-      "receives_inhibition_from": ["TRN", "GPi"],
+      "receives_inhibition_from": ["trn", "gpi"],
 
       "subpopulations": {
         "VISUAL_COORDINATION_UNITS": {
@@ -54,18 +54,18 @@
 
   "inputs": [
     {
-      "source_region": "CORTEX",
+      "source_region": "pfc",
       "source_population": "L6_PYRAMIDAL",
       "signal": "top_down_attention",
       "strength": 0.5
     },
     {
-      "source_region": "LGN",
+      "source_region": "lgn",
       "signal": "visual_relay_context",
       "strength": 0.4
     },
     {
-      "source_region": "SUPERIOR_COLLICULUS",
+      "source_region": "superior_colliculus",
       "signal": "salience_and_orientation",
       "strength": 0.3
     }
@@ -73,17 +73,17 @@
 
   "outputs": [
     {
-      "target_region": "V1",
+      "target_region": "v1",
       "target_population": "L2_3_PYRAMIDAL",
       "strength": 0.8
     },
     {
-      "target_region": "S1",
+      "target_region": "s1",
       "target_population": "L2_3_PYRAMIDAL",
       "strength": 0.4
     },
     {
-      "target_region": "ASSOCIATION_CORTEX",
+      "target_region": "association_cortex",
       "strength": 0.5
     }
   ],

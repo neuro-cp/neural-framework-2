@@ -1,8 +1,8 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "RegionSubstructure",
-  "region_id": "V1",
-  "parent_region": "CORTEX",
+  "region_id": "v1",
+  "parent_region": "cortex_base",
 
   "function": "visual_feature_extraction",
 
@@ -12,7 +12,6 @@
   },
 
   "populations": {
-
     "L4_EXCITATORY": {
       "count": 80000,
       "layer": "L4",
@@ -58,7 +57,7 @@
 
       "modulatory_inputs": [
         {
-          "source_region": "PULVINAR",
+          "source_region": "pulvinar",
           "role": "contextual_attention_bias",
           "strength": 0.4
         }
@@ -125,7 +124,7 @@
 
   "inputs": [
     {
-      "source_region": "LGN",
+      "source_region": "lgn",
       "target_population": "L4_EXCITATORY",
       "strength": 0.9
     }
@@ -133,20 +132,20 @@
 
   "outputs": [
     {
-      "target_region": "CORTEX",
+      "target_region": "pfc",
       "strength": 0.7
     },
     {
-      "target_region": "PULVINAR",
+      "target_region": "pulvinar",
       "strength": 0.45
     },
     {
-      "target_region": "LGN",
+      "target_region": "lgn",
       "source_population": "L6_PYRAMIDAL",
       "strength": 0.35
     },
     {
-      "target_region": "V1",
+      "target_region": "v1",
       "strength": 0.15
     }
   ],
@@ -157,5 +156,5 @@
     "psychedelics": "moderate"
   },
 
-  "notes": "V1 extracts visual features via LGN-driven layer 4 input. Pulvinar provides contextual and attentional modulation to supragranular layers (L2/3) without directly driving sensory activation. This preserves feedforward dominance while enabling top-down and cross-modal biasing."
+  "notes": "V1 extracts visual features via LGN-driven layer 4 input. Pulvinar provides contextual/attentional modulation to supragranular layers (L2/3) without directly driving sensory activation. Outputs are routed to pfc as the current cortex integration hub in this build; later this can be upgraded to a cortex router/association target."
 }

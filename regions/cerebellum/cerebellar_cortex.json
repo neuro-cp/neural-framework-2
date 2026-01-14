@@ -1,8 +1,8 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "RegionSubstructure",
-  "region_id": "CEREBELLAR_CORTEX",
-  "parent_region": "CEREBELLUM",
+  "region_id": "cerebellar_cortex",
+  "parent_region": "cerebellum_base",
 
   "function": "prediction_and_error_learning",
 
@@ -55,12 +55,12 @@
 
   "inputs": [
     {
-      "source_region": "CORTEX",
+      "source_region": "pfc",
       "signal": "motor_intent_context",
       "strength": 0.6
     },
     {
-      "source_region": "BRAINSTEM",
+      "source_region": "brainstem_base",
       "signal": "prediction_error",
       "strength": 1.0
     }
@@ -68,7 +68,7 @@
 
   "outputs": [
     {
-      "target_region": "DEEP_NUCLEI",
+      "target_region": "deep_nuclei",
       "strength": 1.0
     }
   ],
@@ -77,5 +77,7 @@
     "ethanol": "very_high",
     "sedatives": "high",
     "calcium_channel_blockers": "high"
-  }
+  },
+
+  "notes": "Normalized IDs to runtime-loaded region keys. 'CORTEX' and 'BRAINSTEM' are routed to current integration hubs (pfc, brainstem_base) to avoid unresolved references; when a cortex/brainstem router exists, these can be promoted back to hierarchical targets."
 }

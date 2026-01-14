@@ -35,22 +35,19 @@ class BrainRuntime:
     """
     Ground-truth dynamical runtime.
 
-    CORE INVARIANTS:
-    - Physiology integrates first
-    - Competition redistributes activity only
-    - Persistence is EPHEMERAL (no parameter mutation)
-    - Context is gain-only (no direct activity injection)
-    - No hidden learning paths
+    EXECUTION ORDER (AUTHORITATIVE):
+      1. Reset inputs + apply stimuli
+      2. Physiology update
+      3. PFC → RuntimeContext injection
+      4. Striatum competition + BG persistence
+      5. Context decay
+      6. GPi disinhibition
+      7. Connectivity propagation + Thalamic gating
     """
-
-    # --------------------------------------------------------
-    # Initialization
-    # --------------------------------------------------------
 
     def __init__(self, brain: Dict[str, Any], dt: float = 0.01):
         self.brain = brain
         self.dt = float(dt)
-
         self.time = 0.0
         self.step_count = 0
 
@@ -64,20 +61,19 @@ class BrainRuntime:
         # Assembly authority
         # -----------------------------
         self.assembly_control = self._load_assembly_control()
-        self._debug_assembly_authority()
 
         # -----------------------------
-        # Competition kernel (NO persistence inside kernel)
+        # Competition kernel
         # -----------------------------
         self.enable_competition = True
         self.competition_kernel = CompetitionKernel(
-            inhibition_strength=0.35,
-            persistence_gain=0.0,
-            dominance_tau=0.25,
+            inhibition_strength=0.55,
+            persistence_gain=0.15,
+            dominance_tau=0.75,
         )
 
         # -----------------------------
-        # Basal ganglia persistence (external, ephemeral)
+        # Basal ganglia persistence
         # -----------------------------
         self.enable_persistence = True
         self.bg_persistence = BasalGangliaPersistence(
@@ -86,24 +82,25 @@ class BrainRuntime:
         )
 
         # -----------------------------
-        # Runtime context (ephemeral cognitive bias)
+        # Runtime context
         # -----------------------------
         self.enable_context = True
         self.context = RuntimeContext(decay_tau=5.0)
 
-        # PFC → context hook
         self.enable_pfc_context = True
         self.pfc_context = PFCContextHook(
-            activity_threshold=0.15,
+            activity_threshold=0.02,
             injection_gain=0.05,
+            target_domain="global",
         )
 
         # -----------------------------
-        # GPi disinhibition
+        # GPi disinhibition / gating
         # -----------------------------
         self.enable_gpi_disinhibition = True
         self.gpi_gain = 0.6
         self.gpi_floor = 0.25
+        self._last_gate_strength: float = 1.0
 
         # -----------------------------
         # Runtime state
@@ -113,12 +110,7 @@ class BrainRuntime:
         self._stim_queue: List[Tuple[str, Optional[str], Optional[int], float]] = []
         self._region_key_by_label: Dict[str, str] = {}
 
-        # Build network
         self._build(brain)
-
-        print("[DEBUG] Runtime initialized")
-        print(f"[DEBUG] Regions built: {len(self.region_states)}")
-        print(f"[DEBUG] Assemblies built: {len(self._all_pops)}")
 
     # ============================================================
     # Assembly Control
@@ -128,7 +120,6 @@ class BrainRuntime:
         path = Path(__file__).parent.parent / "config" / "assembly_control.json"
         if not path.exists():
             return {}
-
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
 
@@ -139,13 +130,7 @@ class BrainRuntime:
                 out[region.lower()] = max(1, n)
             except Exception:
                 pass
-
         return out
-
-    def _debug_assembly_authority(self) -> None:
-        print("[DEBUG] Assembly authority:")
-        for r, n in sorted(self.assembly_control.items()):
-            print(f"  {r}: {n}")
 
     # ============================================================
     # Region Resolution
@@ -162,7 +147,7 @@ class BrainRuntime:
         return self._region_key_by_label.get(_norm(label))
 
     # ============================================================
-    # Build Populations
+    # Build Network
     # ============================================================
 
     def _build(self, brain: Dict[str, Any]) -> None:
@@ -197,22 +182,33 @@ class BrainRuntime:
                         default_assembly_id=f"{region_key}:{pop_id}:{i}",
                         global_defaults=self.global_pop_dyn,
                     )
-
                     plist.append(pop)
                     self._all_pops.append(pop)
 
                 self.region_states[region_key]["populations"][pop_id] = plist
 
     # ============================================================
-    # Step
+    # External Input API
+    # ============================================================
+
+    def inject_stimulus(
+        self,
+        region_id: str,
+        population_id: Optional[str] = None,
+        assembly_index: Optional[int] = None,
+        magnitude: float = 1.0,
+    ) -> None:
+        rk = self._resolve_region_key(region_id) or region_id
+        self._stim_queue.append((rk, population_id, assembly_index, magnitude))
+
+    # ============================================================
+    # STEP
     # ============================================================
 
     def step(self) -> None:
         self.step_count += 1
 
-        # --------------------------------------------------
-        # Phase 1: input reset + stimulus injection
-        # --------------------------------------------------
+        # 1. Reset + stimuli
         for p in self._all_pops:
             p.input = 0.0
 
@@ -222,42 +218,30 @@ class BrainRuntime:
             for plist in targets:
                 for p in plist if idx is None else plist[idx:idx + 1]:
                     p.input += mag
-
         self._stim_queue.clear()
 
-        # --------------------------------------------------
-        # Phase 2: physiology
-        # --------------------------------------------------
-        for pop in self._all_pops:
-            pop.step(self.dt)
+        # 2. Physiology
+        for p in self._all_pops:
+            p.step(self.dt)
 
-        # --------------------------------------------------
-        # Phase 3: PFC → context extraction
-        # --------------------------------------------------
+        # 3. PFC → Context
         if self.enable_context and self.enable_pfc_context:
-            self._step_context_hooks()
+            self._apply_pfc_context()
 
-        # --------------------------------------------------
-        # Phase 4: striatal competition + persistence
-        # --------------------------------------------------
+        # 4. Striatum competition + persistence
         if self.enable_competition:
             self._step_striatum()
 
-        # --------------------------------------------------
-        # Phase 5: context decay
-        # --------------------------------------------------
+        # 5. Context decay
         if self.enable_context:
             self.context.step(self.dt)
 
-        # --------------------------------------------------
-        # Phase 6: GPi disinhibition
-        # --------------------------------------------------
+        # 6. GPi disinhibition
         relief = self._compute_gpi_relief()
+        self._last_gate_strength = relief
 
-        # --------------------------------------------------
-        # Phase 7: corticothalamic drive
-        # --------------------------------------------------
-        self._drive_thalamus(relief)
+        # 7. Connectivity propagation + Thalamic gating
+        self._propagate_connectivity(relief)
 
         self.time += self.dt
 
@@ -265,91 +249,165 @@ class BrainRuntime:
     # Subsystems
     # ============================================================
 
-    def _step_context_hooks(self) -> None:
+    def _apply_pfc_context(self) -> None:
         pfc = self.region_states.get("pfc")
         if not pfc:
             return
-
-        assemblies = [
-            p for plist in pfc["populations"].values() for p in plist
-        ]
-        if not assemblies:
-            return
-
-        self.pfc_context.apply(
-            pfc_assemblies=assemblies,
-            context=self.context,
-        )
+        assemblies = [p for plist in pfc["populations"].values() for p in plist]
+        if assemblies:
+            self.pfc_context.apply(assemblies, self.context)
 
     def _step_striatum(self) -> None:
         striatum = self.region_states.get("striatum")
         if not striatum:
             return
 
+    # --------------------------------------------------
+    # Collect striatal assemblies (D1 / D2 etc.)
+    # --------------------------------------------------
         assemblies = [
-            p for plist in striatum["populations"].values() for p in plist
+            p
+            for _, plist in striatum["populations"].items()
+            for p in plist
+            if getattr(p, "subpopulation", None) is not None
         ]
+
         if not assemblies:
             return
 
-        external_gain: Dict[str, float] = {}
+    # --------------------------------------------------
+    # Context → competition modulation
+    # --------------------------------------------------
+        external_gain = None
+        external_bias = None
 
-        for p in assemblies:
-            gain = 1.0
-            if self.enable_persistence:
-                gain += self.bg_persistence.get_bias(p.assembly_id)
-            if self.enable_context:
-                gain *= self.context.get_gain(p.assembly_id)
+        if self.enable_context:
+            external_gain = {}
+            external_bias = {}
 
-            external_gain[p.assembly_id] = gain
+            for p in assemblies:
+                external_gain[p.assembly_id] = self.context.get_gain(p.assembly_id)
+                external_bias[p.assembly_id] = self.context.get_bias(p.assembly_id)
 
+    # --------------------------------------------------
+    # Striatal competition
+    # --------------------------------------------------
         self.competition_kernel.apply(
             assemblies,
             self.dt,
             external_gain=external_gain,
+            external_bias=external_bias,
         )
-
+    # --------------------------------------------------
+    # Snapshot for diagnostics
+    # --------------------------------------------------
+        self._last_striatum_snapshot = {
+            "winner": self.competition_kernel.last_winner_channel,
+            "dominance": dict(self.competition_kernel.last_dominance_map),
+            "instant": dict(self.competition_kernel.last_instantaneous_map),
+            "time": self.time,
+        }
+    # --------------------------------------------------
+    # Basal ganglia persistence (winner reinforcement)
+    # --------------------------------------------------
         if self.enable_persistence:
             max_out = max(p.output() for p in assemblies)
             for p in assemblies:
                 if p.output() >= max_out * 0.95:
                     self.bg_persistence.reinforce(p.assembly_id, amount=0.02)
-
             self.bg_persistence.step(self.dt)
 
+
+
     def _compute_gpi_relief(self) -> float:
+        """Return disinhibition factor from GPi."""
         if not self.enable_gpi_disinhibition:
             return 1.0
-
         gpi = self.region_states.get("gpi")
         if not gpi:
             return 1.0
-
-        activity = sum(
-            p.output()
-            for plist in gpi["populations"].values()
-            for p in plist
-        )
-
+        activity = sum(p.output()
+                       for plist in gpi["populations"].values()
+                       for p in plist)
         return max(self.gpi_floor, 1.0 - self.gpi_gain * activity)
 
+    # ============================================================
+    # Connectivity + Thalamic Gating
+    # ============================================================
+
+    def _propagate_connectivity(self, relief: float) -> None:
+        """Route signals according to region-def outputs, applying GPi→MD gating."""
+        for src_key, state in self.region_states.items():
+            src_def = state.get("def", {})
+            outputs = src_def.get("outputs", [])
+            if not outputs:
+                continue
+
+            # compute mean output activity of source region
+            src_pops = [p for plist in state["populations"].values() for p in plist]
+            if not src_pops:
+                continue
+            src_drive = sum(p.output() for p in src_pops) / len(src_pops)
+
+            for out in outputs:
+                tgt_label = out.get("target") or out.get("region") or out.get("id")
+                strength = float(out.get("strength", 1.0))
+                if not tgt_label:
+                    continue
+                tgt_key = self._resolve_region_key(tgt_label)
+                if not tgt_key or tgt_key not in self.region_states:
+                    continue
+
+                # special case: GPi→MD gating
+                if src_key.lower() == "gpi" and tgt_key.lower() == "md":
+                    gated_gain = relief  # low GPi → high relay
+                    self._last_gate_strength = gated_gain
+                    self._apply_input_to_region(tgt_key, src_drive * strength * gated_gain)
+                    continue
+
+                # normal projection
+                self._apply_input_to_region(tgt_key, src_drive * strength)
+
+        # After connectivity, thalamic relay to cortex through MD if open
+        self._drive_thalamus(relief)
+
+    def _apply_input_to_region(self, region_key: str, amount: float) -> None:
+        region = self.region_states.get(region_key)
+        if not region:
+            return
+        for plist in region["populations"].values():
+            for p in plist:
+                p.input += amount
+
     def _drive_thalamus(self, relief: float) -> None:
+        """Apply corrected thalamic drive with gating."""
         cortex = self.region_states.get("association_cortex")
         if not cortex:
             return
-
         src = [p for plist in cortex["populations"].values() for p in plist]
         if not src:
             return
 
+        # corrected: variance-based drive magnitude
         mean = sum(p.output() for p in src) / len(src)
-        drive = sum((p.output() - mean) for p in src) / len(src)
+        drive = sum(abs(p.output() - mean) for p in src) / len(src)
 
         for relay in ("lgn", "md", "pulvinar", "vpl", "vpm"):
             th = self.region_states.get(relay)
             if not th:
                 continue
-
             for plist in th["populations"].values():
                 for p in plist:
                     p.input += drive * 0.02 * relief
+
+    # ============================================================
+    # Diagnostics
+    # ============================================================
+
+    def snapshot_gate_state(self) -> Dict[str, float]:
+        """Return minimal gate diagnostics for external monitoring."""
+        return {
+            "time": self.time,
+            "relief": self._last_gate_strength,
+            "winner": getattr(self, "_last_striatum_snapshot", {}).get("winner"),
+        }

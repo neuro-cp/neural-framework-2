@@ -1,3 +1,4 @@
+# engine/population_model.py
 from __future__ import annotations
 
 import random
@@ -23,21 +24,29 @@ def _i(x: Any, default: int) -> int:
         return int(default)
 
 
+def _s(x: Any, default: str = "") -> str:
+    try:
+        return str(x)
+    except Exception:
+        return str(default)
+
+
 # ------------------------------------------------------------
-# Population Model (GROUND-TRUTH, SELF-SUSTAINING)
+# Population Model (GROUND-TRUTH PHYSIOLOGY)
 # ------------------------------------------------------------
 
 @dataclass
 class PopulationModel:
     """
-    Assembly-level dynamics unit.
+    Assembly-level physiological dynamics unit.
 
     CORE INVARIANTS:
-    - Activity is signed and membrane-like
-    - Inhibition acts during integration
-    - Firing rate is rectified and bounded
-    - Populations have intrinsic tonic state
-    - No oscillators, no learning, no hidden state
+    - Signed, membrane-like activity
+    - Rectified, bounded firing rate proxy (unitless for now)
+    - Slow tonic stabilization (prevents collapse)
+    - No learning, no memory, no cognition
+    - Context is NEVER injected here (only via input from runtime)
+    - All transient inputs are cleared each step
     """
 
     # -------------------------
@@ -53,19 +62,19 @@ class PopulationModel:
     # -------------------------
 
     activity: float = 0.0
-    firing_rate: float = 0.0
+    firing_rate: float = 0.0  # proxy output (unitless for now)
 
     # Transient inputs (cleared each step)
     input: float = 0.0
     lateral_inhibition: float = 0.0
 
     # -------------------------
-    # Intrinsic tonic state (NEW)
+    # Intrinsic tonic state
     # -------------------------
 
-    tonic: float = 0.0                 # persistent current
-    tonic_target: float = 0.0          # preferred resting level
-    tonic_gain: float = 0.05           # VERY slow adaptation
+    tonic: float = 0.0
+    tonic_target: float = 0.0
+    tonic_gain: float = 0.02  # very slow
 
     # -------------------------
     # Core dynamics
@@ -96,10 +105,12 @@ class PopulationModel:
     clamp_max: float = 1.0
 
     # -------------------------
-    # Semantic modifiers
+    # Semantic modifiers (static)
     # -------------------------
 
     semantic_role: Optional[str] = None
+    subpopulation: Optional[str] = None
+
     semantic_gain: float = 1.0
     semantic_tau_bias: float = 1.0
     semantic_inhibition_bias: float = 1.0
@@ -116,25 +127,32 @@ class PopulationModel:
         default_assembly_id: str,
         global_defaults: Optional[Dict[str, Any]] = None,
     ) -> "PopulationModel":
+        """
+        Construct a PopulationModel from region JSON population params + global defaults.
 
+        NOTE on baseline_firing_rate_hz:
+        - Treated as a legacy/future artifact. We DO NOT implement Hz physiology here.
+        - We only use it as a fallback numeric baseline if 'baseline' is not provided.
+        """
         g = global_defaults or {}
 
-        def pick(key: str, default: Any):
+        def pick(key: str, default: Any) -> Any:
+            # params wins; then global defaults; then fallback
             return params.get(key, g.get(key, default))
 
-        baseline = _f(
-            pick("baseline", pick("baseline_firing_rate_hz", 0.0)),
-            0.0,
-        )
+        # Baseline selection:
+        # - Prefer explicit "baseline"
+        # - Only fall back to "baseline_firing_rate_hz" if baseline is absent
+        if "baseline" in params or "baseline" in g:
+            baseline = _f(pick("baseline", 0.0), 0.0)
+        else:
+            baseline = _f(pick("baseline_firing_rate_hz", 0.0), 0.0)
 
-        # --- NEW: tonic target defaults ---
-        tonic_target = _f(
-            pick("tonic_target", baseline),
-            baseline,
-        )
+        # tonic_target defaults to baseline (or provided tonic_target)
+        tonic_target = _f(pick("tonic_target", baseline), baseline)
 
         model = cls(
-            assembly_id=str(pick("assembly_id", default_assembly_id)),
+            assembly_id=_s(pick("assembly_id", default_assembly_id), default_assembly_id),
             size=_i(pick("size", pick("neurons", 100)), 100),
             sign=_f(pick("sign", 1.0), 1.0),
 
@@ -149,11 +167,12 @@ class PopulationModel:
             normalization=_f(pick("normalization", 0.0), 0.0),
 
             noise_amplitude=_f(pick("noise_amplitude", 0.0), 0.0),
-            noise_distribution=str(pick("noise_distribution", "gaussian")).lower(),
+            noise_distribution=_s(pick("noise_distribution", "gaussian"), "gaussian").lower(),
 
             clamp_min=_f(pick("clamp_min", -1.0), -1.0),
             clamp_max=_f(pick("clamp_max", 1.0), 1.0),
 
+            # Initialize activity close to baseline by default
             activity=_f(params.get("activity", baseline), baseline),
 
             tonic_target=tonic_target,
@@ -161,9 +180,11 @@ class PopulationModel:
             tonic_gain=_f(pick("tonic_gain", 0.02), 0.02),
         )
 
-        # Semantic modifiers (unchanged)
+        # Semantic tags (static; used by kernels/routing; no dynamics inside model)
         model.semantic_role = params.get("role")
+        model.subpopulation = params.get("subpopulation")
 
+        # Static semantic modifiers (bounded away from 0)
         model.semantic_gain = max(
             0.1,
             1.0
@@ -190,6 +211,7 @@ class PopulationModel:
     # ------------------------------------------------------------
 
     def output(self) -> float:
+        # Proxy for downstream routing/competition (unitless).
         return self.firing_rate
 
     # ------------------------------------------------------------
@@ -201,6 +223,7 @@ class PopulationModel:
             return 0.0
         if self.noise_distribution == "uniform":
             return random.uniform(-self.noise_amplitude, self.noise_amplitude)
+        # default gaussian
         return random.gauss(0.0, self.noise_amplitude)
 
     # ------------------------------------------------------------
@@ -211,12 +234,12 @@ class PopulationModel:
         """
         Advance one timestep.
 
-        Key property:
-        - Tonic state adapts slowly
-        - Activity does NOT collapse to zero
+        Pure physiology:
+        - No cognition
+        - No context
+        - No routing
         """
-
-        # --- Slow tonic adaptation (NEW) ---
+        # Slow tonic stabilization (tracks toward tonic_target, referenced to current activity)
         self.tonic += self.tonic_gain * (self.tonic_target - self.activity)
 
         tau = self.tau * self.semantic_tau_bias
@@ -226,6 +249,7 @@ class PopulationModel:
         homeo = self.homeostatic_gain * (self.baseline - self.activity)
         self_inhib = inhibition_gain * self.activity
 
+        # Signed net drive from input and lateral inhibition
         net_drive = self.sign * (self.input - self.lateral_inhibition)
 
         drive = (
@@ -237,13 +261,19 @@ class PopulationModel:
             + self._sample_noise()
         )
 
-        if tau > 0.0:
-            self.activity += (dt / tau) * (drive - self.activity)
+        # Integrate membrane-like activity
+        if tau > 1e-9:
+            self.activity += (float(dt) / tau) * (drive - self.activity)
         else:
             self.activity = drive
 
-        self.activity = max(self.clamp_min, min(self.activity, self.clamp_max))
+        # Safety clamp on internal activity
+        if self.activity < self.clamp_min:
+            self.activity = self.clamp_min
+        elif self.activity > self.clamp_max:
+            self.activity = self.clamp_max
 
+        # Rectified proxy "firing rate"
         above = self.activity - self.threshold
         if above > 0.0:
             fr = gain * above
@@ -252,7 +282,14 @@ class PopulationModel:
         else:
             fr = 0.0
 
-        self.firing_rate = max(0.0, min(fr, self.max_rate))
+        # Bound output
+        if fr < 0.0:
+            fr = 0.0
+        elif fr > self.max_rate:
+            fr = self.max_rate
 
+        self.firing_rate = fr
+
+        # Clear transients (guarantee: nothing carries over unless injected again)
         self.input = 0.0
         self.lateral_inhibition = 0.0
