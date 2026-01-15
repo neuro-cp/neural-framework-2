@@ -22,13 +22,22 @@ class CompetitionKernel:
     - No hard winner-take-all
     - Fully bounded
     - Deterministic
+
+    NOTE
+    ----
+    This kernel is *purely dynamical*. It must never:
+    - latch decisions
+    - store history beyond smooth dominance
+    - receive feedback from commitment or action systems
     """
 
     # ============================================================
     # Trace logging (authoritative diagnostic channel)
     # ============================================================
 
-    TRACE_PATH = Path(r"C:\Users\Admin\Desktop\neural framework\kernel_dominance_trace.csv")
+    TRACE_PATH = Path(
+        r"C:\Users\Admin\Desktop\neural framework\kernel_dominance_trace.csv"
+    )
 
     _trace_initialized: bool = False
     _trace_step: int = 0
@@ -56,6 +65,8 @@ class CompetitionKernel:
         self.min_activity = float(min_activity)
         self.dominance_floor = float(dominance_floor)
         self.contrast_gain = float(contrast_gain)
+
+        # Deterministic tie-breaking ONLY — never a bias signal
         self.epsilon_bias = float(epsilon_bias)
 
         self.channel_key = channel_key
@@ -99,7 +110,7 @@ class CompetitionKernel:
         Returns
         -------
         float:
-            Dominance value of winning channel
+            Smoothed dominance value of winning channel
         """
 
         if not assemblies:
@@ -121,7 +132,7 @@ class CompetitionKernel:
         self._dominance = {ch: self._dominance.get(ch, 0.0) for ch in channels}
 
         # --------------------------------------------------
-        # 2. Raw channel output + context gain aggregation
+        # 2. Channel output + gain aggregation
         # --------------------------------------------------
 
         raw_output: Dict[str, float] = {}
@@ -150,7 +161,7 @@ class CompetitionKernel:
         effective_output: Dict[str, float] = {}
 
         for ch, base in raw_output.items():
-            gain_factor = 1.0 + self.contrast_gain * (channel_gain.get(ch, 1.0) - 1.0)
+            gain_factor = 1.0 + self.contrast_gain * (channel_gain[ch] - 1.0)
             val = base * gain_factor
 
             if external_bias is not None:
@@ -171,7 +182,7 @@ class CompetitionKernel:
             ch: v / total_output for ch, v in effective_output.items()
         }
 
-        # Optional deterministic epsilon ordering (for tie-breaking)
+        # Deterministic epsilon ordering ONLY for exact ties
         if self.epsilon_bias > 0.0:
             for i, ch in enumerate(sorted(inst)):
                 inst[ch] += self.epsilon_bias * (i + 1)
@@ -256,7 +267,7 @@ class CompetitionKernel:
         if not self._trace_initialized:
             with open(self.TRACE_PATH, "w", encoding="utf-8") as f:
                 f.write(
-                    "step,time,channel,raw_output,inst_dominance,"
+                    "step,time,channel,effective_output,inst_dominance,"
                     "smooth_dominance,winner,delta\n"
                 )
             self._trace_initialized = True
@@ -264,9 +275,10 @@ class CompetitionKernel:
         self._trace_step += 1
         t = time.time()
 
+        # Delta = top − runner-up (order independent, sign stable)
         if len(self._dominance) >= 2:
-            chs = list(self._dominance.keys())
-            delta = self._dominance[chs[0]] - self._dominance[chs[1]]
+            vals = sorted(self._dominance.values(), reverse=True)
+            delta = vals[0] - vals[1]
         else:
             delta = 0.0
 
@@ -294,7 +306,7 @@ class CompetitionKernel:
         fmt = f"{{:.{precision}f}}"
         lines = ["CompetitionKernel diagnostics"]
 
-        lines.append("  Raw channel output:")
+        lines.append("  Effective channel output:")
         for ch, v in self.last_channel_output.items():
             lines.append(f"    {ch}: {fmt.format(v)}")
 
@@ -307,11 +319,9 @@ class CompetitionKernel:
             lines.append(f"    {ch}: {fmt.format(v)}")
 
         if len(self.last_dominance_map) >= 2:
-            chs = list(self.last_dominance_map.keys())
-            delta = self.last_dominance_map[chs[0]] - self.last_dominance_map[chs[1]]
-            lines.append(
-                f"  Dominance delta ({chs[0]} - {chs[1]}): {fmt.format(delta)}"
-            )
+            vals = sorted(self.last_dominance_map.values(), reverse=True)
+            delta = vals[0] - vals[1]
+            lines.append(f"  Dominance delta (top − runner-up): {fmt.format(delta)}")
 
         lines.append(f"  Winner: {self.last_winner_channel}")
         lines.append(f"  Winner value: {fmt.format(self.last_global_dominance)}")

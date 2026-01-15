@@ -42,7 +42,18 @@ class BrainRuntime:
       5. Context decay
       6. GPi disinhibition
       7. Connectivity propagation + Thalamic gating
+
+    ADDITION (READ-ONLY):
+      - Explicit decision latch (Checkpoint 16)
     """
+
+    # --------------------------------------------------
+    # Decision latch defaults (tuned for observability,
+    # NOT for control) .15, .75, 8 steps is baseline
+    # --------------------------------------------------
+    DECISION_DOMINANCE_THRESHOLD = 0.04
+    DECISION_RELIEF_THRESHOLD = 0.47
+    DECISION_SUSTAIN_STEPS = 5
 
     def __init__(self, brain: Dict[str, Any], dt: float = 0.01):
         self.brain = brain
@@ -97,8 +108,6 @@ class BrainRuntime:
         # GPi disinhibition / gating
         # --------------------------------------------------
         self.enable_gpi_disinhibition = True
-
-        # Calibrated for MEAN GPi output, not summed assemblies
         self.gpi_gain = 0.6
         self.gpi_floor = 0.25
         self._last_gate_strength: float = 1.0
@@ -110,6 +119,13 @@ class BrainRuntime:
         self._all_pops: List[PopulationModel] = []
         self._stim_queue: List[Tuple[str, Optional[str], Optional[int], float]] = []
         self._region_key_by_label: Dict[str, str] = {}
+
+        # --------------------------------------------------
+        # Decision latch (read-only)
+        # --------------------------------------------------
+        self._decision_fired: bool = False
+        self._decision_counter: int = 0
+        self._decision_state: Optional[Dict[str, Any]] = None
 
         self._build(brain)
 
@@ -242,6 +258,9 @@ class BrainRuntime:
         relief = self._compute_gpi_relief()
         self._last_gate_strength = relief
 
+        # --- Decision latch evaluation (READ-ONLY) ---
+        self._evaluate_decision_latch(relief)
+
         # 7. Connectivity + Thalamic gating
         self._propagate_connectivity(relief)
 
@@ -273,13 +292,10 @@ class BrainRuntime:
         if not assemblies:
             return
 
-        external_gain = None
-        external_bias = None
+        external_gain = {}
+        external_bias = {}
 
         if self.enable_context:
-            external_gain = {}
-            external_bias = {}
-
             for p in assemblies:
                 external_gain[p.assembly_id] = self.context.get_gain(p.assembly_id)
                 ch = getattr(p, "subpopulation", None) or "default"
@@ -293,8 +309,8 @@ class BrainRuntime:
         self.competition_kernel.apply(
             assemblies,
             self.dt,
-            external_gain=external_gain,
-            external_bias=external_bias,
+            external_gain=external_gain or None,
+            external_bias=external_bias or None,
         )
 
         self._last_striatum_snapshot = {
@@ -328,6 +344,45 @@ class BrainRuntime:
         return max(self.gpi_floor, min(1.0, relief))
 
     # ============================================================
+    # Decision Latch (Read-Only)
+    # ============================================================
+
+    def _evaluate_decision_latch(self, relief: float) -> None:
+        if self._decision_fired:
+            return
+
+        snap = getattr(self, "_last_striatum_snapshot", None)
+        if not snap:
+            self._decision_counter = 0
+            return
+
+        dom = snap.get("dominance", {})
+        if len(dom) < 2:
+            self._decision_counter = 0
+            return
+
+        vals = sorted(dom.values(), reverse=True)
+        delta = vals[0] - vals[1]
+
+        if (
+            delta >= self.DECISION_DOMINANCE_THRESHOLD
+            and relief >= self.DECISION_RELIEF_THRESHOLD
+        ):
+            self._decision_counter += 1
+        else:
+            self._decision_counter = 0
+
+        if self._decision_counter >= self.DECISION_SUSTAIN_STEPS:
+            self._decision_fired = True
+            self._decision_state = {
+                "time": self.time,
+                "step": self.step_count,
+                "winner": snap.get("winner"),
+                "delta_dominance": delta,
+                "relief": relief,
+            }
+
+    # ============================================================
     # Connectivity + Thalamic Gating
     # ============================================================
 
@@ -340,6 +395,7 @@ class BrainRuntime:
             src_pops = [p for plist in state["populations"].values() for p in plist]
             if not src_pops:
                 continue
+
             src_drive = sum(p.output() for p in src_pops) / len(src_pops)
 
             for out in outputs:
@@ -385,7 +441,7 @@ class BrainRuntime:
                     p.input += drive * 0.02 * relief
 
     # ============================================================
-    # Diagnostics
+    # Diagnostics / External API
     # ============================================================
 
     def snapshot_gate_state(self) -> Dict[str, Any]:
@@ -393,4 +449,8 @@ class BrainRuntime:
             "time": self.time,
             "relief": self._last_gate_strength,
             "winner": getattr(self, "_last_striatum_snapshot", {}).get("winner"),
+            "decision": self._decision_state,
         }
+
+    def get_decision_state(self) -> Optional[Dict[str, Any]]:
+        return self._decision_state

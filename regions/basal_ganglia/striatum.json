@@ -1,6 +1,7 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "RegionSubstructure",
+
   "region_id": "STRIATUM",
   "parent_region": "BASAL_GANGLIA",
 
@@ -12,13 +13,14 @@
   },
 
   "populations": {
-
     "D1_MSN": {
       "count": 40000,
       "neuron_type": "inhibitory",
       "sign": -1.0,
 
       "subpopulation": "D1",
+
+      "semantic_role": "action_facilitation_channel",
 
       "dynamics": {
         "baseline": 0.02,
@@ -29,17 +31,15 @@
         "normalization": 0.2
       },
 
-      "semantic_role": "action_facilitation_channel",
-
       "competition": {
         "enabled": true,
         "channel_group": "action_channels"
       },
 
       "future_learning": {
+        "dopamine_modulated": true,
         "eligibility_trace": true,
         "reward_rule": "positive_reinforcement",
-        "dopamine_modulated": true,
         "status": "inactive_checkpoint_6"
       }
     },
@@ -50,7 +50,9 @@
       "sign": -1.0,
 
       "subpopulation": "D2",
-      
+
+      "semantic_role": "action_suppression_channel",
+
       "dynamics": {
         "baseline": 0.02,
         "tau": 15.0,
@@ -60,17 +62,15 @@
         "normalization": 0.2
       },
 
-      "semantic_role": "action_suppression_channel",
-
       "competition": {
         "enabled": true,
         "channel_group": "action_channels"
       },
 
       "future_learning": {
+        "dopamine_modulated": true,
         "eligibility_trace": true,
         "reward_rule": "negative_reinforcement",
-        "dopamine_modulated": true,
         "status": "inactive_checkpoint_6"
       }
     },
@@ -80,6 +80,8 @@
       "neuron_type": "inhibitory",
       "sign": -1.0,
 
+      "semantic_role": "local_gain_stabilization",
+
       "dynamics": {
         "baseline": 0.08,
         "tau": 5.0,
@@ -87,8 +89,6 @@
         "threshold": 0.02,
         "inhibition_gain": 0.4
       },
-
-      "semantic_role": "local_gain_stabilization",
 
       "competition": {
         "enabled": false
@@ -142,5 +142,5 @@
     }
   ],
 
-  "notes": "Striatum implements explicit competitive inhibitory action channels using the global CompetitionKernel. D1 and D2 populations compete within a shared channel group, allowing dominance to emerge without hard winner-take-all. Interneurons provide gain stabilization only. Dopamine and learning hooks are preserved but inert at checkpoint 6."
+  "notes": "Striatum defines explicit competitive inhibitory action channels using the global CompetitionKernel. D1 and D2 populations participate in channel-level competition via the `subpopulation` field. No hard winner-take-all is enforced. Interneurons provide stabilization only. Dopamine and learning hooks are structurally present but functionally inert at Checkpoint 6."
 }

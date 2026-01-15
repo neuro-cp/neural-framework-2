@@ -1,9 +1,8 @@
-# engine/command_server.py
 from __future__ import annotations
 
 import socket
 import threading
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 
 
 # ============================================================
@@ -21,9 +20,6 @@ def _basic_stats(values: List[float]) -> Optional[Tuple[float, float]]:
 def _resolve_region(runtime, region_label: str) -> str:
     """
     Resolve user-supplied region label to runtime region key.
-
-    - Uses runtime resolver if present
-    - Falls back to raw label
     """
     if hasattr(runtime, "_resolve_region_key"):
         rk = runtime._resolve_region_key(region_label)  # type: ignore[attr-defined]
@@ -31,6 +27,10 @@ def _resolve_region(runtime, region_label: str) -> str:
             return rk
     return region_label
 
+
+# ============================================================
+# Region diagnostics
+# ============================================================
 
 def _region_stats(runtime, region_label: str) -> str:
     region_id = _resolve_region(runtime, region_label)
@@ -80,6 +80,10 @@ def _top_assemblies(runtime, region_label: str, n: int) -> str:
     return " | ".join(f"{aid} :: {val:.4f}" for aid, val in top)
 
 
+# ============================================================
+# Context diagnostics
+# ============================================================
+
 def _dump_context(runtime) -> str:
     if not hasattr(runtime, "context"):
         return "CONTEXT: runtime has no context"
@@ -88,9 +92,9 @@ def _dump_context(runtime) -> str:
     if not ctx:
         return "CONTEXT EMPTY"
 
-    region_totals = {}
-    region_counts = {}
-    region_domains = {}
+    region_totals: Dict[str, float] = {}
+    region_counts: Dict[str, int] = {}
+    region_domains: Dict[str, set] = {}
 
     for assembly_id, domains in ctx.items():
         if assembly_id == "__global__":
@@ -108,7 +112,7 @@ def _dump_context(runtime) -> str:
     lines = ["CONTEXT:"]
     for region in sorted(region_totals):
         lines.append(
-            f"  {region:<12} "
+            f"  {region:<14} "
             f"assemblies={region_counts.get(region, 0):<4} "
             f"total={region_totals[region]:.4f} "
             f"domains={','.join(sorted(region_domains.get(region, [])))}"
@@ -123,6 +127,10 @@ def _dump_context_full(runtime) -> str:
     return runtime.context.stats()
 
 
+# ============================================================
+# Striatum / BG diagnostics
+# ============================================================
+
 def _dump_striatum(runtime) -> str:
     snap = getattr(runtime, "_last_striatum_snapshot", None)
     if not snap:
@@ -133,11 +141,12 @@ def _dump_striatum(runtime) -> str:
         return "STRIATUM: empty"
 
     lines = [f"STRIATUM @ t={snap.get('time', 0.0):.3f}"]
+
     if snap.get("winner") is not None:
         lines.append(f"winner={snap['winner']}")
 
     for ch, val in sorted(dominance.items(), key=lambda x: x[1], reverse=True):
-        lines.append(f"{ch}={float(val):.4f}")
+        lines.append(f"{ch}={float(val):.6f}")
 
     return "\n".join(lines)
 
@@ -166,17 +175,26 @@ def _dump_gate(runtime) -> str:
         except Exception as e:
             return f"GATE: error ({e})"
 
-    relief = getattr(runtime, "_last_gate_strength", None)
-    if relief is None:
-        return "GATE: no data"
+    return "GATE: no data"
 
-    winner = getattr(runtime, "_last_striatum_snapshot", {}).get("winner")
-    return (
-        "GATE:\n"
-        f"  t={getattr(runtime, 'time', 0.0):.3f}\n"
-        f"  relief={float(relief):.4f}\n"
-        f"  winner={winner}"
-    )
+
+def _dump_decision(runtime) -> str:
+    """
+    Explicit decision latch snapshot.
+    Read-only, fires once per episode.
+    """
+    if not hasattr(runtime, "get_decision_state"):
+        return "DECISION: runtime does not support decision latch"
+
+    state = runtime.get_decision_state()
+    if not state:
+        return "DECISION: none"
+
+    lines = ["DECISION:"]
+    for k, v in state.items():
+        lines.append(f"  {k} = {v}")
+
+    return "\n".join(lines)
 
 
 # ============================================================
@@ -186,6 +204,7 @@ def _dump_gate(runtime) -> str:
 def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
     """
     Lightweight TCP command server for runtime instrumentation.
+    Read-only except for explicit stimulus injection.
     """
 
     def help_text() -> str:
@@ -196,9 +215,10 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  top <region> <N>\n"
             "  context | ctx\n"
             "  ctxfull\n"
-            "  striatum\n"
-            "  striatum_diag\n"
+            "  striatum | stri\n"
+            "  striatum_diag | stri_diag\n"
             "  gate\n"
+            "  decision\n"
             "  help"
         )
 
@@ -213,6 +233,9 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
         if op in ("help", "?"):
             return help_text()
 
+        # -------------------------------
+        # Mutating command (explicit)
+        # -------------------------------
         if op == "poke":
             if len(parts) != 3:
                 return "ERROR: poke <region> <mag>"
@@ -223,6 +246,9 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             runtime.inject_stimulus(region_id=parts[1], magnitude=mag)
             return f"OK poke {parts[1]} {mag}"
 
+        # -------------------------------
+        # Read-only diagnostics
+        # -------------------------------
         if op == "stats" and len(parts) == 2:
             return _region_stats(runtime, parts[1])
 
@@ -246,6 +272,9 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
 
         if op == "gate":
             return _dump_gate(runtime)
+
+        if op == "decision":
+            return _dump_decision(runtime)
 
         return "ERROR: unknown command"
 
