@@ -127,6 +127,18 @@ class BrainRuntime:
         self._decision_counter: int = 0
         self._decision_state: Optional[Dict[str, Any]] = None
 
+        # --------------------------------------------------
+        # Part B: allow sustain-step override via brain dict
+        # (default remains DECISION_SUSTAIN_STEPS)
+        # --------------------------------------------------
+        self._decision_sustain_required: int = int(self.DECISION_SUSTAIN_STEPS)
+        try:
+            latch_cfg = brain.get("decision_latch", {}) or {}
+            if "sustain_steps" in latch_cfg:
+                self._decision_sustain_required = max(1, int(latch_cfg["sustain_steps"]))
+        except Exception:
+            self._decision_sustain_required = int(self.DECISION_SUSTAIN_STEPS)
+
         self._build(brain)
 
     # ============================================================
@@ -372,7 +384,8 @@ class BrainRuntime:
         else:
             self._decision_counter = 0
 
-        if self._decision_counter >= self.DECISION_SUSTAIN_STEPS:
+        # Part B: sustain requirement is now runtime-configurable
+        if self._decision_counter >= self._decision_sustain_required:
             self._decision_fired = True
             self._decision_state = {
                 "time": self.time,

@@ -198,13 +198,50 @@ def _dump_decision(runtime) -> str:
 
 
 # ============================================================
+# Part B controls (minimal + safe)
+# ============================================================
+
+def _set_sustain(runtime, n: int) -> str:
+    if not hasattr(runtime, "_decision_sustain_required"):
+        return "ERROR: runtime does not expose _decision_sustain_required"
+    try:
+        n2 = max(1, int(n))
+        setattr(runtime, "_decision_sustain_required", n2)
+        return f"OK sustain {n2}"
+    except Exception as e:
+        return f"ERROR: sustain set failed ({e})"
+
+
+def _get_sustain(runtime) -> str:
+    if hasattr(runtime, "_decision_sustain_required"):
+        return f"SUSTAIN: {int(getattr(runtime, '_decision_sustain_required'))}"
+    if hasattr(runtime, "DECISION_SUSTAIN_STEPS"):
+        return f"SUSTAIN: {int(getattr(runtime, 'DECISION_SUSTAIN_STEPS'))}"
+    return "SUSTAIN: unknown"
+
+
+def _reset_latch(runtime) -> str:
+    # Only resets decision latch state; does not touch dynamics.
+    try:
+        if hasattr(runtime, "_decision_fired"):
+            setattr(runtime, "_decision_fired", False)
+        if hasattr(runtime, "_decision_counter"):
+            setattr(runtime, "_decision_counter", 0)
+        if hasattr(runtime, "_decision_state"):
+            setattr(runtime, "_decision_state", None)
+        return "OK reset_latch"
+    except Exception as e:
+        return f"ERROR: reset_latch failed ({e})"
+
+
+# ============================================================
 # TCP Server
 # ============================================================
 
 def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
     """
     Lightweight TCP command server for runtime instrumentation.
-    Read-only except for explicit stimulus injection.
+    Read-only except for explicit stimulus injection + Part B latch controls.
     """
 
     def help_text() -> str:
@@ -219,6 +256,8 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  striatum_diag | stri_diag\n"
             "  gate\n"
             "  decision\n"
+            "  sustain [N]        (query or set latch sustain steps)\n"
+            "  reset_latch        (clear one-shot decision latch)\n"
             "  help"
         )
 
@@ -245,6 +284,23 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
                 return "ERROR: magnitude must be float"
             runtime.inject_stimulus(region_id=parts[1], magnitude=mag)
             return f"OK poke {parts[1]} {mag}"
+
+        # -------------------------------
+        # Part B latch controls (explicit)
+        # -------------------------------
+        if op == "sustain":
+            if len(parts) == 1:
+                return _get_sustain(runtime)
+            if len(parts) == 2:
+                try:
+                    n = int(parts[1])
+                except ValueError:
+                    return "ERROR: sustain N must be int"
+                return _set_sustain(runtime, n)
+            return "ERROR: sustain [N]"
+
+        if op == "reset_latch":
+            return _reset_latch(runtime)
 
         # -------------------------------
         # Read-only diagnostics
