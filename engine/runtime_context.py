@@ -32,22 +32,43 @@ class RuntimeContext:
         self.decay_tau = float(decay_tau)
         self.epsilon = float(epsilon)
 
-        # --------------------------------------------------
-        # Ephemeral context gains
-        # key (assembly_id or GLOBAL_CONTEXT_KEY) -> domain -> bias
-        # --------------------------------------------------
+        # key -> domain -> gain
+        # key may be:
+        #   - assembly_id
+        #   - region:population
+        #   - region
+        #   - __global__
         self._context: Dict[str, Dict[str, float]] = {}
 
-        # --------------------------------------------------
-        # Context memory (write-only from runtime)
-        # --------------------------------------------------
         self._memory = ContextMemory(decay_tau=decay_tau)
 
-        # --------------------------------------------------
-        # Trace eligibility bookkeeping
-        # --------------------------------------------------
         self._above_since: Dict[str, float] = {}
         self._trace_emitted: Dict[str, bool] = {}
+
+    # ============================================================
+    # Resolution helpers
+    # ============================================================
+
+    def _resolution_chain(self, assembly_id: str) -> list[str]:
+        """
+        Resolution order (most specific → least):
+
+        1. full assembly_id          (region:pop:idx)
+        2. region:population
+        3. region
+        4. __global__
+        """
+        parts = assembly_id.split(":")
+        chain = [assembly_id]
+
+        if len(parts) >= 2:
+            chain.append(f"{parts[0]}:{parts[1]}")
+            chain.append(parts[0])
+        elif len(parts) == 1:
+            chain.append(parts[0])
+
+        chain.append(GLOBAL_CONTEXT_KEY)
+        return chain
 
     # ============================================================
     # Query (READ-ONLY)
@@ -57,46 +78,23 @@ class RuntimeContext:
         self,
         assembly_id: str,
         domain: str = "global",
-        *,
-        allow_global_fallback: bool = True,
     ) -> float:
-        """
-        Return multiplicative gain for an assembly.
-
-        Resolution order:
-        1) Assembly-specific domain
-        2) Global fallback
-        3) Neutral (1.0)
-        """
-        domains = self._context.get(assembly_id)
-
-        if (not domains) and allow_global_fallback:
-            domains = self._context.get(GLOBAL_CONTEXT_KEY)
-
-        if not domains:
-            return 1.0
-
-        return 1.0 + float(domains.get(domain, 0.0))
+        for key in self._resolution_chain(assembly_id):
+            domains = self._context.get(key)
+            if domains and domain in domains:
+                return 1.0 + float(domains[domain])
+        return 1.0
 
     def get_bias(
         self,
         assembly_id: str,
         domain: str = "global",
-        *,
-        allow_global_fallback: bool = True,
     ) -> float:
-        """
-        Return additive bias (for diagnostics).
-        """
-        domains = self._context.get(assembly_id)
-
-        if (not domains) and allow_global_fallback:
-            domains = self._context.get(GLOBAL_CONTEXT_KEY)
-
-        if not domains:
-            return 0.0
-
-        return float(domains.get(domain, 0.0))
+        for key in self._resolution_chain(assembly_id):
+            domains = self._context.get(key)
+            if domains and domain in domains:
+                return float(domains[domain])
+        return 0.0
 
     # ============================================================
     # Injection (WRITE PATH)
@@ -104,76 +102,61 @@ class RuntimeContext:
 
     def add_gain(
         self,
-        assembly_id: str,
+        key: str,
         delta: float,
         domain: str = "global",
     ) -> None:
         """
-        Inject a context gain for an assembly.
-
-        This is the ONLY supported external write path.
+        Inject gain for:
+        - assembly_id
+        - region:population
+        - region
+        - __global__
         """
-        if not ContextPolicy.allow_update(assembly_id, domain, delta):
+        if not ContextPolicy.allow_update(key, domain, delta):
             return
 
-        aid = str(assembly_id)
-        domains = self._context.setdefault(aid, {})
-
+        domains = self._context.setdefault(key, {})
         current = domains.get(domain, 0.0)
         new_value = ContextPolicy.clamp_gain(current + delta, domain)
         domains[domain] = new_value
 
         now = time.time()
 
-        # Track trace eligibility
         if new_value >= ContextPolicy.TRACE_GAIN_THRESHOLD:
-            if aid not in self._above_since:
-                self._above_since[aid] = now
+            if key not in self._above_since:
+                self._above_since[key] = now
         else:
-            self._above_since.pop(aid, None)
-            self._trace_emitted.pop(aid, None)
+            self._above_since.pop(key, None)
+            self._trace_emitted.pop(key, None)
 
     def add_global_gain(self, delta: float, domain: str = "global") -> None:
-        """
-        Inject global context gain.
-        """
         self.add_gain(GLOBAL_CONTEXT_KEY, delta, domain)
 
     def set(
         self,
-        assembly_id: str,
+        key: str,
         value: float,
         domain: str = "global",
     ) -> None:
         """
         Deterministic overwrite (testing only).
         """
-        aid = str(assembly_id)
-        domains = self._context.setdefault(aid, {})
-        domains[domain] = float(value)
+        self._context.setdefault(key, {})[domain] = float(value)
 
     # ============================================================
     # Dynamics
     # ============================================================
 
     def step(self, dt: float) -> None:
-        """
-        Advance time.
-
-        Responsibilities:
-        - Check trace eligibility
-        - Emit at most one trace per sustained episode
-        - Decay ephemeral gains
-        - Decay context memory
-        """
         now = time.time()
 
         # --- Trace eligibility ---
-        for aid, start_t in list(self._above_since.items()):
-            if self._trace_emitted.get(aid, False):
+        for key, start_t in list(self._above_since.items()):
+            if self._trace_emitted.get(key):
                 continue
 
-            domains = self._context.get(aid)
+            domains = self._context.get(key)
             if not domains:
                 continue
 
@@ -187,40 +170,37 @@ class RuntimeContext:
             ):
                 trace = ContextTrace(
                     trace_id=str(uuid.uuid4()),
-                    context={"assembly": aid},
+                    context={"key": key},
                     strength=gain,
                 )
                 self._memory.add(trace)
-                self._trace_emitted[aid] = True
+                self._trace_emitted[key] = True
 
         # --- Ephemeral decay ---
-        if self._context:
-            tau = max(self.decay_tau, 1e-9)
-            decay = float(dt) / tau
+        tau = max(self.decay_tau, 1e-9)
+        decay = float(dt) / tau
 
-            dead_assemblies = []
+        dead_keys = []
 
-            for aid, domains in list(self._context.items()):
-                dead_domains = []
+        for key, domains in list(self._context.items()):
+            dead_domains = []
 
-                for domain, value in list(domains.items()):
-                    new_value = value * (1.0 - decay)
+            for domain, value in list(domains.items()):
+                new_value = value * (1.0 - decay)
+                if abs(new_value) < self.epsilon:
+                    dead_domains.append(domain)
+                else:
+                    domains[domain] = new_value
 
-                    if abs(new_value) < self.epsilon:
-                        dead_domains.append(domain)
-                    else:
-                        domains[domain] = new_value
+            for d in dead_domains:
+                del domains[d]
 
-                for domain in dead_domains:
-                    del domains[domain]
+            if not domains:
+                dead_keys.append(key)
 
-                if not domains:
-                    dead_assemblies.append(aid)
+        for key in dead_keys:
+            del self._context[key]
 
-            for aid in dead_assemblies:
-                del self._context[aid]
-
-        # --- Memory decay ---
         self._memory.step(dt)
 
     # ============================================================
@@ -233,25 +213,22 @@ class RuntimeContext:
         self._trace_emitted.clear()
 
     def clear_domain(self, domain: str) -> None:
-        if not self._context:
-            return
-
-        dead_assemblies = []
-        for aid, domains in self._context.items():
+        dead_keys = []
+        for key, domains in self._context.items():
             if domain in domains:
                 del domains[domain]
             if not domains:
-                dead_assemblies.append(aid)
+                dead_keys.append(key)
 
-        for aid in dead_assemblies:
-            del self._context[aid]
+        for key in dead_keys:
+            del self._context[key]
 
     # ============================================================
     # Observability
     # ============================================================
 
     def dump(self) -> Dict[str, Dict[str, float]]:
-        return {aid: dict(domains) for aid, domains in self._context.items()}
+        return {k: dict(v) for k, v in self._context.items()}
 
     def stats(self) -> Dict[str, float]:
         return {

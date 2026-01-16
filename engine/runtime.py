@@ -8,6 +8,7 @@ from engine.population_model import PopulationModel
 from engine.competition import CompetitionKernel
 from engine.runtime_context import RuntimeContext
 from engine.context_hooks import PFCContextHook
+from engine.salience.salience_field import SalienceField
 from persistence.persistence_core import BasalGangliaPersistence
 
 
@@ -47,10 +48,6 @@ class BrainRuntime:
       - Explicit decision latch (Checkpoint 16)
     """
 
-    # --------------------------------------------------
-    # Decision latch defaults (tuned for observability,
-    # NOT for control) .15, .75, 8 steps is baseline
-    # --------------------------------------------------
     DECISION_DOMINANCE_THRESHOLD = 0.04
     DECISION_RELIEF_THRESHOLD = 0.47
     DECISION_SUSTAIN_STEPS = 5
@@ -92,7 +89,7 @@ class BrainRuntime:
         )
 
         # --------------------------------------------------
-        # Runtime context
+        # Runtime context (working memory / bias)
         # --------------------------------------------------
         self.enable_context = True
         self.context = RuntimeContext(decay_tau=5.0)
@@ -103,6 +100,12 @@ class BrainRuntime:
             injection_gain=0.05,
             target_domain="global",
         )
+
+        # --------------------------------------------------
+        # Salience field (novelty / importance)
+        # --------------------------------------------------
+        self.enable_salience = True
+        self.salience = SalienceField(decay_tau=3.0)
 
         # --------------------------------------------------
         # GPi disinhibition / gating
@@ -127,15 +130,13 @@ class BrainRuntime:
         self._decision_counter: int = 0
         self._decision_state: Optional[Dict[str, Any]] = None
 
-        # --------------------------------------------------
-        # Part B: allow sustain-step override via brain dict
-        # (default remains DECISION_SUSTAIN_STEPS)
-        # --------------------------------------------------
         self._decision_sustain_required: int = int(self.DECISION_SUSTAIN_STEPS)
         try:
             latch_cfg = brain.get("decision_latch", {}) or {}
             if "sustain_steps" in latch_cfg:
-                self._decision_sustain_required = max(1, int(latch_cfg["sustain_steps"]))
+                self._decision_sustain_required = max(
+                    1, int(latch_cfg["sustain_steps"])
+                )
         except Exception:
             self._decision_sustain_required = int(self.DECISION_SUSTAIN_STEPS)
 
@@ -238,7 +239,9 @@ class BrainRuntime:
     def step(self) -> None:
         self.step_count += 1
 
-        # 1. Reset + stimuli
+        # --------------------------------------------------
+        # 1. Reset inputs + stimuli
+        # --------------------------------------------------
         for p in self._all_pops:
             p.input = 0.0
 
@@ -249,42 +252,61 @@ class BrainRuntime:
             for plist in targets:
                 for p in plist if idx is None else plist[idx:idx + 1]:
                     gain = 1.0
+
                     if self.enable_context:
-                        gain = self.context.get_gain(p.assembly_id)
+                        gain *= self.context.get_gain(p.assembly_id)
+
+                    if self.enable_salience:
+                        gain *= self.salience.get(p.assembly_id)
 
                     p.input += mag * gain
 
         self._stim_queue.clear()
 
+        # --------------------------------------------------
         # 2. Physiology
+        # --------------------------------------------------
         for p in self._all_pops:
             p.step(self.dt)
 
+        # --------------------------------------------------
         # 3. PFC → Context
+        # --------------------------------------------------
         if self.enable_context and self.enable_pfc_context:
             self._apply_pfc_context()
 
+        # --------------------------------------------------
         # 4. Striatum competition + persistence
+        # --------------------------------------------------
         if self.enable_competition:
             self._step_striatum()
 
-        # 5. Context decay
+        # --------------------------------------------------
+        # 5. Context + salience decay
+        # --------------------------------------------------
         if self.enable_context:
             self.context.step(self.dt)
 
+        if self.enable_salience:
+            self.salience.step(self.dt)
+
+        # --------------------------------------------------
         # 6. GPi disinhibition
+        # --------------------------------------------------
         relief = self._compute_gpi_relief()
         self._last_gate_strength = relief
 
-        # --- Decision latch evaluation (READ-ONLY) ---
+        # --------------------------------------------------
+        # Decision latch (read-only)
+        # --------------------------------------------------
         self._evaluate_decision_latch(relief)
 
+        # --------------------------------------------------
         # 7. Connectivity + Thalamic gating
+        # --------------------------------------------------
         self._propagate_connectivity(relief)
 
         self.time += self.dt
-
-
 
     # ============================================================
     # Subsystems
@@ -355,7 +377,11 @@ class BrainRuntime:
         if not gpi:
             return 1.0
 
-        outs = [float(p.output()) for plist in gpi["populations"].values() for p in plist]
+        outs = [
+            float(p.output())
+            for plist in gpi["populations"].values()
+            for p in plist
+        ]
         if not outs:
             return 1.0
 
@@ -392,7 +418,6 @@ class BrainRuntime:
         else:
             self._decision_counter = 0
 
-        # Part B: sustain requirement is now runtime-configurable
         if self._decision_counter >= self._decision_sustain_required:
             self._decision_fired = True
             self._decision_state = {
@@ -413,23 +438,31 @@ class BrainRuntime:
             if not outputs:
                 continue
 
-            src_pops = [p for plist in state["populations"].values() for p in plist]
+            src_pops = [
+                p for plist in state["populations"].values() for p in plist
+            ]
             if not src_pops:
                 continue
 
             src_drive = sum(p.output() for p in src_pops) / len(src_pops)
 
             for out in outputs:
-                tgt_key = self._resolve_region_key(out.get("target") or out.get("region") or "")
+                tgt_key = self._resolve_region_key(
+                    out.get("target") or out.get("region") or ""
+                )
                 if not tgt_key or tgt_key not in self.region_states:
                     continue
 
                 strength = float(out.get("strength", 1.0))
 
                 if src_key.lower() == "gpi" and tgt_key.lower() == "md":
-                    self._apply_input_to_region(tgt_key, src_drive * strength * relief)
+                    self._apply_input_to_region(
+                        tgt_key, src_drive * strength * relief
+                    )
                 else:
-                    self._apply_input_to_region(tgt_key, src_drive * strength)
+                    self._apply_input_to_region(
+                        tgt_key, src_drive * strength
+                    )
 
         self._drive_thalamus(relief)
 
@@ -446,7 +479,9 @@ class BrainRuntime:
         if not cortex:
             return
 
-        src = [p for plist in cortex["populations"].values() for p in plist]
+        src = [
+            p for plist in cortex["populations"].values() for p in plist
+        ]
         if not src:
             return
 

@@ -18,14 +18,15 @@ def _basic_stats(values: List[float]) -> Optional[Tuple[float, float]]:
 
 
 def _resolve_region(runtime, region_label: str) -> str:
-    """
-    Resolve user-supplied region label to runtime region key.
-    """
     if hasattr(runtime, "_resolve_region_key"):
-        rk = runtime._resolve_region_key(region_label)  # type: ignore[attr-defined]
+        rk = runtime._resolve_region_key(region_label)
         if rk:
             return rk
     return region_label
+
+
+def _get_salience(runtime):
+    return getattr(runtime, "salience", None)
 
 
 # ============================================================
@@ -47,11 +48,7 @@ def _region_stats(runtime, region_label: str) -> str:
     if not acts:
         return f"{region_id} MASS=0.0000 MEAN=0.0000 STD=0.0000 N=0"
 
-    stats = _basic_stats(acts)
-    if not stats:
-        return f"{region_id} MASS=0.0000 MEAN=0.0000 STD=0.0000 N=0"
-
-    mean, std = stats
+    mean, std = _basic_stats(acts)
     return (
         f"{region_id} "
         f"MASS={sum(outs):.4f} "
@@ -65,7 +62,7 @@ def _top_assemblies(runtime, region_label: str, n: int) -> str:
     region_id = _resolve_region(runtime, region_label)
     region = runtime.region_states.get(region_id)
     if not region:
-        return f"ERROR: unknown region '{region_label}' (resolved='{region_id}')"
+        return f"ERROR: unknown region '{region_label}'"
 
     rows = []
     for plist in region["populations"].values():
@@ -76,8 +73,9 @@ def _top_assemblies(runtime, region_label: str, n: int) -> str:
         return "EMPTY"
 
     rows.sort(key=lambda x: x[1], reverse=True)
-    top = rows[: max(1, n)]
-    return " | ".join(f"{aid} :: {val:.4f}" for aid, val in top)
+    return " | ".join(
+        f"{aid} :: {val:.4f}" for aid, val in rows[: max(1, n)]
+    )
 
 
 # ============================================================
@@ -85,46 +83,68 @@ def _top_assemblies(runtime, region_label: str, n: int) -> str:
 # ============================================================
 
 def _dump_context(runtime) -> str:
-    if not hasattr(runtime, "context"):
-        return "CONTEXT: runtime has no context"
-
-    ctx = runtime.context.dump()
+    ctx = getattr(runtime, "context", None)
     if not ctx:
+        return "CONTEXT: unavailable"
+
+    dump = ctx.dump()
+    if not dump:
         return "CONTEXT EMPTY"
 
-    region_totals: Dict[str, float] = {}
-    region_counts: Dict[str, int] = {}
-    region_domains: Dict[str, set] = {}
-
-    for assembly_id, domains in ctx.items():
-        if assembly_id == "__global__":
-            region = "__global__"
-        else:
-            region = assembly_id.split(":", 1)[0]
-
-        region_counts[region] = region_counts.get(region, 0) + 1
-        region_totals.setdefault(region, 0.0)
-
-        for d, v in domains.items():
-            region_totals[region] += float(v)
-            region_domains.setdefault(region, set()).add(str(d))
-
-    lines = ["CONTEXT:"]
-    for region in sorted(region_totals):
-        lines.append(
-            f"  {region:<14} "
-            f"assemblies={region_counts.get(region, 0):<4} "
-            f"total={region_totals[region]:.4f} "
-            f"domains={','.join(sorted(region_domains.get(region, [])))}"
-        )
-
-    return "\n".join(lines)
+    return "\n".join(
+        f"{k}: {v}" for k, v in dump.items()
+    )
 
 
 def _dump_context_full(runtime) -> str:
-    if not hasattr(runtime, "context"):
-        return "CONTEXT: runtime has no context"
-    return runtime.context.stats()
+    ctx = getattr(runtime, "context", None)
+    if not ctx:
+        return "CONTEXT: unavailable"
+    return str(ctx.stats())
+
+
+# ============================================================
+# Salience diagnostics
+# ============================================================
+
+def _dump_salience(runtime) -> str:
+    sal = _get_salience(runtime)
+    if not sal:
+        return "SALIENCE: not enabled"
+
+    stats = sal.stats()
+    if not stats:
+        return "SALIENCE EMPTY"
+
+    return (
+        "SALIENCE:\n"
+        f"  count={stats.get('count', 0)}\n"
+        f"  mean={stats.get('mean', 0.0):.4f}\n"
+        f"  max={stats.get('max', 0.0):.4f}"
+    )
+
+
+def _dump_salience_full(runtime) -> str:
+    sal = _get_salience(runtime)
+    if not sal:
+        return "SALIENCE: not enabled"
+    return sal.dump()
+
+
+def _salience_set(runtime, assembly_id: str, value: float) -> str:
+    sal = _get_salience(runtime)
+    if not sal:
+        return "ERROR: salience not enabled"
+    sal.set(assembly_id, float(value))
+    return f"OK salience {assembly_id} = {value}"
+
+
+def _salience_clear(runtime) -> str:
+    sal = _get_salience(runtime)
+    if not sal:
+        return "ERROR: salience not enabled"
+    sal.clear()
+    return "OK salience cleared"
 
 
 # ============================================================
@@ -136,102 +156,65 @@ def _dump_striatum(runtime) -> str:
     if not snap:
         return "STRIATUM: no data"
 
-    dominance = snap.get("dominance", {})
-    if not dominance:
-        return "STRIATUM: empty"
-
     lines = [f"STRIATUM @ t={snap.get('time', 0.0):.3f}"]
-
     if snap.get("winner") is not None:
         lines.append(f"winner={snap['winner']}")
 
-    for ch, val in sorted(dominance.items(), key=lambda x: x[1], reverse=True):
-        lines.append(f"{ch}={float(val):.6f}")
+    for ch, val in sorted(
+        snap.get("dominance", {}).items(),
+        key=lambda x: x[1],
+        reverse=True,
+    ):
+        lines.append(f"{ch}={val:.6f}")
 
     return "\n".join(lines)
-
-
-def _dump_striatum_diag(runtime) -> str:
-    ck = getattr(runtime, "competition_kernel", None)
-    if ck is None:
-        return "STRIATUM_DIAG: no competition kernel"
-
-    try:
-        return ck.format_diagnostics(precision=7)
-    except Exception as e:
-        return f"STRIATUM_DIAG: error ({e})"
 
 
 def _dump_gate(runtime) -> str:
-    if hasattr(runtime, "snapshot_gate_state"):
-        try:
-            s = runtime.snapshot_gate_state()
-            return (
-                "GATE:\n"
-                f"  t={float(s.get('time', 0.0)):.3f}\n"
-                f"  relief={float(s.get('relief', 1.0)):.4f}\n"
-                f"  winner={s.get('winner', None)}"
-            )
-        except Exception as e:
-            return f"GATE: error ({e})"
+    if not hasattr(runtime, "snapshot_gate_state"):
+        return "GATE: unavailable"
 
-    return "GATE: no data"
+    s = runtime.snapshot_gate_state()
+    return (
+        "GATE:\n"
+        f"  t={s.get('time', 0.0):.3f}\n"
+        f"  relief={s.get('relief', 1.0):.4f}\n"
+        f"  winner={s.get('winner')}"
+    )
 
 
 def _dump_decision(runtime) -> str:
-    """
-    Explicit decision latch snapshot.
-    Read-only, fires once per episode.
-    """
     if not hasattr(runtime, "get_decision_state"):
-        return "DECISION: runtime does not support decision latch"
+        return "DECISION: unsupported"
 
-    state = runtime.get_decision_state()
-    if not state:
+    d = runtime.get_decision_state()
+    if not d:
         return "DECISION: none"
 
-    lines = ["DECISION:"]
-    for k, v in state.items():
-        lines.append(f"  {k} = {v}")
-
-    return "\n".join(lines)
+    return "DECISION:\n" + "\n".join(f"  {k}={v}" for k, v in d.items())
 
 
 # ============================================================
-# Part B controls (minimal + safe)
+# Latch controls
 # ============================================================
 
 def _set_sustain(runtime, n: int) -> str:
-    if not hasattr(runtime, "_decision_sustain_required"):
-        return "ERROR: runtime does not expose _decision_sustain_required"
     try:
-        n2 = max(1, int(n))
-        setattr(runtime, "_decision_sustain_required", n2)
-        return f"OK sustain {n2}"
+        runtime._decision_sustain_required = max(1, int(n))
+        return f"OK sustain {n}"
     except Exception as e:
-        return f"ERROR: sustain set failed ({e})"
+        return f"ERROR: {e}"
 
 
 def _get_sustain(runtime) -> str:
-    if hasattr(runtime, "_decision_sustain_required"):
-        return f"SUSTAIN: {int(getattr(runtime, '_decision_sustain_required'))}"
-    if hasattr(runtime, "DECISION_SUSTAIN_STEPS"):
-        return f"SUSTAIN: {int(getattr(runtime, 'DECISION_SUSTAIN_STEPS'))}"
-    return "SUSTAIN: unknown"
+    return f"SUSTAIN: {getattr(runtime, '_decision_sustain_required', '?')}"
 
 
 def _reset_latch(runtime) -> str:
-    # Only resets decision latch state; does not touch dynamics.
-    try:
-        if hasattr(runtime, "_decision_fired"):
-            setattr(runtime, "_decision_fired", False)
-        if hasattr(runtime, "_decision_counter"):
-            setattr(runtime, "_decision_counter", 0)
-        if hasattr(runtime, "_decision_state"):
-            setattr(runtime, "_decision_state", None)
-        return "OK reset_latch"
-    except Exception as e:
-        return f"ERROR: reset_latch failed ({e})"
+    runtime._decision_fired = False
+    runtime._decision_counter = 0
+    runtime._decision_state = None
+    return "OK reset_latch"
 
 
 # ============================================================
@@ -239,80 +222,56 @@ def _reset_latch(runtime) -> str:
 # ============================================================
 
 def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
-    """
-    Lightweight TCP command server for runtime instrumentation.
-    Read-only except for explicit stimulus injection + Part B latch controls.
-    """
 
     def help_text() -> str:
         return (
             "Commands:\n"
             "  poke <region> <mag>\n"
+            "  poke_pop <region> <population> <mag>\n"
+            "  poke_asm <region> <population> <idx> <mag>\n"
             "  stats <region>\n"
             "  top <region> <N>\n"
             "  context | ctx\n"
             "  ctxfull\n"
+            "  salience\n"
+            "  salience_full\n"
+            "  salience_set <assembly> <value>\n"
+            "  salience_clear\n"
             "  striatum | stri\n"
-            "  striatum_diag | stri_diag\n"
             "  gate\n"
             "  decision\n"
-            "  sustain [N]        (query or set latch sustain steps)\n"
-            "  reset_latch        (clear one-shot decision latch)\n"
+            "  sustain [N]\n"
+            "  reset_latch\n"
             "  help"
         )
 
-    def handle_command(cmd: str) -> str:
-        cmd = (cmd or "").strip()
-        if not cmd:
+    def handle(cmd: str) -> str:
+        parts = cmd.strip().split()
+        if not parts:
             return "ERROR: empty command"
 
-        parts = cmd.split()
         op = parts[0].lower()
 
         if op in ("help", "?"):
             return help_text()
 
-        # -------------------------------
-        # Mutating command (explicit)
-        # -------------------------------
-        if op == "poke":
-            if len(parts) != 3:
-                return "ERROR: poke <region> <mag>"
-            try:
-                mag = float(parts[2])
-            except ValueError:
-                return "ERROR: magnitude must be float"
-            runtime.inject_stimulus(region_id=parts[1], magnitude=mag)
-            return f"OK poke {parts[1]} {mag}"
+        if op == "poke" and len(parts) == 3:
+            runtime.inject_stimulus(parts[1], magnitude=float(parts[2]))
+            return "OK"
 
-        # -------------------------------
-        # Part B latch controls (explicit)
-        # -------------------------------
-        if op == "sustain":
-            if len(parts) == 1:
-                return _get_sustain(runtime)
-            if len(parts) == 2:
-                try:
-                    n = int(parts[1])
-                except ValueError:
-                    return "ERROR: sustain N must be int"
-                return _set_sustain(runtime, n)
-            return "ERROR: sustain [N]"
+        if op == "poke_pop" and len(parts) == 4:
+            runtime.inject_stimulus(parts[1], parts[2], magnitude=float(parts[3]))
+            return "OK"
 
-        if op == "reset_latch":
-            return _reset_latch(runtime)
+        if op == "poke_asm" and len(parts) == 5:
+            runtime.inject_stimulus(parts[1], parts[2], int(parts[3]), float(parts[4]))
+            return "OK"
 
-        # -------------------------------
-        # Read-only diagnostics
-        # -------------------------------
-        if op == "stats" and len(parts) == 2:
+        if op == "stats":
             return _region_stats(runtime, parts[1])
 
-        if op == "top" and len(parts) == 3:
-            try:
-                return _top_assemblies(runtime, parts[1], int(parts[2]))
-            except ValueError:
-                return "ERROR: N must be int"
+        if op == "top":
+            return _top_assemblies(runtime, parts[1], int(parts[2]))
 
         if op in ("context", "ctx"):
             return _dump_context(runtime)
@@ -320,11 +279,20 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
         if op == "ctxfull":
             return _dump_context_full(runtime)
 
+        if op == "salience":
+            return _dump_salience(runtime)
+
+        if op == "salience_full":
+            return _dump_salience_full(runtime)
+
+        if op == "salience_set" and len(parts) == 3:
+            return _salience_set(runtime, parts[1], float(parts[2]))
+
+        if op == "salience_clear":
+            return _salience_clear(runtime)
+
         if op in ("striatum", "stri"):
             return _dump_striatum(runtime)
-
-        if op in ("striatum_diag", "stri_diag"):
-            return _dump_striatum_diag(runtime)
 
         if op == "gate":
             return _dump_gate(runtime)
@@ -332,9 +300,15 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
         if op == "decision":
             return _dump_decision(runtime)
 
+        if op == "sustain":
+            return _get_sustain(runtime) if len(parts) == 1 else _set_sustain(runtime, int(parts[1]))
+
+        if op == "reset_latch":
+            return _reset_latch(runtime)
+
         return "ERROR: unknown command"
 
-    def server_loop():
+    def loop():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((host, port))
@@ -344,14 +318,13 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             while True:
                 conn, _ = s.accept()
                 with conn:
+                    data = conn.recv(4096)
+                    if not data:
+                        continue
                     try:
-                        data = conn.recv(4096)
-                        if not data:
-                            continue
-                        result = handle_command(data.decode("utf-8").strip())
+                        resp = handle(data.decode("utf-8"))
                     except Exception as e:
-                        result = f"ERROR: {e}"
+                        resp = f"ERROR: {e}"
+                    conn.sendall((resp + "\n").encode("utf-8"))
 
-                    conn.sendall((result + "\n").encode("utf-8"))
-
-    threading.Thread(target=server_loop, daemon=True).start()
+    threading.Thread(target=loop, daemon=True).start()

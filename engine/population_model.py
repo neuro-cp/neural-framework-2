@@ -68,6 +68,9 @@ class PopulationModel:
     input: float = 0.0
     lateral_inhibition: float = 0.0
 
+    # Transient neuromodulatory state (cleared each step)
+    modulatory_gain: float = 1.0
+
     # -------------------------
     # Intrinsic tonic state
     # -------------------------
@@ -131,24 +134,20 @@ class PopulationModel:
         Construct a PopulationModel from region JSON population params + global defaults.
 
         NOTE on baseline_firing_rate_hz:
-        - Treated as a legacy/future artifact. We DO NOT implement Hz physiology here.
-        - We only use it as a fallback numeric baseline if 'baseline' is not provided.
+        - Treated as a legacy/future artifact.
+        - Used only as numeric fallback if 'baseline' is absent.
         """
         g = global_defaults or {}
 
         def pick(key: str, default: Any) -> Any:
-            # params wins; then global defaults; then fallback
             return params.get(key, g.get(key, default))
 
-        # Baseline selection:
-        # - Prefer explicit "baseline"
-        # - Only fall back to "baseline_firing_rate_hz" if baseline is absent
+        # Baseline selection
         if "baseline" in params or "baseline" in g:
             baseline = _f(pick("baseline", 0.0), 0.0)
         else:
             baseline = _f(pick("baseline_firing_rate_hz", 0.0), 0.0)
 
-        # tonic_target defaults to baseline (or provided tonic_target)
         tonic_target = _f(pick("tonic_target", baseline), baseline)
 
         model = cls(
@@ -172,7 +171,6 @@ class PopulationModel:
             clamp_min=_f(pick("clamp_min", -1.0), -1.0),
             clamp_max=_f(pick("clamp_max", 1.0), 1.0),
 
-            # Initialize activity close to baseline by default
             activity=_f(params.get("activity", baseline), baseline),
 
             tonic_target=tonic_target,
@@ -180,11 +178,11 @@ class PopulationModel:
             tonic_gain=_f(pick("tonic_gain", 0.02), 0.02),
         )
 
-        # Semantic tags (static; used by kernels/routing; no dynamics inside model)
+        # Semantic tags
         model.semantic_role = params.get("role")
         model.subpopulation = params.get("subpopulation")
 
-        # Static semantic modifiers (bounded away from 0)
+        # Static semantic modifiers
         model.semantic_gain = max(
             0.1,
             1.0
@@ -211,7 +209,6 @@ class PopulationModel:
     # ------------------------------------------------------------
 
     def output(self) -> float:
-        # Proxy for downstream routing/competition (unitless).
         return self.firing_rate
 
     # ------------------------------------------------------------
@@ -223,7 +220,6 @@ class PopulationModel:
             return 0.0
         if self.noise_distribution == "uniform":
             return random.uniform(-self.noise_amplitude, self.noise_amplitude)
-        # default gaussian
         return random.gauss(0.0, self.noise_amplitude)
 
     # ------------------------------------------------------------
@@ -239,17 +235,20 @@ class PopulationModel:
         - No context
         - No routing
         """
-        # Slow tonic stabilization (tracks toward tonic_target, referenced to current activity)
+
+        # Slow tonic stabilization
         self.tonic += self.tonic_gain * (self.tonic_target - self.activity)
 
-        tau = self.tau * self.semantic_tau_bias
-        gain = self.gain * self.semantic_gain
+        # Effective dynamics (neuromodulation acts here)
+        mod = max(1e-6, self.modulatory_gain)
+
+        tau = (self.tau * self.semantic_tau_bias) / mod
+        gain = self.gain * self.semantic_gain * mod
         inhibition_gain = self.inhibition_gain * self.semantic_inhibition_bias
 
         homeo = self.homeostatic_gain * (self.baseline - self.activity)
         self_inhib = inhibition_gain * self.activity
 
-        # Signed net drive from input and lateral inhibition
         net_drive = self.sign * (self.input - self.lateral_inhibition)
 
         drive = (
@@ -261,19 +260,16 @@ class PopulationModel:
             + self._sample_noise()
         )
 
-        # Integrate membrane-like activity
         if tau > 1e-9:
             self.activity += (float(dt) / tau) * (drive - self.activity)
         else:
             self.activity = drive
 
-        # Safety clamp on internal activity
         if self.activity < self.clamp_min:
             self.activity = self.clamp_min
         elif self.activity > self.clamp_max:
             self.activity = self.clamp_max
 
-        # Rectified proxy "firing rate"
         above = self.activity - self.threshold
         if above > 0.0:
             fr = gain * above
@@ -282,7 +278,6 @@ class PopulationModel:
         else:
             fr = 0.0
 
-        # Bound output
         if fr < 0.0:
             fr = 0.0
         elif fr > self.max_rate:
@@ -290,6 +285,7 @@ class PopulationModel:
 
         self.firing_rate = fr
 
-        # Clear transients (guarantee: nothing carries over unless injected again)
+        # Clear all transients
         self.input = 0.0
         self.lateral_inhibition = 0.0
+        self.modulatory_gain = 1.0
