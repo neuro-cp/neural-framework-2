@@ -1,7 +1,12 @@
-# engine/runtime_context.py
 from __future__ import annotations
 
 from typing import Dict, Optional
+import time
+import uuid
+
+from memory.context.context_memory import ContextMemory
+from memory.context.context_policy import ContextPolicy
+from memory.context.context_trace import ContextTrace
 
 
 GLOBAL_CONTEXT_KEY = "__global__"
@@ -9,29 +14,43 @@ GLOBAL_CONTEXT_KEY = "__global__"
 
 class RuntimeContext:
     """
-    Ephemeral runtime context buffer with domain scoping.
+    Runtime-facing context system.
 
     PURPOSE:
-    - Provide short-lived, gain-only bias signals
-    - Support PFC-style working context without learning
-    - Safe expansion point for attention/task sets/motivation
+    - Provide short-lived, gain-style bias signals
+    - Support PFC-style working context
+    - Gate trace creation into ContextMemory via policy
 
     CORE GUARANTEES:
     - No learning
     - No plasticity
+    - No decision authority
     - Neutral when unused
-    - Deterministic decay
     """
 
     def __init__(self, decay_tau: float = 5.0, epsilon: float = 1e-6):
         self.decay_tau = float(decay_tau)
         self.epsilon = float(epsilon)
 
-        # key (assembly_id or GLOBAL_CONTEXT_KEY) -> domain -> scalar bias
+        # --------------------------------------------------
+        # Ephemeral context gains
+        # key (assembly_id or GLOBAL_CONTEXT_KEY) -> domain -> bias
+        # --------------------------------------------------
         self._context: Dict[str, Dict[str, float]] = {}
 
+        # --------------------------------------------------
+        # Context memory (write-only from runtime)
+        # --------------------------------------------------
+        self._memory = ContextMemory(decay_tau=decay_tau)
+
+        # --------------------------------------------------
+        # Trace eligibility bookkeeping
+        # --------------------------------------------------
+        self._above_since: Dict[str, float] = {}
+        self._trace_emitted: Dict[str, bool] = {}
+
     # ============================================================
-    # Query
+    # Query (READ-ONLY)
     # ============================================================
 
     def get_gain(
@@ -42,12 +61,12 @@ class RuntimeContext:
         allow_global_fallback: bool = True,
     ) -> float:
         """
-        Return multiplicative gain for an assembly in a given domain.
+        Return multiplicative gain for an assembly.
 
         Resolution order:
-        1) Exact assembly match
-        2) Global context fallback (if allow_global_fallback=True)
-        3) Neutral gain (1.0)
+        1) Assembly-specific domain
+        2) Global fallback
+        3) Neutral (1.0)
         """
         domains = self._context.get(assembly_id)
 
@@ -67,7 +86,7 @@ class RuntimeContext:
         allow_global_fallback: bool = True,
     ) -> float:
         """
-        Return additive bias (not +1 gain), useful for debugging.
+        Return additive bias (for diagnostics).
         """
         domains = self._context.get(assembly_id)
 
@@ -80,35 +99,45 @@ class RuntimeContext:
         return float(domains.get(domain, 0.0))
 
     # ============================================================
-    # Injection
+    # Injection (WRITE PATH)
     # ============================================================
 
-    def inject(
+    def add_gain(
         self,
         assembly_id: str,
-        amount: float,
+        delta: float,
         domain: str = "global",
     ) -> None:
         """
-        Inject transient context bias for a specific assembly_id.
+        Inject a context gain for an assembly.
 
-        DESIGN:
-        - Accumulative
-        - Gain-only (bias later interpreted as multiplicative gain)
-        - No clipping or normalization
+        This is the ONLY supported external write path.
         """
-        if amount == 0.0:
+        if not ContextPolicy.allow_update(assembly_id, domain, delta):
             return
 
         aid = str(assembly_id)
         domains = self._context.setdefault(aid, {})
-        domains[domain] = domains.get(domain, 0.0) + float(amount)
 
-    def inject_global(self, amount: float, domain: str = "global") -> None:
+        current = domains.get(domain, 0.0)
+        new_value = ContextPolicy.clamp_gain(current + delta, domain)
+        domains[domain] = new_value
+
+        now = time.time()
+
+        # Track trace eligibility
+        if new_value >= ContextPolicy.TRACE_GAIN_THRESHOLD:
+            if aid not in self._above_since:
+                self._above_since[aid] = now
+        else:
+            self._above_since.pop(aid, None)
+            self._trace_emitted.pop(aid, None)
+
+    def add_global_gain(self, delta: float, domain: str = "global") -> None:
         """
-        Inject a global context bias (fallback target for all assemblies).
+        Inject global context gain.
         """
-        self.inject(GLOBAL_CONTEXT_KEY, amount, domain=domain)
+        self.add_gain(GLOBAL_CONTEXT_KEY, delta, domain)
 
     def set(
         self,
@@ -117,8 +146,7 @@ class RuntimeContext:
         domain: str = "global",
     ) -> None:
         """
-        Set (overwrite) a context bias value for an assembly/domain.
-        Useful for deterministic tests.
+        Deterministic overwrite (testing only).
         """
         aid = str(assembly_id)
         domains = self._context.setdefault(aid, {})
@@ -130,36 +158,70 @@ class RuntimeContext:
 
     def step(self, dt: float) -> None:
         """
-        Exponential-like decay of all context traces.
-        Automatic cleanup once values fall below epsilon.
+        Advance time.
+
+        Responsibilities:
+        - Check trace eligibility
+        - Emit at most one trace per sustained episode
+        - Decay ephemeral gains
+        - Decay context memory
         """
-        if not self._context:
-            return
+        now = time.time()
 
-        tau = max(self.decay_tau, 1e-9)
-        decay = float(dt) / tau
+        # --- Trace eligibility ---
+        for aid, start_t in list(self._above_since.items()):
+            if self._trace_emitted.get(aid, False):
+                continue
 
-        dead_assemblies = []
-
-        for aid, domains in list(self._context.items()):
-            dead_domains = []
-
-            for domain, value in list(domains.items()):
-                new_value = value * (1.0 - decay)
-
-                if abs(new_value) < self.epsilon:
-                    dead_domains.append(domain)
-                else:
-                    domains[domain] = new_value
-
-            for domain in dead_domains:
-                del domains[domain]
-
+            domains = self._context.get(aid)
             if not domains:
-                dead_assemblies.append(aid)
+                continue
 
-        for aid in dead_assemblies:
-            del self._context[aid]
+            gain = domains.get("global", 0.0)
+            duration = now - start_t
+
+            if ContextPolicy.should_create_trace(
+                gain=gain,
+                duration=duration,
+                domain="global",
+            ):
+                trace = ContextTrace(
+                    trace_id=str(uuid.uuid4()),
+                    context={"assembly": aid},
+                    strength=gain,
+                )
+                self._memory.add(trace)
+                self._trace_emitted[aid] = True
+
+        # --- Ephemeral decay ---
+        if self._context:
+            tau = max(self.decay_tau, 1e-9)
+            decay = float(dt) / tau
+
+            dead_assemblies = []
+
+            for aid, domains in list(self._context.items()):
+                dead_domains = []
+
+                for domain, value in list(domains.items()):
+                    new_value = value * (1.0 - decay)
+
+                    if abs(new_value) < self.epsilon:
+                        dead_domains.append(domain)
+                    else:
+                        domains[domain] = new_value
+
+                for domain in dead_domains:
+                    del domains[domain]
+
+                if not domains:
+                    dead_assemblies.append(aid)
+
+            for aid in dead_assemblies:
+                del self._context[aid]
+
+        # --- Memory decay ---
+        self._memory.step(dt)
 
     # ============================================================
     # Maintenance
@@ -167,11 +229,10 @@ class RuntimeContext:
 
     def clear(self) -> None:
         self._context.clear()
+        self._above_since.clear()
+        self._trace_emitted.clear()
 
     def clear_domain(self, domain: str) -> None:
-        """
-        Remove a domain from all assemblies (including global).
-        """
         if not self._context:
             return
 
@@ -186,30 +247,18 @@ class RuntimeContext:
             del self._context[aid]
 
     # ============================================================
-    # Observability (read-only)
+    # Observability
     # ============================================================
 
     def dump(self) -> Dict[str, Dict[str, float]]:
         return {aid: dict(domains) for aid, domains in self._context.items()}
 
-    def stats(self, *, max_lines: Optional[int] = None) -> str:
-        """
-        Human-readable summary for debugging and runtime inspection.
-        """
-        if not self._context:
-            return "CONTEXT EMPTY"
-
-        lines = ["CONTEXT:"]
-        items = sorted(self._context.items())
-
-        if max_lines is not None:
-            items = items[: max(0, int(max_lines))]
-
-        for aid, domains in items:
-            doms = " ".join(f"{d}={v:.4f}" for d, v in sorted(domains.items()))
-            lines.append(f"  {aid} :: {doms}")
-
-        if max_lines is not None and len(self._context) > len(items):
-            lines.append(f"  ... ({len(self._context) - len(items)} more)")
-
-        return "\n".join(lines)
+    def stats(self) -> Dict[str, float]:
+        return {
+            "gain_count": len(self._context),
+            "max_gain": max(
+                (max(domains.values()) for domains in self._context.values()),
+                default=0.0,
+            ),
+            "memory": self._memory.stats(),
+        }

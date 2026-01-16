@@ -245,9 +245,15 @@ class BrainRuntime:
         for region_key, pop_id, idx, mag in self._stim_queue:
             pops = self.region_states.get(region_key, {}).get("populations", {})
             targets = pops.values() if pop_id is None else [pops.get(pop_id, [])]
+
             for plist in targets:
                 for p in plist if idx is None else plist[idx:idx + 1]:
-                    p.input += mag
+                    gain = 1.0
+                    if self.enable_context:
+                        gain = self.context.get_gain(p.assembly_id)
+
+                    p.input += mag * gain
+
         self._stim_queue.clear()
 
         # 2. Physiology
@@ -277,6 +283,8 @@ class BrainRuntime:
         self._propagate_connectivity(relief)
 
         self.time += self.dt
+
+
 
     # ============================================================
     # Subsystems
