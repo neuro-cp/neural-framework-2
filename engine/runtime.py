@@ -13,6 +13,8 @@ from engine.salience.salience_field import SalienceField
 from persistence.persistence_core import BasalGangliaPersistence
 from engine.decision_bias import DecisionBias
 from engine.decision_fx.adapter import DecisionFXAdapter
+from memory.working_state.pfc_adapter import PFCAdapter
+
 
 
 # ============================================================
@@ -111,6 +113,10 @@ class BrainRuntime:
         self.enable_decision_fx = True
         self.decision_fx = DecisionFXAdapter(enable_trace=True)
 
+        # ---------------- PFC working state adapter ----------------
+        self.enable_pfc_adapter = True
+        self.pfc_adapter = PFCAdapter(enable=True)
+      
         # ---------------- GPi gating ----------------
         self.enable_gpi_disinhibition = True
         self.gpi_gain = 0.6
@@ -234,7 +240,11 @@ class BrainRuntime:
     def step(self) -> None:
         self.step_count += 1
 
-        # 1. Reset inputs + stimuli
+        # ============================================================
+        # STEP (AUTHORITATIVE ORDER)
+        # ============================================================
+
+        # 1. Reset inputs + apply stimuli
         for p in self._all_pops:
             p.input = 0.0
 
@@ -253,43 +263,46 @@ class BrainRuntime:
 
         self._stim_queue.clear()
 
-        # 2. Physiology
+        # 2. Physiology update
         for p in self._all_pops:
             p.step(self.dt)
 
-        # 3. PFC → Context
-        if self.enable_context and self.enable_pfc_context:
-            self._apply_pfc_context()
-
-        # 4. Striatum competition + persistence
+        # 3. Striatum competition + BG persistence
         if self.enable_competition:
             self._step_striatum()
 
-        # 5. Decay
+        # 4. GPi disinhibition (gate computation)
+        relief = self._compute_gpi_relief()
+        self._last_gate_strength = relief
+
+        # 5. Decision latch (creates _decision_state)
+        self._evaluate_decision_latch(relief)
+
+        # 6. PFC → Context injection (now sees working state)
+        if self.enable_context and self.enable_pfc_context:
+            self._apply_pfc_context()
+
+        # 7. Decay (context, salience, bias, working state)
         if self.enable_context:
             self.context.step(self.dt)
         if self.enable_salience:
             self.salience.step(self.dt)
         if self.enable_decision_bias:
             self.decision_bias.step(self.dt)
+        if self.enable_pfc_adapter:
+            self.pfc_adapter.step(self.dt)
 
-        # 6. GPi disinhibition
-        relief = self._compute_gpi_relief()
-        self._last_gate_strength = relief
-
-        # Decision latch
-        self._evaluate_decision_latch(relief)
-
-        # Decision FX (post-commit only)
+        # 8. Decision FX (post-commit, advisory only)
         if self.enable_decision_fx and self._decision_state is not None:
             self.decision_fx.apply(
                 decision_state=self._decision_state,
                 dominance=getattr(self, "_last_striatum_snapshot", {}).get("dominance", {}),
             )
 
-        # 7. Connectivity
+        # 9. Connectivity propagation + thalamic gating
         self._propagate_connectivity(relief)
 
+        # 10. Advance time
         self.time += self.dt
 
     # ============================================================
@@ -303,6 +316,17 @@ class BrainRuntime:
         assemblies = [p for plist in pfc["populations"].values() for p in plist]
         if assemblies:
             self.pfc_context.apply(assemblies, self.context)
+        
+        # PFC working-state gain (advisory, post-decision)
+        if self.enable_pfc_adapter and self.pfc_adapter.is_engaged():
+            gain = self.pfc_adapter.strength()
+
+            for p in assemblies:
+                existing = self.context.get_gain(p.assembly_id)
+                delta = (existing * gain) - existing
+                if delta > 0.0:
+                    self.context.inject_gain(p.assembly_id, delta)
+
 
     def _step_striatum(self) -> None:
         striatum = self.region_states.get("striatum")
@@ -407,6 +431,18 @@ class BrainRuntime:
                 "delta_dominance": delta,
                 "relief": relief,
             }
+
+            if self.enable_pfc_adapter:
+                self.pfc_adapter.ingest_decision(
+                    {
+                        "commit": True,
+                        "winner": snap.get("winner"),
+                        "confidence": min(
+                            1.0,
+                            delta / max(self.DECISION_DOMINANCE_THRESHOLD, 1e-6),
+                        ),
+                    }
+                )
 
             if self.enable_decision_bias:
                 self.decision_bias.apply_decision(
