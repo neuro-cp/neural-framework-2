@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import json
@@ -10,6 +11,8 @@ from engine.runtime_context import RuntimeContext
 from engine.context_hooks import PFCContextHook
 from engine.salience.salience_field import SalienceField
 from persistence.persistence_core import BasalGangliaPersistence
+from engine.decision_bias import DecisionBias
+from engine.decision_fx.adapter import DecisionFXAdapter
 
 
 # ============================================================
@@ -40,12 +43,13 @@ class BrainRuntime:
       2. Physiology update
       3. PFC → RuntimeContext injection
       4. Striatum competition + BG persistence
-      5. Context decay
+      5. Context / salience decay
       6. GPi disinhibition
       7. Connectivity propagation + Thalamic gating
 
-    ADDITION (READ-ONLY):
-      - Explicit decision latch (Checkpoint 16)
+    ADDITIONS:
+      - Read-only decision latch
+      - Advisory Decision FX (post-commit, thalamic only)
     """
 
     DECISION_DOMINANCE_THRESHOLD = 0.04
@@ -58,20 +62,14 @@ class BrainRuntime:
         self.time = 0.0
         self.step_count = 0
 
-        # --------------------------------------------------
-        # Global defaults
-        # --------------------------------------------------
+        # ---------------- Global defaults ----------------
         gd = brain.get("global_dynamics", {}) or {}
         self.global_pop_dyn = gd.get("population_defaults", {})
 
-        # --------------------------------------------------
-        # Assembly authority
-        # --------------------------------------------------
+        # ---------------- Assembly control ----------------
         self.assembly_control = self._load_assembly_control()
 
-        # --------------------------------------------------
-        # Competition kernel
-        # --------------------------------------------------
+        # ---------------- Competition ----------------
         self.enable_competition = True
         self.competition_kernel = CompetitionKernel(
             inhibition_strength=0.55,
@@ -79,18 +77,14 @@ class BrainRuntime:
             dominance_tau=0.75,
         )
 
-        # --------------------------------------------------
-        # Basal ganglia persistence
-        # --------------------------------------------------
+        # ---------------- BG persistence ----------------
         self.enable_persistence = True
         self.bg_persistence = BasalGangliaPersistence(
             decay_tau=30.0,
             bias_gain=0.15,
         )
 
-        # --------------------------------------------------
-        # Runtime context (working memory / bias)
-        # --------------------------------------------------
+        # ---------------- Context ----------------
         self.enable_context = True
         self.context = RuntimeContext(decay_tau=5.0)
 
@@ -101,44 +95,45 @@ class BrainRuntime:
             target_domain="global",
         )
 
-        # --------------------------------------------------
-        # Salience field (novelty / importance)
-        # --------------------------------------------------
+        # ---------------- Salience ----------------
         self.enable_salience = True
         self.salience = SalienceField(decay_tau=3.0)
 
-        # --------------------------------------------------
-        # GPi disinhibition / gating
-        # --------------------------------------------------
+        # ---------------- Decision bias ----------------
+        self.enable_decision_bias = True
+        self.decision_bias = DecisionBias(
+            decay_tau=4.0,
+            max_bias=0.30,
+            suppress_gain=0.15,
+        )
+
+        # ---------------- Decision FX ----------------
+        self.enable_decision_fx = True
+        self.decision_fx = DecisionFXAdapter(enable_trace=True)
+
+        # ---------------- GPi gating ----------------
         self.enable_gpi_disinhibition = True
         self.gpi_gain = 0.6
         self.gpi_floor = 0.25
         self._last_gate_strength: float = 1.0
 
-        # --------------------------------------------------
-        # Runtime state
-        # --------------------------------------------------
+        # ---------------- Runtime state ----------------
         self.region_states: Dict[str, Dict[str, Any]] = {}
         self._all_pops: List[PopulationModel] = []
         self._stim_queue: List[Tuple[str, Optional[str], Optional[int], float]] = []
         self._region_key_by_label: Dict[str, str] = {}
 
-        # --------------------------------------------------
-        # Decision latch (read-only)
-        # --------------------------------------------------
-        self._decision_fired: bool = False
-        self._decision_counter: int = 0
+        # ---------------- Decision latch ----------------
+        self._decision_fired = False
+        self._decision_counter = 0
         self._decision_state: Optional[Dict[str, Any]] = None
 
-        self._decision_sustain_required: int = int(self.DECISION_SUSTAIN_STEPS)
-        try:
-            latch_cfg = brain.get("decision_latch", {}) or {}
-            if "sustain_steps" in latch_cfg:
-                self._decision_sustain_required = max(
-                    1, int(latch_cfg["sustain_steps"])
-                )
-        except Exception:
-            self._decision_sustain_required = int(self.DECISION_SUSTAIN_STEPS)
+        self._decision_sustain_required = int(self.DECISION_SUSTAIN_STEPS)
+        latch_cfg = brain.get("decision_latch", {}) or {}
+        if "sustain_steps" in latch_cfg:
+            self._decision_sustain_required = max(
+                1, int(latch_cfg["sustain_steps"])
+            )
 
         self._build(brain)
 
@@ -239,9 +234,7 @@ class BrainRuntime:
     def step(self) -> None:
         self.step_count += 1
 
-        # --------------------------------------------------
         # 1. Reset inputs + stimuli
-        # --------------------------------------------------
         for p in self._all_pops:
             p.input = 0.0
 
@@ -252,58 +245,49 @@ class BrainRuntime:
             for plist in targets:
                 for p in plist if idx is None else plist[idx:idx + 1]:
                     gain = 1.0
-
                     if self.enable_context:
                         gain *= self.context.get_gain(p.assembly_id)
-
                     if self.enable_salience:
-                        gain *= self.salience.get(p.assembly_id)
-
+                        gain *= (1.0 + self.salience.get(p.assembly_id))
                     p.input += mag * gain
 
         self._stim_queue.clear()
 
-        # --------------------------------------------------
         # 2. Physiology
-        # --------------------------------------------------
         for p in self._all_pops:
             p.step(self.dt)
 
-        # --------------------------------------------------
         # 3. PFC → Context
-        # --------------------------------------------------
         if self.enable_context and self.enable_pfc_context:
             self._apply_pfc_context()
 
-        # --------------------------------------------------
         # 4. Striatum competition + persistence
-        # --------------------------------------------------
         if self.enable_competition:
             self._step_striatum()
 
-        # --------------------------------------------------
-        # 5. Context + salience decay
-        # --------------------------------------------------
+        # 5. Decay
         if self.enable_context:
             self.context.step(self.dt)
-
         if self.enable_salience:
             self.salience.step(self.dt)
+        if self.enable_decision_bias:
+            self.decision_bias.step(self.dt)
 
-        # --------------------------------------------------
         # 6. GPi disinhibition
-        # --------------------------------------------------
         relief = self._compute_gpi_relief()
         self._last_gate_strength = relief
 
-        # --------------------------------------------------
-        # Decision latch (read-only)
-        # --------------------------------------------------
+        # Decision latch
         self._evaluate_decision_latch(relief)
 
-        # --------------------------------------------------
-        # 7. Connectivity + Thalamic gating
-        # --------------------------------------------------
+        # Decision FX (post-commit only)
+        if self.enable_decision_fx and self._decision_state is not None:
+            self.decision_fx.apply(
+                decision_state=self._decision_state,
+                dominance=getattr(self, "_last_striatum_snapshot", {}).get("dominance", {}),
+            )
+
+        # 7. Connectivity
         self._propagate_connectivity(relief)
 
         self.time += self.dt
@@ -389,10 +373,6 @@ class BrainRuntime:
         relief = 1.0 - self.gpi_gain * gpi_mean
         return max(self.gpi_floor, min(1.0, relief))
 
-    # ============================================================
-    # Decision Latch (Read-Only)
-    # ============================================================
-
     def _evaluate_decision_latch(self, relief: float) -> None:
         if self._decision_fired:
             return
@@ -428,11 +408,24 @@ class BrainRuntime:
                 "relief": relief,
             }
 
-    # ============================================================
-    # Connectivity + Thalamic Gating
-    # ============================================================
+            if self.enable_decision_bias:
+                self.decision_bias.apply_decision(
+                    winner=snap.get("winner"),
+                    channels=list(dom.keys()),
+                    strength=min(
+                        1.0,
+                        delta / max(self.DECISION_DOMINANCE_THRESHOLD, 1e-6),
+                    ),
+                    step=self.step_count,
+                )
 
     def _propagate_connectivity(self, relief: float) -> None:
+        fx_gain = (
+            self.decision_fx.get_thalamic_gain_modifier()
+            if self.enable_decision_fx and self._decision_state is not None
+            else 1.0
+        )
+
         for src_key, state in self.region_states.items():
             outputs = state.get("def", {}).get("outputs", [])
             if not outputs:
@@ -457,14 +450,12 @@ class BrainRuntime:
 
                 if src_key.lower() == "gpi" and tgt_key.lower() == "md":
                     self._apply_input_to_region(
-                        tgt_key, src_drive * strength * relief
+                        tgt_key, src_drive * strength * relief * fx_gain
                     )
                 else:
                     self._apply_input_to_region(
                         tgt_key, src_drive * strength
                     )
-
-        self._drive_thalamus(relief)
 
     def _apply_input_to_region(self, region_key: str, amount: float) -> None:
         region = self.region_states.get(region_key)
@@ -474,39 +465,22 @@ class BrainRuntime:
             for p in plist:
                 p.input += amount
 
-    def _drive_thalamus(self, relief: float) -> None:
-        cortex = self.region_states.get("association_cortex")
-        if not cortex:
-            return
-
-        src = [
-            p for plist in cortex["populations"].values() for p in plist
-        ]
-        if not src:
-            return
-
-        mean = sum(p.output() for p in src) / len(src)
-        drive = sum(abs(p.output() - mean) for p in src) / len(src)
-
-        for relay in ("lgn", "md", "pulvinar", "vpl", "vpm"):
-            th = self.region_states.get(relay)
-            if not th:
-                continue
-            for plist in th["populations"].values():
-                for p in plist:
-                    p.input += drive * 0.02 * relief
-
     # ============================================================
-    # Diagnostics / External API
+    # Diagnostics
     # ============================================================
 
     def snapshot_gate_state(self) -> Dict[str, Any]:
         return {
             "time": self.time,
             "relief": self._last_gate_strength,
-            "winner": getattr(self, "_last_striatum_snapshot", {}).get("winner"),
             "decision": self._decision_state,
         }
 
     def get_decision_state(self) -> Optional[Dict[str, Any]]:
         return self._decision_state
+
+    def get_decision_bias(self) -> Dict[str, float]:
+        return self.decision_bias.dump() if self.enable_decision_bias else {}
+
+    def get_decision_fx_state(self) -> Dict[str, Any]:
+        return self.decision_fx.dump() if self.enable_decision_fx else {}

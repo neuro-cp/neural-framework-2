@@ -105,9 +105,10 @@ class PFCContextHook:
 
             target_id = GLOBAL_CONTEXT_KEY if self.inject_to_global else p.assembly_id
 
-            context.inject(
-                assembly_id=target_id,
-                amount=amount,
+            # ✅ Correct RuntimeContext API call
+            context.add_gain(
+                target_id,
+                amount,
                 domain=dom,
             )
 

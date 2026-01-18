@@ -1,3 +1,4 @@
+# test_latch_gate_fx_false.py
 from __future__ import annotations
 
 import socket
@@ -24,9 +25,11 @@ DT = 0.01
 POLL_TICKS = 25
 POLL_SLEEP = DT * POLL_TICKS
 
-BASELINE_STEPS = 20
-ASYM_STEPS     = 40
-FORCED_STEPS   = 100
+BASELINE_STEPS = 30
+ASYM_STEPS     = 50
+FORCED_STEPS   = 120
+PERSIST_STEPS  = 120
+NEUTRAL_STEPS  = 200
 
 SMALL_POKE = 1.0
 ASYM_POKE  = 1.0
@@ -34,7 +37,7 @@ ASYM_POKE  = 1.0
 GATE_OPEN_THRESHOLD = 0.47
 
 # ============================================================
-# TCP
+# TCP HELPERS (unchanged)
 # ============================================================
 
 def send(cmd: str, expect_reply: bool = True) -> str:
@@ -59,7 +62,7 @@ def wait_for_server() -> None:
         time.sleep(0.5)
 
 # ============================================================
-# Parsing
+# Parsing helpers (unchanged)
 # ============================================================
 
 _NUM = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?"
@@ -100,22 +103,21 @@ def parse_gate(out: str) -> Optional[float]:
     return None
 
 # ============================================================
-# CSV INIT
+# CSV INIT (unchanged)
 # ============================================================
 
 def init_csvs() -> None:
     with open(DOM_CSV, "w", newline="", encoding="utf-8") as f:
         csv.writer(f).writerow([
-            "run_id","value_mag","trial","step",
-            "winner","D1","D2","delta"
+            "run_id","trial","step","winner","D1","D2","delta"
         ])
 
     with open(DEBUG_CSV, "w", newline="", encoding="utf-8") as f:
         csv.writer(f).writerow([
-            "run_id","value_mag","trial","step",
-            "t_runtime","winner","D1","D2",
-            "delta","gate_relief",
-            "decision_seen","max_delta_so_far","max_relief_so_far"
+            "run_id","trial","step","t_runtime",
+            "winner","D1","D2","delta",
+            "gate_relief","decision_seen",
+            "max_delta","max_relief"
         ])
 
     with open(DEC_CSV, "w", newline="", encoding="utf-8") as f:
@@ -125,36 +127,23 @@ def init_csvs() -> None:
         ])
 
 # ============================================================
-# LOGGING
+# Logging
 # ============================================================
 
-def log_step(
-    run_id: int,
-    trial: int,
-    step: int,
-    t: float,
-    winner: str,
-    d1: float,
-    d2: float,
-    delta: float,
-    gate: Optional[float],
-    decision_seen: int,
-    max_delta: float,
-    max_relief: float,
-) -> None:
+def log_step(run_id, trial, step, t, winner, d1, d2, delta,
+             gate, decision_seen, max_delta, max_relief):
 
     with open(DOM_CSV, "a", newline="", encoding="utf-8") as f:
         csv.writer(f).writerow([
-            run_id, 0.0, trial, step,
-            winner, d1, d2, delta
+            run_id, trial, step, winner, d1, d2, delta
         ])
 
     with open(DEBUG_CSV, "a", newline="", encoding="utf-8") as f:
         csv.writer(f).writerow([
-            run_id, 0.0, trial, step,
-            t, winner, d1, d2,
-            delta, gate,
-            decision_seen, max_delta, max_relief
+            run_id, trial, step, t,
+            winner, d1, d2, delta,
+            gate, decision_seen,
+            max_delta, max_relief
         ])
 
 # ============================================================
@@ -162,7 +151,7 @@ def log_step(
 # ============================================================
 
 def main() -> None:
-    print("=== STRIATUM ASYMMETRY + GATE TEST SUITE ===")
+    print("=== BG LATCH CHARACTERIZATION SUITE (FX = FALSE) ===")
 
     init_csvs()
     wait_for_server()
@@ -172,11 +161,9 @@ def main() -> None:
     trial  = 1
     step   = 0
 
-    max_delta  = 0.0
+    max_delta = 0.0
     max_relief = 0.0
     decision_seen = 0
-
-    gate_opened = False
 
     # ---------------------------
     # TEST 1 — Baseline symmetry
@@ -184,32 +171,7 @@ def main() -> None:
     print("[TEST 1] Baseline symmetry")
 
     for _ in range(BASELINE_STEPS):
-        send(f"poke striatum {SMALL_POKE}", expect_reply=False)
-        time.sleep(POLL_SLEEP)
-
-        parsed = parse_striatum(send("striatum"))
-        if not parsed:
-            continue
-
-        winner, d1, d2, t = parsed
-        delta = abs(d1 - d2)
-
-        log_step(
-            run_id, trial, step, t,
-            winner, d1, d2, delta,
-            None, decision_seen,
-            max_delta, max_relief
-        )
-
-        step += 1
-
-    # ---------------------------
-    # TEST 2 — Direct asymmetry
-    # ---------------------------
-    print("[TEST 2] Direct D1 asymmetry")
-
-    for _ in range(ASYM_STEPS):
-        send(f"poke striatum:D1_MSN {ASYM_POKE}", expect_reply=False)
+        send(f"poke striatum {SMALL_POKE}", False)
         time.sleep(POLL_SLEEP)
 
         parsed = parse_striatum(send("striatum"))
@@ -220,22 +182,40 @@ def main() -> None:
         delta = abs(d1 - d2)
         max_delta = max(max_delta, delta)
 
-        log_step(
-            run_id, trial, step, t,
-            winner, d1, d2, delta,
-            None, decision_seen,
-            max_delta, max_relief
-        )
-
+        log_step(run_id, trial, step, t, winner, d1, d2,
+                 delta, None, decision_seen, max_delta, max_relief)
         step += 1
 
     # ---------------------------
-    # TEST 3/4 — Gate-triggered forced decision
+    # TEST 2 — Direct asymmetry
     # ---------------------------
-    print("[TEST 3/4] Gate-triggered forced win")
+    print("[TEST 2] Direct D1 asymmetry")
+
+    for _ in range(ASYM_STEPS):
+        send(f"poke striatum:D1_MSN {ASYM_POKE}", False)
+        time.sleep(POLL_SLEEP)
+
+        parsed = parse_striatum(send("striatum"))
+        if not parsed:
+            continue
+
+        winner, d1, d2, t = parsed
+        delta = abs(d1 - d2)
+        max_delta = max(max_delta, delta)
+
+        log_step(run_id, trial, step, t, winner, d1, d2,
+                 delta, None, decision_seen, max_delta, max_relief)
+        step += 1
+
+    # ---------------------------
+    # TEST 3 — Gate-aligned poke
+    # ---------------------------
+    print("[TEST 3] Gate-aligned marginal commit")
+
+    gate_opened = False
 
     for _ in range(FORCED_STEPS):
-        send(f"poke striatum {SMALL_POKE}", expect_reply=False)
+        send(f"poke striatum {SMALL_POKE}", False)
         time.sleep(POLL_SLEEP)
 
         gate = parse_gate(send("gate"))
@@ -249,10 +229,9 @@ def main() -> None:
         if gate is not None:
             max_relief = max(max_relief, gate)
 
-        # Edge-triggered gate opening
         if gate is not None and gate >= GATE_OPEN_THRESHOLD and not gate_opened:
             gate_opened = True
-            send(f"poke striatum:D1_MSN {ASYM_POKE}", expect_reply=False)
+            send(f"poke striatum:D1_MSN {ASYM_POKE}", False)
 
         dec = send("decision")
         if dec.startswith("DECISION:") and "none" not in dec:
@@ -264,16 +243,45 @@ def main() -> None:
                 ])
             break
 
-        log_step(
-            run_id, trial, step, t,
-            winner, d1, d2, delta,
-            gate, decision_seen,
-            max_delta, max_relief
-        )
-
+        log_step(run_id, trial, step, t, winner, d1, d2,
+                 delta, gate, decision_seen, max_delta, max_relief)
         step += 1
 
-    print("=== SUITE COMPLETE ===")
+    # ---------------------------
+    # TEST 4 — Persistence continuation
+    # ---------------------------
+    print("[TEST 4] Persistence-only continuation")
+
+    for _ in range(PERSIST_STEPS):
+        send("poke striatum 0.0", False)
+        time.sleep(POLL_SLEEP)
+
+        parsed = parse_striatum(send("striatum"))
+        if not parsed:
+            continue
+
+        winner, d1, d2, t = parsed
+        delta = abs(d1 - d2)
+
+        log_step(run_id, trial, step, t, winner, d1, d2,
+                 delta, None, decision_seen, max_delta, max_relief)
+        step += 1
+
+    # ---------------------------
+    # TEST 5 — Prolonged neutral run
+    # ---------------------------
+    print("[TEST 5] Long neutral non-decision run")
+
+    for _ in range(NEUTRAL_STEPS):
+        send("poke striatum 0.0", False)
+        time.sleep(POLL_SLEEP)
+
+        dec = send("decision")
+        if dec.startswith("DECISION:") and "none" not in dec:
+            print("[FAIL] Decision occurred during neutral run")
+            break
+
+    print("=== SUITE COMPLETE (FX = FALSE) ===")
 
 if __name__ == "__main__":
     main()

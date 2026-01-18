@@ -1,6 +1,6 @@
-# pandaplot.py
+# modpanda.py
 # Unified plot: D1/D2, Δ dominance, gate relief, decision latch
-# Robust to missing / optional 'trial' column
+# Robust to missing run_id and legacy CSVs
 
 from __future__ import annotations
 
@@ -13,6 +13,10 @@ DEBUG    = BASE_DIR / "decision_debug_trace.csv"
 DECISION = BASE_DIR / "decision_latch_trace.csv"
 
 
+# ------------------------------------------------------------
+# Utilities
+# ------------------------------------------------------------
+
 def _coerce(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     for c in cols:
         if c in df.columns:
@@ -20,14 +24,16 @@ def _coerce(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return df
 
 
-def _pick_last_run(debug_df: pd.DataFrame) -> int:
-    if "run_id" not in debug_df.columns:
-        raise RuntimeError("debug csv missing 'run_id'")
-    debug_df = _coerce(debug_df, ["run_id"])
-    rid = debug_df["run_id"].dropna()
-    if rid.empty:
-        raise RuntimeError("No run_id values found.")
-    return int(rid.max())
+def _ensure_run_id(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ensure a run_id column exists and is usable.
+    Legacy files get run_id = 0.
+    """
+    if "run_id" not in df.columns:
+        df["run_id"] = 0
+    df = _coerce(df, ["run_id"])
+    df["run_id"] = df["run_id"].fillna(0).astype(int)
+    return df
 
 
 def _sorted(df: pd.DataFrame) -> pd.DataFrame:
@@ -38,37 +44,29 @@ def _sorted(df: pd.DataFrame) -> pd.DataFrame:
     return df.sort_values(sort_cols)
 
 
-def plot_unified(debug_df: pd.DataFrame, decision_df: pd.DataFrame | None) -> None:
-    debug_df = _coerce(
-        debug_df,
-        ["run_id", "trial", "step", "D1", "D2", "delta", "gate_relief", "decision_seen"],
-    )
+# ------------------------------------------------------------
+# Plotting
+# ------------------------------------------------------------
 
-    debug_df = debug_df.dropna(subset=["run_id", "step"])
-    debug_df = _sorted(debug_df)
+def plot_single_run(
+    sub: pd.DataFrame,
+    decision_df: pd.DataFrame | None,
+    run_id: int,
+) -> None:
 
-    run_id = _pick_last_run(debug_df)
-    sub = debug_df[debug_df["run_id"] == run_id].copy()
-    if sub.empty:
-        raise RuntimeError(f"No rows for run_id={run_id}")
-
+    # resolve trial (optional)
     trial = None
     if "trial" in sub.columns and sub["trial"].notna().any():
         trial = int(sub["trial"].dropna().max())
         sub = sub[sub["trial"] == trial]
 
-    # --- decision step resolution ---
+    # decision step
     decision_step = None
 
     if decision_df is not None and not decision_df.empty:
-        decision_df = _coerce(decision_df, ["run_id", "trial", "step"])
-        decision_df = decision_df.dropna(subset=["run_id", "step"])
-        decision_df = _sorted(decision_df)
-
         dsub = decision_df[decision_df["run_id"] == run_id]
         if trial is not None and "trial" in dsub.columns:
             dsub = dsub[dsub["trial"] == trial]
-
         if not dsub.empty:
             decision_step = int(dsub["step"].iloc[-1])
 
@@ -107,7 +105,7 @@ def plot_unified(debug_df: pd.DataFrame, decision_df: pd.DataFrame | None) -> No
         ax1.axvline(decision_step, linestyle=":", linewidth=2, alpha=0.8)
         ax1.scatter([decision_step], [y], s=90, zorder=6, label="Decision")
 
-    title = f"Decision Latch — Dominance, Gating, and Commitment (run_id={run_id}"
+    title = f"Decision Latch — Dominance, Gating, Commitment (run_id={run_id}"
     if trial is not None:
         title += f", trial={trial}"
     title += ")"
@@ -121,18 +119,35 @@ def plot_unified(debug_df: pd.DataFrame, decision_df: pd.DataFrame | None) -> No
     plt.show()
 
 
+# ------------------------------------------------------------
+# Entry point
+# ------------------------------------------------------------
+
 def main() -> None:
     if not DEBUG.exists():
         raise FileNotFoundError("decision_debug_trace.csv not found.")
 
     debug_df = pd.read_csv(DEBUG)
+    debug_df = _ensure_run_id(debug_df)
+    debug_df = _coerce(
+        debug_df,
+        ["step", "D1", "D2", "delta", "gate_relief", "decision_seen"],
+    )
+    debug_df = debug_df.dropna(subset=["step"])
+    debug_df = _sorted(debug_df)
 
     decision_df = None
     if DECISION.exists():
         decision_df = pd.read_csv(DECISION)
+        decision_df = _ensure_run_id(decision_df)
+        decision_df = _coerce(decision_df, ["step"])
 
-    print("[OK] Rendering unified dominance + decision plot (auto-select last run)")
-    plot_unified(debug_df, decision_df)
+    print("[OK] Rendering unified dominance + decision plots (all runs)")
+
+    for run_id, sub in debug_df.groupby("run_id"):
+        if sub.empty:
+            continue
+        plot_single_run(sub, decision_df, int(run_id))
 
 
 if __name__ == "__main__":

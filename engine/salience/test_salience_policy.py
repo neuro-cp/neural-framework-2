@@ -1,93 +1,170 @@
 from __future__ import annotations
 
-from engine.salience.salience_field import SalienceField
+from types import SimpleNamespace
+
 from engine.salience.salience_policy import SaliencePolicy
 
 
-def test_basic_injection_and_decay() -> None:
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+
+def fake_pop(
+    *,
+    assembly_id: str,
+    activity: float,
+    baseline: float = 0.0,
+    firing_rate: float = 0.0,
+    sign: float = 1.0,
+    role: str | None = None,
+) -> SimpleNamespace:
     """
-    Salience should:
-    - Accept valid updates
-    - Accumulate modestly
-    - Decay over time
+    Minimal stand-in for PopulationModel.
+    Only fields used by SaliencePolicy are included.
     """
-
-    field = SalienceField(decay_tau=2.0)
-
-    # Initial state
-    assert field.get("D1") == 0.0
-
-    # Valid injection
-    assert SaliencePolicy.allow_update("D1", 0.02)
-    field.inject("D1", 0.02)
-
-    v1 = field.get("D1")
-    assert 0.019 <= v1 <= 0.021
-
-    # Step forward → decay
-    field.step(dt=1.0)
-    v2 = field.get("D1")
-
-    assert v2 < v1
-    assert v2 > 0.0
+    return SimpleNamespace(
+        assembly_id=assembly_id,
+        activity=activity,
+        baseline=baseline,
+        firing_rate=firing_rate,
+        sign=sign,
+        semantic_role=role,
+    )
 
 
-def test_reject_oversized_impulse() -> None:
+# ------------------------------------------------------------
+# Tests
+# ------------------------------------------------------------
+
+def test_no_activity_no_salience() -> None:
     """
-    Oversized salience impulses must be rejected.
+    Flat physiology should produce no proposals.
     """
+    pop = fake_pop(
+        assembly_id="A",
+        activity=0.0,
+        baseline=0.0,
+        firing_rate=0.0,
+    )
 
-    field = SalienceField()
-
-    allowed = SaliencePolicy.allow_update("D1", 0.5)
-    assert allowed is False
-
-    # Even if someone tries anyway, clamp must hold
-    field.inject("D1", 0.5)
-    v = field.get("D1")
-
-    assert abs(v) <= SaliencePolicy.MAX_ABS_SALIENCE
+    proposals = SaliencePolicy.propose_updates([pop])
+    assert proposals == {}
 
 
-def test_reject_noise() -> None:
+def test_activity_deviation_produces_salience() -> None:
     """
-    Near-zero noise should be ignored.
+    Activity deviation above threshold should propose salience.
     """
+    pop = fake_pop(
+        assembly_id="A",
+        activity=0.05,
+        baseline=0.0,
+        firing_rate=0.0,
+    )
 
-    field = SalienceField()
-
-    allowed = SaliencePolicy.allow_update("D1", 1e-9)
-    assert allowed is False
-
-    field.inject("D1", 1e-9)
-    assert field.get("D1") == 0.0
+    proposals = SaliencePolicy.propose_updates([pop])
+    assert "A" in proposals
+    assert 0.0 < proposals["A"] <= SaliencePolicy.MAX_DELTA
 
 
-def test_multiple_channels_independent() -> None:
+def test_firing_rate_contributes() -> None:
     """
-    Salience channels must not leak into each other.
+    Elevated firing rate should contribute to salience.
     """
+    pop = fake_pop(
+        assembly_id="A",
+        activity=0.0,
+        baseline=0.0,
+        firing_rate=0.2,
+    )
 
-    field = SalienceField()
-
-    field.inject("D1", 0.02)
-    field.inject("D2", -0.01)
-
-    assert field.get("D1") > 0.0
-    assert field.get("D2") < 0.0
-    assert abs(field.get("D1") - field.get("D2")) > 0.01
+    proposals = SaliencePolicy.propose_updates([pop])
+    assert "A" in proposals
+    assert proposals["A"] > 0.0
 
 
-def test_clear() -> None:
+def test_inhibitory_scaled_down() -> None:
     """
-    Clear should wipe all salience clean.
+    Inhibitory populations must have reduced salience.
     """
+    exc = fake_pop(
+        assembly_id="E",
+        activity=0.06,
+        baseline=0.0,
+        sign=1.0,
+    )
+    inh = fake_pop(
+        assembly_id="I",
+        activity=0.06,
+        baseline=0.0,
+        sign=-1.0,
+    )
 
-    field = SalienceField()
-    field.inject("D1", 0.03)
-    field.inject("D2", -0.02)
+    props = SaliencePolicy.propose_updates([exc, inh])
 
-    field.clear()
+    assert "E" in props
+    assert "I" in props
+    assert props["I"] < props["E"]
 
-    assert field.get("D1") == 0.0
-    assert field.get("D2") == 0.0
+
+def test_interneuron_scaled_down() -> None:
+    """
+    Interneurons must be conservative salience sources.
+    """
+    pop = fake_pop(
+        assembly_id="INT",
+        activity=0.06,
+        baseline=0.0,
+        role="interneuron",
+    )
+
+    proposals = SaliencePolicy.propose_updates([pop])
+    assert "INT" in proposals
+    assert proposals["INT"] < SaliencePolicy.MAX_DELTA
+
+
+def test_sensory_scaled_up_but_capped() -> None:
+    """
+    Sensory populations may be amplified, but never exceed MAX_DELTA.
+    """
+    pop = fake_pop(
+        assembly_id="S",
+        activity=0.2,
+        baseline=0.0,
+        role="sensory_input",
+    )
+
+    proposals = SaliencePolicy.propose_updates([pop])
+    assert "S" in proposals
+    assert proposals["S"] <= SaliencePolicy.MAX_DELTA
+
+
+def test_oversized_proposals_are_capped() -> None:
+    """
+    Policy must cap proposals before approval.
+    """
+    pop = fake_pop(
+        assembly_id="A",
+        activity=10.0,
+        baseline=0.0,
+        firing_rate=10.0,
+    )
+
+    proposals = SaliencePolicy.propose_updates([pop])
+    assert proposals["A"] == SaliencePolicy.MAX_DELTA
+
+
+def test_allow_rules_still_enforced() -> None:
+    """
+    Proposal output must always pass allow_update.
+    """
+    pop = fake_pop(
+        assembly_id="A",
+        activity=0.05,
+        baseline=0.0,
+    )
+
+    proposals = SaliencePolicy.propose_updates([pop])
+    delta = proposals["A"]
+
+    assert SaliencePolicy.allow_update("A", delta) is True
