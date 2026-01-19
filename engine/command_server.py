@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import socket
 import threading
 from typing import List, Optional, Tuple, Dict, Any
@@ -27,6 +28,20 @@ def _resolve_region(runtime, region_label: str) -> str:
 
 def _get_salience(runtime):
     return getattr(runtime, "salience", None)
+
+def _dump_control(runtime) -> str:
+    if not hasattr(runtime, "get_control_state"):
+        return "CONTROL: unsupported"
+
+    state = runtime.get_control_state()
+    if not state:
+        return "CONTROL: none"
+
+    if hasattr(state, "to_dict"):
+        return "CONTROL:\n" + json.dumps(state.to_dict(), indent=2)
+
+    return f"CONTROL: {state}"
+
 
 
 # ============================================================
@@ -242,6 +257,7 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  decision\n"
             "  sustain [N]\n"
             "  reset_latch\n"
+            "  control\n"
             "  help"
         )
 
@@ -305,6 +321,9 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
 
         if op == "reset_latch":
             return _reset_latch(runtime)
+
+        if op == "control":
+            return _dump_control(runtime)
 
         return "ERROR: unknown command"
 

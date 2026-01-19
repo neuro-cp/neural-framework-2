@@ -14,6 +14,9 @@ from persistence.persistence_core import BasalGangliaPersistence
 from engine.decision_bias import DecisionBias
 from engine.decision_fx.adapter import DecisionFXAdapter
 from memory.working_state.pfc_adapter import PFCAdapter
+from engine.control.control_hook import ControlHook
+from engine.control.control_state import ControlState
+
 
 
 
@@ -50,7 +53,7 @@ class BrainRuntime:
       7. Connectivity propagation + Thalamic gating
 
     ADDITIONS:
-      - Read-only decision latch
+      - Read-only decision latch ideal: .04,.47,5
       - Advisory Decision FX (post-commit, thalamic only)
     """
 
@@ -133,6 +136,7 @@ class BrainRuntime:
         self._decision_fired = False
         self._decision_counter = 0
         self._decision_state: Optional[Dict[str, Any]] = None
+        self._control_state: Optional[ControlState] = None
 
         self._decision_sustain_required = int(self.DECISION_SUSTAIN_STEPS)
         latch_cfg = brain.get("decision_latch", {}) or {}
@@ -277,6 +281,9 @@ class BrainRuntime:
 
         # 5. Decision latch (creates _decision_state)
         self._evaluate_decision_latch(relief)
+
+        # 5b. control snapshot (read-only, post-decision)
+        self._control_state = ControlHook.compute(self)
 
         # 6. PFC → Context injection (now sees working state)
         if self.enable_context and self.enable_pfc_context:
@@ -520,3 +527,6 @@ class BrainRuntime:
 
     def get_decision_fx_state(self) -> Dict[str, Any]:
         return self.decision_fx.dump() if self.enable_decision_fx else {}
+    
+    def get_control_state(self) -> Optional[ControlState]:
+        return self._control_state

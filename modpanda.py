@@ -1,154 +1,121 @@
-# modpanda.py
-# Unified plot: D1/D2, Δ dominance, gate relief, decision latch
-# Robust to missing run_id and legacy CSVs
-
-from __future__ import annotations
-
 from pathlib import Path
+import re
 import pandas as pd
 import matplotlib.pyplot as plt
 
-BASE_DIR = Path(r"C:\Users\Admin\Desktop\neural framework")
-DEBUG    = BASE_DIR / "decision_debug_trace.csv"
-DECISION = BASE_DIR / "decision_latch_trace.csv"
+# ============================================================
+# CONFIG
+# ============================================================
 
+BASE = Path(r"C:\Users\Admin\Desktop\neural framework")
 
-# ------------------------------------------------------------
-# Utilities
-# ------------------------------------------------------------
+TRUE_DIR  = BASE / "z true latch"
+FALSE_DIR = BASE / "z false latch"
 
-def _coerce(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
-    for c in cols:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
+ROLL = 5  # light smoothing
+
+# ============================================================
+# ZLOG PARSER
+# ============================================================
+
+LINE_RE = re.compile(
+    r"^(?P<region>\w+)\s+(?P<pop>\w+)\s+\d+\s+(?P<mass>[0-9.]+)",
+    re.I
+)
+
+def parse_zlog(path: Path) -> pd.DataFrame:
+    rows = []
+    t = -1
+
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("t="):
+                t += 1
+                continue
+
+            m = LINE_RE.match(line)
+            if not m:
+                continue
+
+            rows.append({
+                "t": t,
+                "region": m.group("region").lower(),
+                "pop": m.group("pop").lower(),
+                "mass": float(m.group("mass")),
+            })
+
+    df = pd.DataFrame(rows)
     return df
 
+def collapse_regions(df: pd.DataFrame) -> pd.DataFrame:
+    out = []
 
-def _ensure_run_id(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Ensure a run_id column exists and is usable.
-    Legacy files get run_id = 0.
-    """
-    if "run_id" not in df.columns:
-        df["run_id"] = 0
-    df = _coerce(df, ["run_id"])
-    df["run_id"] = df["run_id"].fillna(0).astype(int)
-    return df
+    for t, g in df.groupby("t"):
+        pfc = g[g.region == "pfc"].mass.mean()
+        md  = g[(g.region == "md")  & (g.pop == "relay_cells")].mass.mean()
+        trn = g[(g.region == "trn") & (g.pop == "trn_gaba")].mass.mean()
 
+        out.append({
+            "t": t,
+            "pfc": pfc,
+            "md": md,
+            "trn": trn,
+        })
 
-def _sorted(df: pd.DataFrame) -> pd.DataFrame:
-    sort_cols = ["run_id"]
-    if "trial" in df.columns and df["trial"].notna().any():
-        sort_cols.append("trial")
-    sort_cols.append("step")
-    return df.sort_values(sort_cols)
+    return pd.DataFrame(out)
 
+# ============================================================
+# LOAD BOTH RUNS
+# ============================================================
 
-# ------------------------------------------------------------
-# Plotting
-# ------------------------------------------------------------
+true_df  = collapse_regions(parse_zlog(TRUE_DIR  / "zlog.txt"))
+false_df = collapse_regions(parse_zlog(FALSE_DIR / "zlog.txt"))
 
-def plot_single_run(
-    sub: pd.DataFrame,
-    decision_df: pd.DataFrame | None,
-    run_id: int,
-) -> None:
+for c in ["pfc", "md", "trn"]:
+    true_df[c]  = true_df[c].rolling(ROLL, min_periods=1).mean()
+    false_df[c] = false_df[c].rolling(ROLL, min_periods=1).mean()
 
-    # resolve trial (optional)
-    trial = None
-    if "trial" in sub.columns and sub["trial"].notna().any():
-        trial = int(sub["trial"].dropna().max())
-        sub = sub[sub["trial"] == trial]
+diff_df = true_df.copy()
+diff_df[["pfc","md","trn"]] -= false_df[["pfc","md","trn"]]
 
-    # decision step
-    decision_step = None
+# ============================================================
+# DECISION TIME
+# ============================================================
 
-    if decision_df is not None and not decision_df.empty:
-        dsub = decision_df[decision_df["run_id"] == run_id]
-        if trial is not None and "trial" in dsub.columns:
-            dsub = dsub[dsub["trial"] == trial]
-        if not dsub.empty:
-            decision_step = int(dsub["step"].iloc[-1])
+dec = pd.read_csv(TRUE_DIR / "decision_latch_trace.csv")
+t_dec = dec.iloc[0]["step"] if not dec.empty else None
 
-    if decision_step is None and "decision_seen" in sub.columns:
-        fired = sub[sub["decision_seen"] == 1]
-        if not fired.empty:
-            decision_step = int(fired["step"].iloc[0])
+# ============================================================
+# PLOT
+# ============================================================
 
-    # --- plotting ---
-    fig, ax1 = plt.subplots(figsize=(13, 6))
+fig, axs = plt.subplots(4, 1, figsize=(12, 10), sharex=True)
 
-    ax1.plot(sub["step"], sub["D1"], label="D1", linewidth=2.2)
-    ax1.plot(sub["step"], sub["D2"], label="D2", linewidth=2.2)
+axs[0].plot(true_df.t,  true_df.pfc,  label="PFC TRUE")
+axs[0].plot(false_df.t, false_df.pfc, "--", label="PFC FALSE")
+axs[0].set_ylabel("PFC")
 
-    if "delta" in sub.columns:
-        ax1.plot(sub["step"], sub["delta"], label="Δ dominance", linewidth=2.5)
+axs[1].plot(true_df.t,  true_df.md,  label="MD TRUE")
+axs[1].plot(false_df.t, false_df.md, "--", label="MD FALSE")
+axs[1].set_ylabel("MD")
 
-    ax1.set_xlabel("Step")
-    ax1.set_ylabel("Striatal activity / dominance")
-    ax1.grid(alpha=0.3)
+axs[2].plot(true_df.t,  true_df.trn,  label="TRN TRUE")
+axs[2].plot(false_df.t, false_df.trn, "--", label="TRN FALSE")
+axs[2].set_ylabel("TRN")
 
-    ax2 = ax1.twinx()
-    if "gate_relief" in sub.columns and sub["gate_relief"].notna().any():
-        ax2.plot(
-            sub["step"],
-            sub["gate_relief"],
-            linestyle="--",
-            linewidth=2.2,
-            label="Gate relief",
-        )
-        ax2.set_ylabel("Gate relief")
+axs[3].plot(diff_df.t, diff_df.pfc, label="ΔPFC")
+axs[3].plot(diff_df.t, diff_df.md,  label="ΔMD")
+axs[3].plot(diff_df.t, diff_df.trn, label="ΔTRN")
+axs[3].set_ylabel("TRUE − FALSE")
+axs[3].set_xlabel("Step")
 
-    if decision_step is not None:
-        row = sub[sub["step"] == decision_step]
-        y = float(row["delta"].iloc[0]) if (not row.empty and "delta" in row.columns) else 0.0
-        ax1.axvline(decision_step, linestyle=":", linewidth=2, alpha=0.8)
-        ax1.scatter([decision_step], [y], s=90, zorder=6, label="Decision")
+if t_dec is not None:
+    for ax in axs:
+        ax.axvline(t_dec, color="k", alpha=0.3)
 
-    title = f"Decision Latch — Dominance, Gating, Commitment (run_id={run_id}"
-    if trial is not None:
-        title += f", trial={trial}"
-    title += ")"
-    ax1.set_title(title)
+for ax in axs:
+    ax.legend()
+    ax.grid(alpha=0.3)
 
-    h1, l1 = ax1.get_legend_handles_labels()
-    h2, l2 = ax2.get_legend_handles_labels()
-    ax1.legend(h1 + h2, l1 + l2, loc="best")
-
-    plt.tight_layout()
-    plt.show()
-
-
-# ------------------------------------------------------------
-# Entry point
-# ------------------------------------------------------------
-
-def main() -> None:
-    if not DEBUG.exists():
-        raise FileNotFoundError("decision_debug_trace.csv not found.")
-
-    debug_df = pd.read_csv(DEBUG)
-    debug_df = _ensure_run_id(debug_df)
-    debug_df = _coerce(
-        debug_df,
-        ["step", "D1", "D2", "delta", "gate_relief", "decision_seen"],
-    )
-    debug_df = debug_df.dropna(subset=["step"])
-    debug_df = _sorted(debug_df)
-
-    decision_df = None
-    if DECISION.exists():
-        decision_df = pd.read_csv(DECISION)
-        decision_df = _ensure_run_id(decision_df)
-        decision_df = _coerce(decision_df, ["step"])
-
-    print("[OK] Rendering unified dominance + decision plots (all runs)")
-
-    for run_id, sub in debug_df.groupby("run_id"):
-        if sub.empty:
-            continue
-        plot_single_run(sub, decision_df, int(run_id))
-
-
-if __name__ == "__main__":
-    main()
+plt.tight_layout()
+plt.show()

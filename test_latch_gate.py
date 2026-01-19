@@ -24,21 +24,14 @@ DT = 0.01
 POLL_TICKS = 25
 POLL_SLEEP = DT * POLL_TICKS
 
-FORCED_STEPS = 300
+BASELINE_STEPS = 20
+ASYM_STEPS     = 40
+FORCED_STEPS   = 100
 
-SMALL_POKE = 1.5
-ASYM_POKE  = 1.5
+SMALL_POKE = 1.0
+ASYM_POKE  = 1.0
 
-# --- tonic cortical engagement ---
-PFC_TONIC_BASE = 0.50
-PFC_TONIC_STEP = 0.08   # post-latch probe
-
-# Latch control (folder-level binning handles TRUE vs FALSE).47
-GATE_OPEN_THRESHOLD = .47
-
-# --- post-decision observation window ---
-POST_DECISION_SECONDS = 10.0
-POST_DECISION_STEPS = int(POST_DECISION_SECONDS / POLL_SLEEP)
+GATE_OPEN_THRESHOLD = 0.47
 
 # ============================================================
 # TCP
@@ -122,15 +115,13 @@ def init_csvs() -> None:
             "run_id","value_mag","trial","step",
             "t_runtime","winner","D1","D2",
             "delta","gate_relief",
-            "decision_seen","max_delta_so_far","max_relief_so_far",
-            "probe_step"
+            "decision_seen","max_delta_so_far","max_relief_so_far"
         ])
 
     with open(DEC_CSV, "w", newline="", encoding="utf-8") as f:
         csv.writer(f).writerow([
             "run_id","trial","step","time",
-            "winner","delta_dominance","relief",
-            "probe_step"
+            "winner","delta_dominance","relief"
         ])
 
 # ============================================================
@@ -150,7 +141,6 @@ def log_step(
     decision_seen: int,
     max_delta: float,
     max_relief: float,
-    probe_step: Optional[int],
 ) -> None:
 
     with open(DOM_CSV, "a", newline="", encoding="utf-8") as f:
@@ -164,8 +154,7 @@ def log_step(
             run_id, 0.0, trial, step,
             t, winner, d1, d2,
             delta, gate,
-            decision_seen, max_delta, max_relief,
-            probe_step
+            decision_seen, max_delta, max_relief
         ])
 
 # ============================================================
@@ -173,7 +162,7 @@ def log_step(
 # ============================================================
 
 def main() -> None:
-    print("=== TONIC DRIVE + LATCH + POST-LATCH STEP PROBE ===")
+    print("=== STRIATUM ASYMMETRY + GATE TEST SUITE ===")
 
     init_csvs()
     wait_for_server()
@@ -186,22 +175,16 @@ def main() -> None:
     max_delta  = 0.0
     max_relief = 0.0
     decision_seen = 0
+
     gate_opened = False
 
-    probe_step: Optional[int] = None
-    post_steps_remaining = None
+    
+    # ---------------------------
+    # TEST 3/4 — Gate-triggered forced decision
+    # ---------------------------
+    print("[TEST 3/4] Gate-triggered forced win")
 
     for _ in range(FORCED_STEPS):
-
-        # --- tonic PFC drive (step change after latch) ---
-        pfc_drive = (
-            PFC_TONIC_BASE + PFC_TONIC_STEP
-            if decision_seen else
-            PFC_TONIC_BASE
-        )
-        send(f"poke pfc {pfc_drive}", expect_reply=False)
-
-        # --- tonic D1 drive ---
         send(f"poke striatum {SMALL_POKE}", expect_reply=False)
         time.sleep(POLL_SLEEP)
 
@@ -213,42 +196,32 @@ def main() -> None:
         winner, d1, d2, t = parsed
         delta = abs(d1 - d2)
 
-        max_delta = max(max_delta, delta)
         if gate is not None:
             max_relief = max(max_relief, gate)
 
-        # --- asymmetry trigger (decision formation) ---
+        # Edge-triggered gate opening
         if gate is not None and gate >= GATE_OPEN_THRESHOLD and not gate_opened:
             gate_opened = True
             send(f"poke striatum:D1_MSN {ASYM_POKE}", expect_reply=False)
 
         dec = send("decision")
-        if dec.startswith("DECISION:") and "none" not in dec and not decision_seen:
+        if dec.startswith("DECISION:") and "none" not in dec:
             decision_seen = 1
-            probe_step = step
-            post_steps_remaining = POST_DECISION_STEPS
-
             with open(DEC_CSV, "a", newline="", encoding="utf-8") as f:
                 csv.writer(f).writerow([
                     run_id, trial, step, t,
-                    winner, delta, gate,
-                    probe_step
+                    winner, delta, gate
                 ])
+            break
 
         log_step(
             run_id, trial, step, t,
             winner, d1, d2, delta,
             gate, decision_seen,
-            max_delta, max_relief,
-            probe_step
+            max_delta, max_relief
         )
 
         step += 1
-
-        if post_steps_remaining is not None:
-            post_steps_remaining -= 1
-            if post_steps_remaining <= 0:
-                break
 
     print("=== SUITE COMPLETE ===")
 
