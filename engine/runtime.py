@@ -103,6 +103,10 @@ class BrainRuntime:
         # ---------------- Salience ----------------
         self.enable_salience = True
         self.salience = SalienceField(decay_tau=3.0)
+        
+        # ---------------- Pre-decision salience adaptation ----------------
+        self.enable_pre_decision_adaptation = False  # off by default
+        self._psm_gain_cache: Dict[str, float] = {}
 
         # ---------------- Decision bias ----------------
         self.enable_decision_bias = True
@@ -259,6 +263,8 @@ class BrainRuntime:
             for plist in targets:
                 for p in plist if idx is None else plist[idx:idx + 1]:
                     gain = 1.0
+                    if self.enable_pre_decision_adaptation:
+                        gain *= self._psm_gain_cache.get(p.assembly_id, 1.0)
                     if self.enable_context:
                         gain *= self.context.get_gain(p.assembly_id)
                     if self.enable_salience:
@@ -316,6 +322,19 @@ class BrainRuntime:
     # Subsystems
     # ============================================================
 
+    # ============================================================
+    # Pre-decision adaptation helpers
+    # ============================================================
+
+    def clear_pre_decision_adaptation(self) -> None:
+        """
+        Clear cached PSM gains.
+        Call this at episode boundaries (e.g. reset_latch).
+        """
+        self._psm_gain_cache.clear()
+
+    
+    
     def _apply_pfc_context(self) -> None:
         pfc = self.region_states.get("pfc")
         if not pfc:

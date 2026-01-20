@@ -324,6 +324,22 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
 
         if op == "control":
             return _dump_control(runtime)
+        
+        # -----------------------------
+        # Pre-decision salience priming
+        # -----------------------------
+        if op == "psm_prime" and len(parts) == 3:
+            target = parts[1]
+            try:
+                gain = float(parts[2])
+            except ValueError:
+                return "ERROR: invalid gain"
+
+            if not hasattr(runtime, "apply_psm_prime"):
+                return "ERROR: PSM not supported"
+
+            runtime.apply_psm_prime(target, gain)
+            return f"OK psm_prime {target} += {gain}"
 
         return "ERROR: unknown command"
 
