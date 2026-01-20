@@ -42,6 +42,10 @@ class DecisionBias:
         # For observability
         self.last_winner: Optional[str] = None
         self.last_applied_step: Optional[int] = None
+       
+        # Ephemeral external bias modifiers (cleared every step)
+        self._external_modifiers = []
+
 
     # ------------------------------------------------------------
     # Public API
@@ -91,25 +95,60 @@ class DecisionBias:
         return float(self._bias.get(channel_id, 0.0))
 
     # ------------------------------------------------------------
+    # External modulation hooks (ephemeral)
+    # ------------------------------------------------------------
+
+    def apply_external(self, fn) -> None:
+        """
+        Apply a temporary external modifier to the bias map.
+
+        - fn: Callable[[Dict[str, float]], Dict[str, float]]
+        - Applied after decay
+        - Cleared automatically after one step
+        - No learning, no persistence
+        """
+        self._external_modifiers.append(fn)
+
+    # ------------------------------------------------------------
     # Decay
     # ------------------------------------------------------------
 
     def step(self, dt: float) -> None:
         """
-        Apply continuous exponential decay toward zero.
+        Apply continuous exponential decay toward zero,
+        then apply any ephemeral external modifiers.
         """
         if self.decay_tau <= 0:
             self._bias.clear()
-            return
+        else:
+            decay = float(dt) / self.decay_tau
+            for ch in list(self._bias.keys()):
+                v = self._bias[ch] * (1.0 - decay)
+                if abs(v) <= 1e-6:
+                    del self._bias[ch]
+                else:
+                    self._bias[ch] = v
 
-        decay = float(dt) / self.decay_tau
+        # --------------------------------------------------
+        # Apply ephemeral external modifiers (e.g. VTA value)
+        # --------------------------------------------------
+        if self._external_modifiers:
+            bias = dict(self._bias)  # work on a copy
 
-        for ch in list(self._bias.keys()):
-            v = self._bias[ch] * (1.0 - decay)
-            if abs(v) <= 1e-6:
-                del self._bias[ch]
-            else:
-                self._bias[ch] = v
+            for fn in self._external_modifiers:
+                bias = fn(bias)
+
+            # Enforce hard bounds and cleanup
+            for ch, v in list(bias.items()):
+                if abs(v) > self.max_bias:
+                    bias[ch] = max(-self.max_bias, min(self.max_bias, v))
+                if abs(bias[ch]) <= 1e-6:
+                    del bias[ch]
+
+            self._bias = bias
+            self._external_modifiers.clear()
+
+
 
     # ------------------------------------------------------------
     # Diagnostics

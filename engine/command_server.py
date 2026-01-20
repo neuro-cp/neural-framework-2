@@ -208,6 +208,45 @@ def _dump_decision(runtime) -> str:
 
     return "DECISION:\n" + "\n".join(f"  {k}={v}" for k, v in d.items())
 
+# ============================================================
+# VTA Value diagnostics
+# ============================================================
+
+def _dump_value(runtime) -> str:
+    val = getattr(runtime, "value_signal", None)
+    if not val:
+        return "VALUE: not enabled"
+
+    return f"VALUE: {val.get():.4f}"
+
+
+def _set_value(runtime, x: float) -> str:
+    val = getattr(runtime, "value_signal", None)
+    pol = getattr(runtime, "value_policy", None)
+
+    if not val or not pol:
+        return "ERROR: value system not enabled"
+
+    t = getattr(runtime, "time", 0.0)
+
+    new_val = pol.apply(
+        current_value=val.get(),
+        proposed_value=float(x),
+        t=t,
+    )
+
+    val.set(new_val)
+    return f"OK value = {val.get():.4f}"
+
+
+def _clear_value(runtime) -> str:
+    val = getattr(runtime, "value_signal", None)
+    if not val:
+        return "ERROR: value system not enabled"
+
+    val.reset()
+    return "OK value reset"
+
 
 # ============================================================
 # Latch controls
@@ -258,6 +297,9 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  sustain [N]\n"
             "  reset_latch\n"
             "  control\n"
+            "  value\n"
+            "  value_set <x>\n"
+            "  value_clear\n"
             "  help"
         )
 
@@ -324,6 +366,19 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
 
         if op == "control":
             return _dump_control(runtime)
+        
+        if op == "value":
+            return _dump_value(runtime)
+
+        if op == "value_set" and len(parts) == 2:
+            try:
+                x = float(parts[1])
+            except ValueError:
+                return "ERROR: invalid value"
+            return _set_value(runtime, x)
+
+        if op == "value_clear":
+            return _clear_value(runtime)
         
         # -----------------------------
         # Pre-decision salience priming

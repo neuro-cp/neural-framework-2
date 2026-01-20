@@ -62,6 +62,34 @@ class PFCAdapter:
 
         self._hook.step(dt)
 
+        # --------------------------------------------------
+        # Ephemeral external gain modulation (e.g. VTA value)
+        # --------------------------------------------------
+        if hasattr(self, "_external_gain_fn"):
+            try:
+                base = self._hook.strength()
+                mod = float(self._external_gain_fn(base))
+                self._hook._state._strength = max(0.0, mod)
+            finally:
+                del self._external_gain_fn
+
+    # --------------------------------------------------
+    # External modulation hooks (ephemeral)
+    # --------------------------------------------------
+
+    def apply_external_gain(self, fn) -> None:
+        """
+        Apply a temporary external modifier to working-state strength.
+
+        - fn: Callable[[float], float]
+        - Applied after internal dynamics
+        - Cleared automatically after one step
+        """
+        if not self.enable:
+            return
+
+        self._external_gain_fn = fn
+
     # --------------------------------------------------
     # Advisory outputs (read-only)
     # --------------------------------------------------

@@ -16,6 +16,10 @@ from engine.decision_fx.adapter import DecisionFXAdapter
 from memory.working_state.pfc_adapter import PFCAdapter
 from engine.control.control_hook import ControlHook
 from engine.control.control_state import ControlState
+from engine.vta_value.value_signal import ValueSignal
+from engine.vta_value.value_adapter import ValueAdapter
+from engine.vta_value.value_trace import ValueTrace
+
 
 
 
@@ -119,6 +123,19 @@ class BrainRuntime:
         # ---------------- Decision FX ----------------
         self.enable_decision_fx = True
         self.decision_fx = DecisionFXAdapter(enable_trace=True)
+
+        # ---------------- VTA Value (Phase 3A) ----------------
+        self.enable_vta_value = True
+
+        self.value_signal = ValueSignal(
+            decay_tau=6.0,   # slower than salience, faster than memory
+        )
+        self.value_adapter = ValueAdapter(
+            decision_bias_gain=0.5,
+            pfc_persistence_gain=0.3,
+        )
+        self.value_trace = ValueTrace()
+
 
         # ---------------- PFC working state adapter ----------------
         self.enable_pfc_adapter = True
@@ -277,9 +294,16 @@ class BrainRuntime:
         for p in self._all_pops:
             p.step(self.dt)
 
-        # 3. Striatum competition + BG persistence
+        # 3. Striatum competition + BG persistence + vta value → decision bias
         if self.enable_competition:
             self._step_striatum()
+        if self.enable_vta_value and self.enable_decision_bias:
+            self.decision_bias.apply_external(
+                lambda bias_map: self.value_adapter.apply_to_decision_bias(
+                    value=self.value_signal.get(),
+                    bias_map=bias_map,
+                )
+            )
 
         # 4. GPi disinhibition (gate computation)
         relief = self._compute_gpi_relief()
@@ -296,6 +320,8 @@ class BrainRuntime:
             self._apply_pfc_context()
 
         # 7. Decay (context, salience, bias, working state)
+        if self.enable_vta_value:
+            self.value_signal.step(self.dt)        
         if self.enable_context:
             self.context.step(self.dt)
         if self.enable_salience:
@@ -304,6 +330,14 @@ class BrainRuntime:
             self.decision_bias.step(self.dt)
         if self.enable_pfc_adapter:
             self.pfc_adapter.step(self.dt)
+
+            if self.enable_vta_value:
+                self.pfc_adapter.apply_external_gain(
+                    lambda base_gain: self.value_adapter.apply_to_pfc_persistence(
+                        value=self.value_signal.get(),
+                        base_gain=base_gain,
+                    )
+                )
 
         # 8. Decision FX (post-commit, advisory only)
         if self.enable_decision_fx and self._decision_state is not None:
@@ -315,7 +349,15 @@ class BrainRuntime:
         # 9. Connectivity propagation + thalamic gating
         self._propagate_connectivity(relief)
 
-        # 10. Advance time
+        # 10a. VTA Value trace recording
+        if self.enable_vta_value:
+            self.value_trace.record(
+                time=self.time,
+                step=self.step_count,
+                value=self.value_signal.get(),
+            )
+
+        # 10b. Advance time
         self.time += self.dt
 
     # ============================================================
