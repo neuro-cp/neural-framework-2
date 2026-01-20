@@ -69,7 +69,7 @@ class PFCAdapter:
             try:
                 base = self._hook.strength()
                 mod = float(self._external_gain_fn(base))
-                self._hook._state._strength = max(0.0, mod)
+                self._hook.state._strength = max(0.0, mod)
             finally:
                 del self._external_gain_fn
 

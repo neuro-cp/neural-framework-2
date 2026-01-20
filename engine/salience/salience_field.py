@@ -34,6 +34,10 @@ class SalienceField:
         # assembly_id -> salience value
         self._values: Dict[str, float] = {}
 
+        # Optional structural sparsity gate (off by default)
+        self._sparsity_gate = None
+
+
     # --------------------------------------------------
     # Injection (single write path)
     # --------------------------------------------------
@@ -58,7 +62,25 @@ class SalienceField:
     # --------------------------------------------------
 
     def get(self, assembly_id: str) -> float:
+        if self._sparsity_gate is not None:
+            if not self._sparsity_gate.allows(assembly_id):
+                return 0.0
+
         return float(self._values.get(assembly_id, 0.0))
+
+    # --------------------------------------------------
+    # Structural sparsity (optional)
+    # --------------------------------------------------
+
+    def attach_sparsity_gate(self, gate) -> None:
+        """
+        Attach a SalienceSparsityGate.
+
+        - Gate must implement: allows(assembly_id) -> bool
+        - If not attached, salience behaves exactly as before
+        """
+        self._sparsity_gate = gate
+
 
     # --------------------------------------------------
     # Dynamics

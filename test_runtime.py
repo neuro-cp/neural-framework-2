@@ -311,6 +311,37 @@ brain = loader.compile(
 
 runtime = BrainRuntime(brain, dt=0.01)
 
+# ============================================================
+# STRUCTURAL SALIENCE SPARSITY (EPISODE-LEVEL)
+# ============================================================
+
+from engine.salience.salience_sparsity_gate import SalienceSparsityGate
+
+# Collect all assembly IDs known to the runtime
+assembly_ids = [
+    p.assembly_id
+    for p in runtime._all_pops
+    if getattr(p, "assembly_id", None) is not None
+]
+
+# Create deterministic sparsity gate
+sparsity_gate = SalienceSparsityGate(
+    keep_ratio=0.25,   # 25% of assemblies eligible
+    seed=42,           # deterministic per episode
+)
+
+# Initialize eligibility
+sparsity_gate.initialize(assembly_ids)
+
+# Attach gate to salience field
+runtime.salience.attach_sparsity_gate(sparsity_gate)
+
+print(
+    "[INIT] Salience sparsity gate attached:",
+    sparsity_gate.stats(),
+)
+
+
 # ------------------------------------------------------------------
 # CSV TRACE DE-CONFLICT (IMPORTANT)
 # ------------------------------------------------------------------
