@@ -209,6 +209,39 @@ def _dump_decision(runtime) -> str:
     return "DECISION:\n" + "\n".join(f"  {k}={v}" for k, v in d.items())
 
 # ============================================================
+# Affective Urgency diagnostics (read-only)
+# ============================================================
+
+def _dump_urgency(runtime) -> str:
+    ua = getattr(runtime, "urgency_adapter", None)
+    sig = getattr(runtime, "urgency_signal", None)
+
+    if not ua or not sig:
+        return "URGENCY: not enabled"
+
+    snap = sig.snapshot()
+    return (
+        "URGENCY:\n"
+        f"  value={ua.last_urgency:.4f}\n"
+        f"  enabled={snap.get('enabled', False)}"
+    )
+
+
+def _dump_urgency_trace(runtime) -> str:
+    tr = getattr(runtime, "urgency_trace", None)
+    if not tr:
+        return "URGENCY_TRACE: not enabled"
+
+    summary = tr.summary()
+    return (
+        "URGENCY_TRACE:\n"
+        f"  count={summary.get('count', 0)}\n"
+        f"  mean={summary.get('mean_urgency', 0.0):.4f}\n"
+        f"  max={summary.get('max_urgency', 0.0):.4f}"
+    )
+
+
+# ============================================================
 # VTA Value diagnostics
 # ============================================================
 
@@ -299,6 +332,8 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  control\n"
             "  value\n"
             "  value_set <x>\n"
+            "  urgency\n"
+            "  urgency_trace\n"
             "  value_clear\n"
             "  help"
         )
@@ -380,6 +415,15 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
         if op == "value_clear":
             return _clear_value(runtime)
         
+        # -----------------------------
+        # Affective urgency (read-only)
+        # -----------------------------
+        if op == "urgency":
+            return _dump_urgency(runtime)
+
+        if op == "urgency_trace":
+            return _dump_urgency_trace(runtime)
+
         # -----------------------------
         # Pre-decision salience priming
         # -----------------------------

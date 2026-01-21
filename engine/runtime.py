@@ -19,6 +19,11 @@ from engine.control.control_state import ControlState
 from engine.vta_value.value_signal import ValueSignal
 from engine.vta_value.value_adapter import ValueAdapter
 from engine.vta_value.value_trace import ValueTrace
+from engine.affective_urgency.urgency_signal import UrgencySignal
+from engine.affective_urgency.urgency_policy import UrgencyPolicy
+from engine.affective_urgency.urgency_trace import UrgencyTrace
+from engine.affective_urgency.urgency_adapter import UrgencyAdapter
+
 
 
 
@@ -126,6 +131,9 @@ class BrainRuntime:
 
         # ---------------- VTA Value (Phase 3A) ----------------
         self.enable_vta_value = True
+        from engine.vta_value.value_policy import ValuePolicy
+
+        self.value_policy = ValuePolicy()
 
         self.value_signal = ValueSignal(
             decay_tau=6.0,   # slower than salience, faster than memory
@@ -136,6 +144,28 @@ class BrainRuntime:
         )
         self.value_trace = ValueTrace()
 
+        # ---------------- Affective Urgency (Phase 3B) ----------------
+        self.enable_urgency = False  # OFF by default
+
+        self.urgency_signal = UrgencySignal(
+            rise_rate=0.0,
+            decay_rate=0.0,
+            enabled=False,
+        )
+
+        self.urgency_policy = UrgencyPolicy(
+            min_gate_relief=0.0,
+            max_gate_relief=1.0,
+            max_urgency=1.0,
+        )
+
+        self.urgency_trace = UrgencyTrace()
+
+        self.urgency_adapter = UrgencyAdapter(
+            signal=self.urgency_signal,
+            policy=self.urgency_policy,
+            trace=self.urgency_trace,
+        )
 
         # ---------------- PFC working state adapter ----------------
         self.enable_pfc_adapter = True
@@ -152,6 +182,7 @@ class BrainRuntime:
         self._all_pops: List[PopulationModel] = []
         self._stim_queue: List[Tuple[str, Optional[str], Optional[int], float]] = []
         self._region_key_by_label: Dict[str, str] = {}
+        self._urgency_gain: float = 1.0
 
         # ---------------- Decision latch ----------------
         self._decision_fired = False
@@ -269,6 +300,12 @@ class BrainRuntime:
         # STEP (AUTHORITATIVE ORDER)
         # ============================================================
 
+        # ------------------------------------------------------------
+        # Urgency init (safe default)
+        # ------------------------------------------------------------
+        urgency = 0.0
+        self._urgency_gain = 1.0
+
         # 1. Reset inputs + apply stimuli
         for p in self._all_pops:
             p.input = 0.0
@@ -285,7 +322,10 @@ class BrainRuntime:
                     if self.enable_context:
                         gain *= self.context.get_gain(p.assembly_id)
                     if self.enable_salience:
-                        gain *= (1.0 + self.salience.get(p.assembly_id))
+                        sal = self.salience.get(p.assembly_id)
+                        if self.enable_urgency:
+                            sal *= (1.0 + urgency)
+                        gain *= (1.0 + sal)
                     p.input += mag * gain
 
         self._stim_queue.clear()
@@ -294,62 +334,87 @@ class BrainRuntime:
         for p in self._all_pops:
             p.step(self.dt)
 
-        # 3. Striatum competition + BG persistence + vta value → decision bias
+        # 3. Striatum competition + BG persistence
         if self.enable_competition:
             self._step_striatum()
-        if self.enable_vta_value and self.enable_decision_bias:
-            self.decision_bias.apply_external(
-                lambda bias_map: self.value_adapter.apply_to_decision_bias(
-                    value=self.value_signal.get(),
-                    bias_map=bias_map,
-                )
-            )
 
         # 4. GPi disinhibition (gate computation)
         relief = self._compute_gpi_relief()
         self._last_gate_strength = relief
 
-        # 5. Decision latch (creates _decision_state)
+        # 4b. Affective urgency (read-only, pre-decision)
+        if self.enable_urgency:
+            snap = getattr(self, "_last_striatum_snapshot", {}) or {}
+            dom = snap.get("dominance", {})
+            delta = 0.0
+            if len(dom) >= 2:
+                vals = sorted(dom.values(), reverse=True)
+                delta = vals[0] - vals[1]
+
+            urgency = self.urgency_adapter.compute(
+                time=self.time,
+                step=self.step_count,
+                dt=self.dt,
+                gate_relief=relief,
+                dominance_delta=delta,
+            )
+
+            self._urgency_gain = 1.0 + urgency
+
+        # 5. Striatum → decision bias (value × urgency tempo)
+        if self.enable_vta_value and self.enable_decision_bias:
+            urgency_gain = 1.0 + urgency if self.enable_urgency else 1.0
+
+            self.decision_bias.apply_external(
+                lambda bias_map: self.value_adapter.apply_to_decision_bias(
+                    value=self.value_signal.get() * urgency_gain,
+                    bias_map=bias_map,
+                )
+            )
+
+        # 6. Decision latch (creates _decision_state)
         self._evaluate_decision_latch(relief)
 
-        # 5b. control snapshot (read-only, post-decision)
+        # 6b. control snapshot (read-only, post-decision)
         self._control_state = ControlHook.compute(self)
 
-        # 6. PFC → Context injection (now sees working state)
+        # 7. PFC → Context injection (now sees working state)
         if self.enable_context and self.enable_pfc_context:
             self._apply_pfc_context()
 
-        # 7. Decay (context, salience, bias, working state)
+        # 8. Decay (context, salience, bias, working state)
         if self.enable_vta_value:
-            self.value_signal.step(self.dt)        
+            self.value_signal.step(self.dt)
         if self.enable_context:
             self.context.step(self.dt)
         if self.enable_salience:
             self.salience.step(self.dt)
         if self.enable_decision_bias:
             self.decision_bias.step(self.dt)
+
         if self.enable_pfc_adapter:
             self.pfc_adapter.step(self.dt)
 
             if self.enable_vta_value:
+                urgency_gain = 1.0 + urgency if self.enable_urgency else 1.0
                 self.pfc_adapter.apply_external_gain(
                     lambda base_gain: self.value_adapter.apply_to_pfc_persistence(
-                        value=self.value_signal.get(),
+                        value=self.value_signal.get() * urgency_gain,
                         base_gain=base_gain,
                     )
                 )
 
-        # 8. Decision FX (post-commit, advisory only)
+        # 9. Decision FX (post-commit, advisory only)
         if self.enable_decision_fx and self._decision_state is not None:
             self.decision_fx.apply(
                 decision_state=self._decision_state,
                 dominance=getattr(self, "_last_striatum_snapshot", {}).get("dominance", {}),
             )
 
-        # 9. Connectivity propagation + thalamic gating
+        # 10. Connectivity propagation + thalamic gating
         self._propagate_connectivity(relief)
 
-        # 10a. VTA Value trace recording
+        # 11. VTA Value trace recording
         if self.enable_vta_value:
             self.value_trace.record(
                 time=self.time,
@@ -357,12 +422,31 @@ class BrainRuntime:
                 value=self.value_signal.get(),
             )
 
-        # 10b. Advance time
+        # 12. Advance time
         self.time += self.dt
 
     # ============================================================
     # Subsystems
     # ============================================================
+    
+    def value_set(self, x: float) -> None:
+        """
+        Policy-gated value setter.
+        Mirrors the command server's value_set behavior.
+        Intended for tests and controlled experiments.
+        """
+        val = getattr(self, "value_signal", None)
+        pol = getattr(self, "value_policy", None)
+
+        if not val or not pol or not self.enable_vta_value:
+            return
+
+        new_val = pol.apply(
+            current_value=val.get(),
+            proposed_value=float(x),
+            t=self.time,
+        )
+        val.set(new_val)
 
     # ============================================================
     # Pre-decision adaptation helpers
@@ -552,13 +636,17 @@ class BrainRuntime:
 
                 strength = float(out.get("strength", 1.0))
 
+                gain = self._urgency_gain if self.enable_urgency else 1.0
+
                 if src_key.lower() == "gpi" and tgt_key.lower() == "md":
                     self._apply_input_to_region(
-                        tgt_key, src_drive * strength * relief * fx_gain
+                        tgt_key,
+                        src_drive * strength * relief * fx_gain * gain,
                     )
                 else:
                     self._apply_input_to_region(
-                        tgt_key, src_drive * strength
+                        tgt_key,
+                        src_drive * strength * gain,
                     )
 
     def _apply_input_to_region(self, region_key: str, amount: float) -> None:
