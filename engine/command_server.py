@@ -17,6 +17,14 @@ def _basic_stats(values: List[float]) -> Optional[Tuple[float, float]]:
     var = sum((v - mean) ** 2 for v in values) / len(values)
     return mean, var ** 0.5
 
+def _reset_hypotheses(runtime) -> str:
+    if not hasattr(runtime, "reset_hypothesis_routing"):
+        return "ERROR: hypothesis reset not supported"
+
+    runtime.reset_hypothesis_routing()
+    return "OK hypotheses reset"
+
+
 
 def _resolve_region(runtime, region_label: str) -> str:
     if hasattr(runtime, "_resolve_region_key"):
@@ -153,6 +161,14 @@ def _salience_set(runtime, assembly_id: str, value: float) -> str:
     sal.set(assembly_id, float(value))
     return f"OK salience {assembly_id} = {value}"
 
+def _set_hypothesis(runtime, assembly_id: str, hypothesis_id: str) -> str:
+    reg = getattr(runtime, "hypothesis_registry", None)
+    if not reg:
+        return "ERROR: hypothesis system not enabled"
+
+    reg.assign(assembly_id, hypothesis_id)
+    return f"OK hypothesis {assembly_id} -> {hypothesis_id}"
+
 
 def _salience_clear(runtime) -> str:
     sal = _get_salience(runtime)
@@ -182,6 +198,34 @@ def _dump_striatum(runtime) -> str:
     ):
         lines.append(f"{ch}={val:.6f}")
 
+    return "\n".join(lines)
+
+def _dump_routing(runtime) -> str:
+    snap = getattr(runtime, "_last_striatum_snapshot", None)
+    if not snap:
+        return "ROUTING: no data"
+
+    routing = snap.get("routing", {})
+    if not routing:
+        return "ROUTING: empty"
+
+    lines = ["ROUTING:"]
+    for aid, ch in sorted(routing.items()):
+        lines.append(f"  {aid} -> {ch}")
+    return "\n".join(lines)
+
+def _dump_hypotheses(runtime) -> str:
+    gen = getattr(runtime, "hypothesis_generator", None)
+    if not gen:
+        return "HYPOTHESES: unavailable"
+
+    snap = gen.snapshot()
+    if not snap:
+        return "HYPOTHESES: none"
+
+    lines = ["HYPOTHESES:"]
+    for aid, hid in sorted(snap.items()):
+        lines.append(f"  {aid} -> {hid}")
     return "\n".join(lines)
 
 
@@ -335,6 +379,10 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  urgency\n"
             "  urgency_trace\n"
             "  value_clear\n"
+            "  routing\n"
+            "  hypothesis_set <assembly> <hypothesis>\n"
+            "  hypothesis_reset\n"
+            "  hypotheses\n"
             "  help"
         )
 
@@ -415,6 +463,18 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
         if op == "value_clear":
             return _clear_value(runtime)
         
+        if op == "routing":
+            return _dump_routing(runtime)
+        
+        if op == "hypotheses":
+            return _dump_hypotheses(runtime)
+        
+        if op == "hypothesis_set" and len(parts) == 3:
+            return _set_hypothesis(runtime, parts[1], parts[2])
+
+        if op == "hypothesis_reset":
+            return _reset_hypotheses(runtime)
+
         # -----------------------------
         # Affective urgency (read-only)
         # -----------------------------

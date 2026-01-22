@@ -23,6 +23,10 @@ from engine.affective_urgency.urgency_signal import UrgencySignal
 from engine.affective_urgency.urgency_policy import UrgencyPolicy
 from engine.affective_urgency.urgency_trace import UrgencyTrace
 from engine.affective_urgency.urgency_adapter import UrgencyAdapter
+from engine.routing.hypothesis_registry import HypothesisRegistry
+from engine.routing.hypothesis_router import HypothesisRouter
+from engine.routing.hypothesis_generator import HypothesisGenerator
+
 
 
 
@@ -199,6 +203,21 @@ class BrainRuntime:
 
         self._build(brain)
 
+        # ---------------- Hypothesis routing (STRUCTURAL) ----------------
+        self.hypothesis_registry = HypothesisRegistry()
+        self.hypothesis_router = HypothesisRouter(self.hypothesis_registry)
+        
+        # ---------------- Hypothesis generation (STRUCTURAL) ----------------
+        self.hypothesis_generator = HypothesisGenerator()
+
+        # ---------------- Routing influence (STRUCTURAL, gain-only) ----------------
+        from engine.routing.routing_influence import RoutingInfluence
+
+        self.routing_influence = RoutingInfluence(
+            default_gain=1.0
+        )
+
+
     # ============================================================
     # Assembly Control
     # ============================================================
@@ -334,6 +353,15 @@ class BrainRuntime:
         for p in self._all_pops:
             p.step(self.dt)
 
+        # 2b. Hypothesis observation (cortical only, read-only) ---
+        assoc = self.region_states.get("association_cortex")
+        if assoc and hasattr(self, "hypothesis_generator"):
+            assemblies = [
+                p for plist in assoc["populations"].values() for p in plist
+            ]
+            self.hypothesis_generator.observe(assemblies)
+
+
         # 3. Striatum competition + BG persistence
         if self.enable_competition:
             self._step_striatum()
@@ -374,6 +402,12 @@ class BrainRuntime:
 
         # 6. Decision latch (creates _decision_state)
         self._evaluate_decision_latch(relief)
+
+        # 6a. Hypothesis proposal (registration only, no routing)
+        if hasattr(self, "hypothesis_generator"):
+            proposals = self.hypothesis_generator.propose()
+            for aid, hid in proposals.items():
+                self.hypothesis_registry.assign(aid, hid)
 
         # 6b. control snapshot (read-only, post-decision)
         self._control_state = ControlHook.compute(self)
@@ -485,12 +519,31 @@ class BrainRuntime:
         if not striatum:
             return
 
-        assemblies = [
-            p
-            for plist in striatum["populations"].values()
-            for p in plist
-            if getattr(p, "subpopulation", None) is not None
-        ]
+        assemblies = []
+        for plist in striatum["populations"].values():
+            for p in plist:
+                if getattr(p, "subpopulation", None) is None:
+                    continue
+
+                # --- Preserve biological channel identity (one-time) ---
+                if not hasattr(p, "_base_subpopulation"):
+                    p._base_subpopulation = p.subpopulation
+
+
+                # Optional hypothesis-based routing
+                hypothesis_id = getattr(p, "hypothesis_id", None)
+
+                routed_channel = self.hypothesis_router.route(
+                    hypothesis_id=hypothesis_id,
+                    default_channel=p._base_subpopulation,
+                )
+
+                # Override channel ONLY if router says so
+                if routed_channel is not None:
+                    p.subpopulation = routed_channel
+
+                assemblies.append(p)
+
         if not assemblies:
             return
 
@@ -519,8 +572,12 @@ class BrainRuntime:
             "winner": self.competition_kernel.last_winner_channel,
             "dominance": dict(self.competition_kernel.last_dominance_map),
             "instant": dict(self.competition_kernel.last_instantaneous_map),
+            "routing": {
+                p.assembly_id: p.subpopulation for p in assemblies
+            },
             "time": self.time,
         }
+
 
         if self.enable_persistence:
             max_out = max(p.output() for p in assemblies)
@@ -636,7 +693,26 @@ class BrainRuntime:
 
                 strength = float(out.get("strength", 1.0))
 
-                gain = self._urgency_gain if self.enable_urgency else 1.0
+                # ---------------- Routing influence (gain-only, pre-BG) ----------------
+                routing_gain = 1.0
+                if hasattr(self, "routing_influence"):
+                    # NOTE: src assemblies may have hypotheses
+                    # We conservatively average their influence
+                    gains = []
+                    for p in src_pops:
+                        hid = getattr(p, "hypothesis_id", None)
+                        ch = getattr(p, "subpopulation", None)
+                        g = self.routing_influence.gain_for(
+                            assembly_id=p.assembly_id,
+                            hypothesis_id=hid,
+                            target_channel=ch,
+                        )
+                        gains.append(g)
+
+                    if gains:
+                        routing_gain = sum(gains) / len(gains)
+
+                gain = routing_gain * (self._urgency_gain if self.enable_urgency else 1.0)
 
                 if src_key.lower() == "gpi" and tgt_key.lower() == "md":
                     self._apply_input_to_region(
@@ -649,6 +725,7 @@ class BrainRuntime:
                         src_drive * strength * gain,
                     )
 
+
     def _apply_input_to_region(self, region_key: str, amount: float) -> None:
         region = self.region_states.get(region_key)
         if not region:
@@ -660,6 +737,12 @@ class BrainRuntime:
     # ============================================================
     # Diagnostics
     # ============================================================
+
+    def reset_hypothesis_routing(self) -> None:
+        for p in self._all_pops:
+            if hasattr(p, "_base_subpopulation"):
+                p.subpopulation = p._base_subpopulation
+
 
     def snapshot_gate_state(self) -> Dict[str, Any]:
         return {
