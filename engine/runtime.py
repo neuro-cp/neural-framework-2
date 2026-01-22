@@ -26,7 +26,7 @@ from engine.affective_urgency.urgency_adapter import UrgencyAdapter
 from engine.routing.hypothesis_registry import HypothesisRegistry
 from engine.routing.hypothesis_router import HypothesisRouter
 from engine.routing.hypothesis_generator import HypothesisGenerator
-
+from engine.routing.hypothesis_pressure import HypothesisPressure
 
 
 
@@ -209,6 +209,9 @@ class BrainRuntime:
         
         # ---------------- Hypothesis generation (STRUCTURAL) ----------------
         self.hypothesis_generator = HypothesisGenerator()
+       
+        # ---------------- Hypothesis pressure (STRUCTURAL, read-only) ----------------
+        self.hypothesis_pressure = HypothesisPressure()
 
         # ---------------- Routing influence (STRUCTURAL, gain-only) ----------------
         from engine.routing.routing_influence import RoutingInfluence
@@ -370,6 +373,27 @@ class BrainRuntime:
         relief = self._compute_gpi_relief()
         self._last_gate_strength = relief
 
+        # 4a. Hypothesis pressure (pre-decision, read-only)
+        hypothesis_pressure = {}
+
+        if hasattr(self, "hypothesis_pressure"):
+            snap = getattr(self, "_last_striatum_snapshot", {}) or {}
+            dominance = snap.get("dominance", {})
+
+            assoc = self.region_states.get("association_cortex")
+            if assoc:
+                assemblies = {
+                    p.assembly_id: p.output()
+                    for plist in assoc["populations"].values()
+                    for p in plist
+                }
+
+                hypothesis_pressure = self.hypothesis_pressure.compute(
+                    gate_relief=relief,
+                    dominance=dominance,
+                    assemblies=assemblies,
+                )
+
         # 4b. Affective urgency (read-only, pre-decision)
         if self.enable_urgency:
             snap = getattr(self, "_last_striatum_snapshot", {}) or {}
@@ -405,9 +429,11 @@ class BrainRuntime:
 
         # 6a. Hypothesis proposal (registration only, no routing)
         if hasattr(self, "hypothesis_generator"):
-            proposals = self.hypothesis_generator.propose()
+            proposals = self.hypothesis_generator.propose(
+                pressure=hypothesis_pressure
+            )
             for aid, hid in proposals.items():
-                self.hypothesis_registry.assign(aid, hid)
+                self.hypothesis_registry.register(aid, hid)
 
         # 6b. control snapshot (read-only, post-decision)
         self._control_state = ControlHook.compute(self)

@@ -55,14 +55,23 @@ class HypothesisGenerator:
     # Proposal logic
     # ---------------------------------------------------------
 
-    def propose(self) -> Dict[str, str]:
+    def propose(
+        self,
+        pressure: Optional[Dict[str, float]] = None,
+    ) -> Dict[str, str]:
         """
         Return newly proposed hypotheses as:
             {assembly_id: hypothesis_id}
 
+        pressure:
+            Optional hypothesis pressure map (read-only, advisory).
+
         Does NOT register them automatically.
         """
         proposals: Dict[str, str] = {}
+
+        if pressure is None:
+            pressure = {}
 
         if len(self._active_hypotheses) >= self.max_hypotheses:
             return proposals
