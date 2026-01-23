@@ -80,6 +80,14 @@ class BrainRuntime:
         self.time = 0.0
         self.step_count = 0
 
+        # ------------------------------------------------------------
+        # TEST-ONLY: decision coincidence injection
+        # ------------------------------------------------------------
+        self._test_coincidence_enabled = False
+        self._test_delta_boost = 0.0
+        self._test_relief_boost = 0.0
+        self._test_coincidence_steps = 0
+
         # ---------------- Global defaults ----------------
         gd = brain.get("global_dynamics", {}) or {}
         self.global_pop_dyn = gd.get("population_defaults", {})
@@ -518,6 +526,11 @@ class BrainRuntime:
         Call this at episode boundaries (e.g. reset_latch).
         """
         self._psm_gain_cache.clear()
+        self._test_coincidence_enabled = False
+        self._test_delta_boost = 0.0
+        self._test_relief_boost = 0.0
+        self._test_coincidence_steps = 0
+
 
     
     
@@ -649,6 +662,22 @@ class BrainRuntime:
         vals = sorted(dom.values(), reverse=True)
         delta = vals[0] - vals[1]
 
+        # ------------------------------------------------------------
+        # TEST-ONLY coincidence bias (decays automatically)
+        # ------------------------------------------------------------
+        if self._test_coincidence_enabled and self._test_coincidence_steps > 0:
+            delta += self._test_delta_boost
+            relief += self._test_relief_boost
+
+            self._test_coincidence_steps -= 1
+            if self._test_coincidence_steps <= 0:
+                self._test_coincidence_enabled = False
+
+# ------------------------------------------------------------
+# Normal latch logic (unchanged)
+# ------------------------------------------------------------
+
+
         if (
             delta >= self.DECISION_DOMINANCE_THRESHOLD
             and relief >= self.DECISION_RELIEF_THRESHOLD
@@ -759,6 +788,34 @@ class BrainRuntime:
         for plist in region["populations"].values():
             for p in plist:
                 p.input += amount
+
+    # ============================================================
+    # post-decision API
+    # ============================================================
+
+    def inject_decision_coincidence(
+        self,
+        *,
+        delta_boost: float,
+        relief_boost: float,
+        steps: int,
+    ) -> None:
+        """
+        TEST-ONLY.
+
+        Temporarily biases decision coincidence variables so the
+        latch may fire naturally.
+
+        Does NOT:
+        - set a winner
+        - bypass latch logic
+        - alter thresholds
+        """
+        self._test_coincidence_enabled = True
+        self._test_delta_boost = float(delta_boost)
+        self._test_relief_boost = float(relief_boost)
+        self._test_coincidence_steps = int(steps)
+
 
     # ============================================================
     # Diagnostics

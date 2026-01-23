@@ -324,6 +324,13 @@ def _clear_value(runtime) -> str:
     val.reset()
     return "OK value reset"
 
+def _dump_working(runtime) -> str:
+    wa = getattr(runtime, "pfc_adapter", None)
+    if not wa:
+        return "WORKING: unavailable"
+    return "WORKING:\n" + json.dumps(wa.snapshot(), indent=2)
+
+
 
 # ============================================================
 # Latch controls
@@ -335,6 +342,30 @@ def _set_sustain(runtime, n: int) -> str:
         return f"OK sustain {n}"
     except Exception as e:
         return f"ERROR: {e}"
+
+def _force_commit(runtime) -> str:
+    """
+    TEST-ONLY.
+
+    Forces a temporary decision coincidence window so the
+    decision latch may fire naturally on the next steps.
+
+    Does NOT:
+    - choose a winner
+    - bypass latch logic
+    - alter thresholds
+    """
+
+    if not hasattr(runtime, "inject_decision_coincidence"):
+        return "ERROR: force_commit not supported by runtime"
+
+    runtime.inject_decision_coincidence(
+        delta_boost=runtime.DECISION_DOMINANCE_THRESHOLD,
+        relief_boost=runtime.DECISION_RELIEF_THRESHOLD,
+        steps=max(1, runtime._decision_sustain_required),
+    )
+
+    return "OK force_commit armed"
 
 
 def _get_sustain(runtime) -> str:
@@ -373,6 +404,7 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  decision\n"
             "  sustain [N]\n"
             "  reset_latch\n"
+            "  force_commit\n"
             "  control\n"
             "  value\n"
             "  value_set <x>\n"
@@ -383,6 +415,7 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  hypothesis_set <assembly> <hypothesis>\n"
             "  hypothesis_reset\n"
             "  hypotheses\n"
+            "  working\n"
             "  help"
         )
 
@@ -392,6 +425,13 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             return "ERROR: empty command"
 
         op = parts[0].lower()
+
+        if op == "reset_latch":
+            return _reset_latch(runtime)
+
+        if op == "force_commit":
+            return _force_commit(runtime)
+
 
         if op in ("help", "?"):
             return help_text()
@@ -444,14 +484,15 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
         if op == "sustain":
             return _get_sustain(runtime) if len(parts) == 1 else _set_sustain(runtime, int(parts[1]))
 
-        if op == "reset_latch":
-            return _reset_latch(runtime)
-
         if op == "control":
             return _dump_control(runtime)
         
         if op == "value":
             return _dump_value(runtime)
+        
+        if op == "working":
+            return _dump_working(runtime)
+
 
         if op == "value_set" and len(parts) == 2:
             try:
