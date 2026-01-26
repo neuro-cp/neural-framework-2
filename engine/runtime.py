@@ -435,7 +435,16 @@ class BrainRuntime:
         # 6. Decision latch (creates _decision_state)
         self._evaluate_decision_latch(relief)
 
-        # 6a. Hypothesis proposal (registration only, no routing)
+        # 6a. Episodic observation (READ-ONLY, Phase 5)
+        if hasattr(self, "episode_hook"):
+            decision_event = self._decision_state is not None
+            self.episode_hook.step(
+                step=self.step_count,
+                decision_event=decision_event,
+                context_shift=False,  # future hook
+            )
+
+        # 6b. Hypothesis proposal (registration only, no routing)
         if hasattr(self, "hypothesis_generator"):
             proposals = self.hypothesis_generator.propose(
                 pressure=hypothesis_pressure
@@ -443,8 +452,9 @@ class BrainRuntime:
             for aid, hid in proposals.items():
                 self.hypothesis_registry.register(aid, hid)
 
-        # 6b. control snapshot (read-only, post-decision)
+        # 6c. control snapshot (read-only, post-decision)
         self._control_state = ControlHook.compute(self)
+
 
         # 7. PFC → Context injection (now sees working state)
         if self.enable_context and self.enable_pfc_context:
