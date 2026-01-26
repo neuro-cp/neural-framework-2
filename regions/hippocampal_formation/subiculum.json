@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "RegionSubstructure",
   "region_id": "subiculum",
   "parent_region": "hip_base",
@@ -48,7 +48,12 @@
   "outputs": [
     {
       "target_region": "pfc",
-      "target_population": "L5_PYRAMIDAL",
+      "target_population": "L5_POLICY_A",
+      "strength": 0.6
+    },
+    {
+      "target_region": "pfc",
+      "target_population": "L5_POLICY_B",
       "strength": 0.6
     },
     {

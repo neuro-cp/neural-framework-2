@@ -27,8 +27,8 @@ class WorkingPolicy:
         min_confidence: float = 0.5,
         allow_override: bool = False,
         release_on_new_decision: bool = True,
-        auto_release: bool = False,
-        max_hold_steps: Optional[int] = None,
+        auto_release: bool = True,
+        max_hold_steps: Optional[int] = 800,
     ):
         """
         Parameters
@@ -54,7 +54,7 @@ class WorkingPolicy:
         self.allow_override = bool(allow_override)
         self.release_on_new_decision = bool(release_on_new_decision)
         self.auto_release = bool(auto_release)
-        self.max_hold_steps = max_hold_steps
+        self.max_hold_steps = int(max_hold_steps) if max_hold_steps is not None else None
 
     # --------------------------------------------------
     # Core policy decision
@@ -77,7 +77,6 @@ class WorkingPolicy:
                 "channel": Optional[str],
             }
         """
-
         intent = {
             "engage": False,
             "release": False,
@@ -89,18 +88,22 @@ class WorkingPolicy:
         confidence = float(decision_state.get("confidence", 0.0))
 
         # ----------------------------------------------
+        # Auto-release (global) — allow release even if commit sticks
+        # ----------------------------------------------
+        if (
+            self.auto_release
+            and working_engaged
+            and self.max_hold_steps is not None
+            and steps_held is not None
+            and steps_held >= self.max_hold_steps
+        ):
+            intent["release"] = True
+            return intent
+
+        # ----------------------------------------------
         # No decision → no policy action
         # ----------------------------------------------
         if not commit or winner is None:
-            # Optional auto-release logic
-            if (
-                self.auto_release
-                and working_engaged
-                and self.max_hold_steps is not None
-                and steps_held is not None
-                and steps_held >= self.max_hold_steps
-            ):
-                intent["release"] = True
             return intent
 
         # ----------------------------------------------
@@ -121,15 +124,13 @@ class WorkingPolicy:
         # ----------------------------------------------
         # Working state already engaged
         # ----------------------------------------------
-        if working_engaged:
-            if not self.allow_override:
-                return intent
+        if not self.allow_override:
+            return intent
 
-            # Override path
-            if self.release_on_new_decision:
-                intent["release"] = True
+        # Override path
+        if self.release_on_new_decision:
+            intent["release"] = True
 
-            intent["engage"] = True
-            intent["channel"] = winner
-
+        intent["engage"] = True
+        intent["channel"] = winner
         return intent

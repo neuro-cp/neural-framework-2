@@ -64,10 +64,23 @@ class SalienceSparsityGate:
         """
         ids = list(dict.fromkeys(assembly_ids))  # stable dedupe
 
+        # ----------------------------------------------
+        # Population-level eligibility filter (optional)
+        # ----------------------------------------------
+        ids = [
+            aid for aid in ids
+            if not (
+                ":" in aid and
+                aid.split(":", 1)[1].startswith("L5_")
+            )
+            or aid.split(":", 1)[1].startswith("L5A")
+        ]
+
         if not ids:
             self._eligible.clear()
             self._initialized = True
             return
+
 
         rng = random.Random(self._seed)
         rng.shuffle(ids)

@@ -133,19 +133,34 @@
       "signal": "abstracted_state",
       "strength": 0.7
     },
+
     {
       "target_region": "PFC",
-      "target_population": "L5_PYRAMIDAL_A",
+      "target_population": "L5_POLICY_A",
       "signal": "candidate_A",
       "strength": 0.4
     },
     {
       "target_region": "PFC",
-      "target_population": "L5_PYRAMIDAL_B",
+      "target_population": "L5_POLICY_B",
+      "signal": "candidate_A",
+      "strength": 0.4
+    },
+
+    {
+      "target_region": "PFC",
+      "target_population": "L5_POLICY_A",
+      "signal": "candidate_B",
+      "strength": 0.4
+    },
+    {
+      "target_region": "PFC",
+      "target_population": "L5_POLICY_B",
       "signal": "candidate_B",
       "strength": 0.4
     }
   ],
+
 
   "state_modulation": {
     "focused_thought": {

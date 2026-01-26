@@ -731,28 +731,31 @@ class BrainRuntime:
             if not outputs:
                 continue
 
-            src_pops = [
-                p for plist in state["populations"].values() for p in plist
-            ]
+            src_pops = [p for plist in state["populations"].values() for p in plist]
             if not src_pops:
                 continue
 
             src_drive = sum(p.output() for p in src_pops) / len(src_pops)
 
             for out in outputs:
-                tgt_key = self._resolve_region_key(
-                    out.get("target") or out.get("region") or ""
+                target_label = (
+                    out.get("target")
+                    or out.get("region")
+                    or out.get("target_region")
+                    or ""
                 )
+                tgt_key = self._resolve_region_key(target_label)
                 if not tgt_key or tgt_key not in self.region_states:
                     continue
 
                 strength = float(out.get("strength", 1.0))
 
+                # Optional per-output population targeting
+                target_pop = out.get("target_population") or out.get("population")
+
                 # ---------------- Routing influence (gain-only, pre-BG) ----------------
                 routing_gain = 1.0
                 if hasattr(self, "routing_influence"):
-                    # NOTE: src assemblies may have hypotheses
-                    # We conservatively average their influence
                     gains = []
                     for p in src_pops:
                         hid = getattr(p, "hypothesis_id", None)
@@ -773,21 +776,76 @@ class BrainRuntime:
                     self._apply_input_to_region(
                         tgt_key,
                         src_drive * strength * relief * fx_gain * gain,
+                        target_population=target_pop,
                     )
                 else:
                     self._apply_input_to_region(
                         tgt_key,
                         src_drive * strength * gain,
+                        target_population=target_pop,
                     )
 
 
-    def _apply_input_to_region(self, region_key: str, amount: float) -> None:
+
+    def _apply_input_to_region(
+        self,
+        region_key: str,
+        amount: float,
+        *,
+        target_population: Optional[str] = None,
+    ) -> None:
         region = self.region_states.get(region_key)
         if not region:
             return
-        for plist in region["populations"].values():
-            for p in plist:
+
+        pops_map = region.get("populations", {}) or {}
+
+        # If no target population specified, broadcast to all assemblies.
+        if not target_population:
+            for plist in pops_map.values():
+                for p in plist:
+                    p.input += amount
+            return
+
+        # Normalize label
+        tp = str(target_population).strip()
+
+        # Direct hit
+        if tp in pops_map:
+            for p in pops_map[tp]:
                 p.input += amount
+            return
+
+        # Case-insensitive hit
+        tp_lower = tp.lower()
+        for k in pops_map.keys():
+            if str(k).lower() == tp_lower:
+                for p in pops_map[k]:
+                    p.input += amount
+                return
+
+        # ------------------------------------------------------------
+        # Alias shim for known "early-file" intent artifacts
+        # (do NOT assume these exist everywhere)
+        # ------------------------------------------------------------
+
+        # Common: older configs say L5_PYRAMIDAL, runtime has L5_PYRAMIDAL_A/B
+        if tp_lower == "l5_pyramidal":
+            a = pops_map.get("L5_PYRAMIDAL_A")
+            b = pops_map.get("L5_PYRAMIDAL_B")
+
+            if a or b:
+                if a:
+                    for p in a:
+                        p.input += amount
+                if b:
+                    for p in b:
+                        p.input += amount
+                return
+
+        # If we get here, the target pop doesn't exist in this region.
+        # We intentionally no-op (silent) to avoid destabilizing runtime.
+        return
 
     # ============================================================
     # post-decision API
@@ -822,17 +880,68 @@ class BrainRuntime:
     # ============================================================
 
     def reset_hypothesis_routing(self) -> None:
+        """
+        Restore all assemblies to their original biological subpopulation
+        assignments after hypothesis-based routing.
+        """
         for p in self._all_pops:
             if hasattr(p, "_base_subpopulation"):
                 p.subpopulation = p._base_subpopulation
 
 
+    def snapshot_region_stats(self, region_key: str) -> Optional[Dict[str, Any]]:
+        """
+        Read-only diagnostic summary for a region.
+
+        Mirrors the TCP `stats <region>` command.
+        Safe for tests, probes, and notebooks.
+        """
+        rk = self._resolve_region_key(region_key) or region_key
+        region = self.region_states.get(rk)
+        if not region:
+            return None
+
+        acts: List[float] = []
+        outs: List[float] = []
+
+        for plist in region["populations"].values():
+            for pop in plist:
+                acts.append(float(getattr(pop, "activity", 0.0)))
+                outs.append(float(pop.output()))
+
+        if not acts:
+            return {
+                "region": region_key,
+                "mass": 0.0,
+                "mean": 0.0,
+                "std": 0.0,
+                "n": 0,
+            }
+
+        mean = sum(acts) / len(acts)
+        var = sum((v - mean) ** 2 for v in acts) / len(acts)
+
+        return {
+            "region": region_key,
+            "mass": sum(outs),
+            "mean": mean,
+            "std": var ** 0.5,
+            "n": len(acts),
+        }
+
+
     def snapshot_gate_state(self) -> Dict[str, Any]:
+        """
+        Read-only snapshot of GPi gate state and decision latch.
+
+        Canonical source for tests and TCP inspection.
+        """
         return {
             "time": self.time,
             "relief": self._last_gate_strength,
             "decision": self._decision_state,
         }
+
 
     def get_decision_state(self) -> Optional[Dict[str, Any]]:
         return self._decision_state
@@ -843,5 +952,41 @@ class BrainRuntime:
     def get_decision_fx_state(self) -> Dict[str, Any]:
         return self.decision_fx.dump() if self.enable_decision_fx else {}
     
+    def snapshot_decision_fx(self) -> Dict[str, Any]:
+        """
+        Canonical Decision FX snapshot for TCP / tests.
+
+        Returns a JSON-serializable dict with the *effect bundle* that would be
+        applied downstream (thalamic_gain, region_gain, suppress_channels, lock_action).
+
+        Read-only. Safe to call any time.
+        """
+        if not self.enable_decision_fx:
+            return {
+                "enabled": False,
+                "bundle": None,
+            }
+
+        try:
+            bundle = self.decision_fx.dump()
+        except Exception as e:
+            return {
+                "enabled": True,
+                "error": str(e),
+                "bundle": None,
+            }
+
+        # Normalize: always return a dict with expected keys present (even if empty)
+        out = {
+            "enabled": True,
+            "bundle": {
+                "thalamic_gain": float(bundle.get("thalamic_gain", 1.0) or 1.0),
+                "region_gain": dict(bundle.get("region_gain", {}) or {}),
+                "suppress_channels": dict(bundle.get("suppress_channels", {}) or {}),
+                "lock_action": bool(bundle.get("lock_action", False)),
+            },
+        }
+        return out
+
     def get_control_state(self) -> Optional[ControlState]:
         return self._control_state

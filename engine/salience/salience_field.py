@@ -72,6 +72,26 @@ class SalienceField:
     # Structural sparsity (optional)
     # --------------------------------------------------
 
+    def routing_bias(self, assembly_id: str) -> float:
+        """
+        Read-only routing preference derived from salience.
+
+        PURPOSE:
+        - Bias routing selection when multiple equivalent routes exist
+        - Must NOT scale activity, gain, or firing
+        - Must NOT force selection
+        - Fail-open if salience or sparsity gate blocks
+
+        Returns:
+            float in [0.0, 1.0]
+        """
+        if self._sparsity_gate is not None:
+            if not self._sparsity_gate.allows(assembly_id):
+                return 0.0
+
+        return float(self._values.get(assembly_id, 0.0))
+
+
     def attach_sparsity_gate(self, gate) -> None:
         """
         Attach a SalienceSparsityGate.

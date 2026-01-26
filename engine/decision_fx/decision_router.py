@@ -85,14 +85,28 @@ class DecisionRouter:
             )
             effects["thalamic_gain"] = min(cls.MAX_THALAMIC_GAIN, gain)
 
+    
         # -----------------------------------------------------
-        # Winner region focus (bounded hint, not force)
+        # Winner focus via TargetMap (winner label -> real regions)
         # -----------------------------------------------------
         if winner and confidence >= cls.MIN_CONFIDENCE_FOR_FOCUS:
-            focus_gain = cls.BASE_FOCUS_GAIN + confidence * (
-                cls.MAX_FOCUS_GAIN - cls.BASE_FOCUS_GAIN
+            from engine.decision_fx.target_map import TargetMap
+
+            # Conservative: keep router bounded, targets decide "where"
+            tm = TargetMap(
+                focus_gain=min(
+                    cls.MAX_FOCUS_GAIN,
+                    cls.BASE_FOCUS_GAIN + confidence * (cls.MAX_FOCUS_GAIN - cls.BASE_FOCUS_GAIN),
+                ),
+                suppress_gain=1.0,  # router doesn't do region suppression yet
             )
-            effects["region_gain"][winner] = min(cls.MAX_FOCUS_GAIN, focus_gain)
+
+            targets = tm.resolve(winner=winner)
+
+            # Merge region_gain (if multiple targets, keep max gain per region)
+            for region, g in targets.region_gain.items():
+                prev = float(effects["region_gain"].get(region, 1.0))
+                effects["region_gain"][region] = max(prev, float(g))
 
         # -----------------------------------------------------
         # Suppression of alternatives (bounded, confidence-scaled)

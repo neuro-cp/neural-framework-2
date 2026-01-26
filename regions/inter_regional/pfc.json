@@ -39,21 +39,23 @@
       }
     },
 
-    "L5_PYRAMIDAL_A": {
-      "count": 35000,
+    "L5_POLICY_A": {
+      "count": 17500,
       "layer": "L5",
       "neuron_type": "excitatory",
       "baseline_firing_rate_hz": 0.8,
-      "plasticity_profile": "high",
-
-      "subpopulations": {
-        "COMPETING_POLICY_ENCODERS": {
-          "fraction": 1.0,
-          "role": "parallel_policy_representation",
-          "competition_semantic": true
-        }
-      }
+      "plasticity_profile": "high"
     },
+
+    "L5_POLICY_B": {
+      "count": 17500,
+      "layer": "L5",
+      "neuron_type": "excitatory",
+      "baseline_firing_rate_hz": 0.8,
+      "plasticity_profile": "high"
+    },
+
+
 
     "L5_PYRAMIDAL_B": {
       "count": 35000,

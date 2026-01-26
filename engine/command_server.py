@@ -58,6 +58,21 @@ def _dump_control(runtime) -> str:
 
 def _region_stats(runtime, region_label: str) -> str:
     region_id = _resolve_region(runtime, region_label)
+
+    if hasattr(runtime, "snapshot_region_stats"):
+        snap = runtime.snapshot_region_stats(region_id)
+        if snap is None:
+            return f"ERROR: unknown region '{region_label}' (resolved='{region_id}')"
+
+        return (
+            f"{snap['region']} "
+            f"MASS={snap['mass']:.4f} "
+            f"MEAN={snap['mean']:.4f} "
+            f"STD={snap['std']:.4f} "
+            f"N={snap['n']}"
+        )
+
+    # Fallback (legacy runtime)
     region = runtime.region_states.get(region_id)
     if not region:
         return f"ERROR: unknown region '{region_label}' (resolved='{region_id}')"
@@ -78,6 +93,87 @@ def _region_stats(runtime, region_label: str) -> str:
         f"MEAN={mean:.4f} "
         f"STD={std:.4f} "
         f"N={len(acts)}"
+    )
+
+def _population_stats(runtime, region_label: str, population_label: str) -> str:
+    region_id = _resolve_region(runtime, region_label)
+    region = runtime.region_states.get(region_id)
+    if not region:
+        return f"ERROR: unknown region '{region_label}' (resolved='{region_id}')"
+
+    pops = region.get("populations", {})
+    if population_label not in pops:
+        return f"ERROR: unknown population '{population_label}' in region '{region_id}'"
+
+    acts: List[float] = []
+    outs: List[float] = []
+
+    for pop in pops[population_label]:
+        acts.append(float(getattr(pop, "activity", 0.0)))
+        outs.append(float(pop.output()))
+
+    if not acts:
+        return (
+            f"{region_id}:{population_label} "
+            f"MASS=0.0000 MEAN=0.0000 STD=0.0000 N=0"
+        )
+
+    mean, std = _basic_stats(acts)
+    return (
+        f"{region_id}:{population_label} "
+        f"MASS={sum(outs):.4f} "
+        f"MEAN={mean:.4f} "
+        f"STD={std:.4f} "
+        f"N={len(acts)}"
+    )
+
+def _delta_population(
+    runtime,
+    region_label: str,
+    pop_a: str,
+    pop_b: str,
+) -> str:
+    region_id = _resolve_region(runtime, region_label)
+    region = runtime.region_states.get(region_id)
+    if not region:
+        return f"ERROR: unknown region '{region_label}' (resolved='{region_id}')"
+
+    pops = region.get("populations", {})
+
+    if pop_a not in pops:
+        return f"ERROR: unknown population '{pop_a}' in region '{region_id}'"
+    if pop_b not in pops:
+        return f"ERROR: unknown population '{pop_b}' in region '{region_id}'"
+
+    def _collect(pop_list):
+        acts, outs = [], []
+        for p in pop_list:
+            acts.append(float(getattr(p, "activity", 0.0)))
+            outs.append(float(p.output()))
+        return acts, outs
+
+    acts_a, outs_a = _collect(pops[pop_a])
+    acts_b, outs_b = _collect(pops[pop_b])
+
+    if not acts_a or not acts_b:
+        return (
+            f"{region_id}:{pop_a} vs {pop_b} "
+            f"ΔACT=0.000000 ΔOUT=0.000000 "
+            f"N_A={len(acts_a)} N_B={len(acts_b)}"
+        )
+
+    mean_act_a = sum(acts_a) / len(acts_a)
+    mean_act_b = sum(acts_b) / len(acts_b)
+
+    mean_out_a = sum(outs_a) / len(outs_a)
+    mean_out_b = sum(outs_b) / len(outs_b)
+
+    return (
+        f"{region_id}:{pop_a} vs {pop_b} "
+        f"ΔACT={abs(mean_act_a - mean_act_b):.6f} "
+        f"ΔOUT={abs(mean_out_a - mean_out_b):.6f} "
+        f"N_A={len(acts_a)} "
+        f"N_B={len(acts_b)}"
     )
 
 
@@ -234,11 +330,12 @@ def _dump_gate(runtime) -> str:
         return "GATE: unavailable"
 
     s = runtime.snapshot_gate_state()
+    decision = s.get("decision", False)
     return (
         "GATE:\n"
         f"  t={s.get('time', 0.0):.3f}\n"
         f"  relief={s.get('relief', 1.0):.4f}\n"
-        f"  winner={s.get('winner')}"
+        f"  decision={'yes' if decision else 'no'}"
     )
 
 
@@ -330,6 +427,22 @@ def _dump_working(runtime) -> str:
         return "WORKING: unavailable"
     return "WORKING:\n" + json.dumps(wa.snapshot(), indent=2)
 
+def _dump_fx(runtime) -> str:
+    """
+    Decision FX snapshot (JSON) for tests.
+
+    Always returns JSON (or an ERROR string).
+    """
+    if hasattr(runtime, "snapshot_decision_fx"):
+        snap = runtime.snapshot_decision_fx()
+        return json.dumps(snap, indent=2)
+
+    # fallback if you didn't add snapshot_decision_fx yet
+    if hasattr(runtime, "get_decision_fx_state"):
+        snap = runtime.get_decision_fx_state()
+        return json.dumps({"enabled": True, "bundle": snap}, indent=2)
+
+    return "ERROR: Decision FX not supported by runtime"
 
 
 # ============================================================
@@ -392,6 +505,8 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  poke_pop <region> <population> <mag>\n"
             "  poke_asm <region> <population> <idx> <mag>\n"
             "  stats <region>\n"
+            "  stats_pop <region> <population>\n"
+            "  delta_pop <region> <populationA> <populationB>\n"
             "  top <region> <N>\n"
             "  context | ctx\n"
             "  ctxfull\n"
@@ -416,6 +531,7 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  hypothesis_reset\n"
             "  hypotheses\n"
             "  working\n"
+            "  fx, or decision_fx\n"
             "  help"
         )
 
@@ -448,11 +564,20 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             runtime.inject_stimulus(parts[1], parts[2], int(parts[3]), float(parts[4]))
             return "OK"
 
-        if op == "stats":
+        if op == "stats" and len(parts) == 2:
             return _region_stats(runtime, parts[1])
+        
+        if op == "stats_pop" and len(parts) == 3:
+            return _population_stats(runtime, parts[1], parts[2])
+
+        if op == "delta_pop" and len(parts) == 4:
+            return _delta_population(runtime, parts[1], parts[2], parts[3])
+
+        if op == "top" and len(parts) == 3:
+            return _top_assemblies(runtime, parts[1], int(parts[2]))
 
         if op == "top":
-            return _top_assemblies(runtime, parts[1], int(parts[2]))
+            return "ERROR: usage top <region> <N>"
 
         if op in ("context", "ctx"):
             return _dump_context(runtime)
@@ -512,6 +637,9 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
         
         if op == "hypothesis_set" and len(parts) == 3:
             return _set_hypothesis(runtime, parts[1], parts[2])
+
+        if op in ("fx", "decision_fx"):
+            return _dump_fx(runtime)
 
         if op == "hypothesis_reset":
             return _reset_hypotheses(runtime)
