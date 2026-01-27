@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 @dataclass(frozen=True)
@@ -26,23 +26,33 @@ class EpisodeTrace:
         self._records: List[EpisodeTraceRecord] = []
 
     # --------------------------------------------------
-    # Record events
+    # Record events (backward-compatible)
     # --------------------------------------------------
     def record_start(
         self,
         *,
         episode_id: int,
         step: int,
-        time: float,
+        time: float | None = None,
+        reason: Optional[str] = None,
+        **extra: Any,
     ) -> None:
+        payload: Dict[str, Any] = {}
+
+        if time is not None:
+            payload["time"] = time
+
+        if reason is not None:
+            payload["reason"] = reason
+
+        payload.update(extra)
+
         self._records.append(
             EpisodeTraceRecord(
                 event="start",
                 episode_id=episode_id,
                 step=step,
-                payload={
-                    "time": time,
-                },
+                payload=payload,
             )
         )
 
@@ -51,20 +61,28 @@ class EpisodeTrace:
         *,
         episode_id: int,
         step: int,
-        time: float,
-        winner: str | None,
-        confidence: float | None,
+        time: float | None = None,
+        winner: str | None = None,
+        confidence: float | None = None,
+        **extra: Any,
     ) -> None:
+        payload: Dict[str, Any] = {}
+
+        if time is not None:
+            payload["time"] = time
+        if winner is not None:
+            payload["winner"] = winner
+        if confidence is not None:
+            payload["confidence"] = confidence
+
+        payload.update(extra)
+
         self._records.append(
             EpisodeTraceRecord(
                 event="decision",
                 episode_id=episode_id,
                 step=step,
-                payload={
-                    "time": time,
-                    "winner": winner,
-                    "confidence": confidence,
-                },
+                payload=payload,
             )
         )
 
@@ -73,22 +91,34 @@ class EpisodeTrace:
         *,
         episode_id: int,
         step: int,
-        time: float,
-        duration_steps: int | None,
-        duration_time: float | None,
-        decision_count: int,
+        time: float | None = None,
+        duration_steps: int | None = None,
+        duration_time: float | None = None,
+        decision_count: int | None = None,
+        reason: Optional[str] = None,
+        **extra: Any,
     ) -> None:
+        payload: Dict[str, Any] = {}
+
+        if time is not None:
+            payload["time"] = time
+        if duration_steps is not None:
+            payload["duration_steps"] = duration_steps
+        if duration_time is not None:
+            payload["duration_time"] = duration_time
+        if decision_count is not None:
+            payload["decision_count"] = decision_count
+        if reason is not None:
+            payload["reason"] = reason
+
+        payload.update(extra)
+
         self._records.append(
             EpisodeTraceRecord(
                 event="close",
                 episode_id=episode_id,
                 step=step,
-                payload={
-                    "time": time,
-                    "duration_steps": duration_steps,
-                    "duration_time": duration_time,
-                    "decision_count": decision_count,
-                },
+                payload=payload,
             )
         )
 

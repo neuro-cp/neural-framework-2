@@ -2,80 +2,83 @@ from __future__ import annotations
 
 from typing import Optional
 
-from memory.episodic.episode_policy import (
-    EpisodePolicy,
-    EpisodeBoundarySignal,
-)
+from memory.episodic.episode_boundary_policy import EpisodeBoundaryPolicy
 from memory.episodic.episode_tracker import EpisodeTracker
 
 
 class EpisodeRuntimeHook:
     """
-    Runtime-facing episodic hook.
+    Runtime-facing episodic hook (read-only bridge).
 
     Responsibilities:
-    - Observe runtime state (read-only)
-    - Query EpisodePolicy
-    - Forward boundary signals to EpisodeTracker
+    - Observe runtime snapshots
+    - Evaluate episodic boundary policy
+    - Delegate lifecycle actions to EpisodeTracker
 
     Non-responsibilities:
+    - No authority
     - No resets
-    - No memory deletion
-    - No decision authority
-    - No latch interaction
+    - No learning
+    - No runtime mutation
     """
 
     def __init__(
         self,
         *,
-        policy: EpisodePolicy,
         tracker: EpisodeTracker,
+        boundary_policy: Optional[EpisodeBoundaryPolicy] = None,
     ) -> None:
-        self.policy = policy
         self.tracker = tracker
+        self.boundary_policy = boundary_policy or EpisodeBoundaryPolicy()
 
-    # --------------------------------------------------
-    # Runtime observation hook
-    # --------------------------------------------------
     def step(
         self,
         *,
         step: int,
-        decision_made: bool,
-        working_state_active: bool,
+        decision_event: bool,
+        working_state_active: Optional[bool] = None,
         context_shift: bool = False,
-    ) -> Optional[EpisodeBoundarySignal]:
+        time: Optional[float] = None,  # reserved for Phase 6+
+    ) -> None:
         """
         Called once per runtime step.
 
-        Returns the boundary signal for observability/testing,
-        but does NOT act on it directly.
+        Observes runtime state and delegates episodic
+        lifecycle transitions when boundary conditions
+        are declared by policy.
         """
 
-        signal = self.policy.evaluate(
-            step=step,
-            active_episode_start_step=self.tracker.active_start_step,
-            decision_made=decision_made,
-            working_state_active=working_state_active,
-            context_shift=context_shift,
-        )
-
-        if signal is None:
-            return None
-
         # --------------------------------------------------
-        # Forward advisory signals to tracker
+        # Ensure an episode exists
         # --------------------------------------------------
-        if signal.close_active:
-            self.tracker.close_episode(
-                step=step,
-                reason=signal.reason,
-            )
-
-        if signal.start_new:
+        if not self.tracker.has_active_episode():
             self.tracker.start_episode(
                 step=step,
-                reason=signal.reason,
+                reason="initial",
+            )
+            return
+
+        # --------------------------------------------------
+        # Boundary evaluation (pure observation)
+        # --------------------------------------------------
+        should_close = self.boundary_policy.should_close_episode(
+            episode_start_step=self.tracker.active_start_step,
+            current_step=step,
+            decision_event=decision_event,
+            working_state_active=working_state_active,
+        )
+
+        if should_close:
+            self.tracker.close_episode(
+                step=step,
+                reason="boundary",
             )
 
-        return signal
+        # --------------------------------------------------
+        # Open next episode if one just closed
+        # --------------------------------------------------
+        if not self.tracker.has_active_episode():
+            self.tracker.start_episode(
+                step=step,
+                reason="boundary",
+            )

@@ -9,13 +9,13 @@ class Episode:
     """
     Passive representation of a single cognitive episode.
 
-    An episode is a bounded temporal container:
+    An episode is a bounded, descriptive temporal container:
     - It has a start
     - It may have an end
-    - It may contain one or more decisions
+    - It may contain one or more decision annotations
     - It carries no authority and performs no actions
 
-    This object is intentionally inert and descriptive only.
+    This object is intentionally inert and observational only.
     """
 
     # --------------------------------------------------
@@ -33,7 +33,7 @@ class Episode:
     end_time: Optional[float] = None
 
     # --------------------------------------------------
-    # Decision annotations (observational)
+    # Decision annotations (append-only, observational)
     # --------------------------------------------------
     decisions: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -43,7 +43,7 @@ class Episode:
     closed: bool = False
 
     # --------------------------------------------------
-    # Derived metadata (read-only semantics)
+    # Derived metadata (anchored on first decision)
     # --------------------------------------------------
     winner: Optional[str] = None
     confidence: Optional[float] = None
@@ -54,7 +54,7 @@ class Episode:
     tags: Dict[str, Any] = field(default_factory=dict)
 
     # --------------------------------------------------
-    # Lifecycle helpers (state-only)
+    # Lifecycle helpers (state-only, non-authoritative)
     # --------------------------------------------------
     def mark_decision(
         self,
@@ -68,11 +68,12 @@ class Episode:
         """
         Annotate the episode with a decision event.
 
-        The first decision establishes episode-level metadata
-        (winner, confidence). Subsequent decisions are appended
-        but do not overwrite episode identity.
+        Decisions are append-only records.
+        The first decision anchors episode-level metadata
+        (winner, confidence). Subsequent decisions do not
+        overwrite episode identity.
         """
-        record = {
+        record: Dict[str, Any] = {
             "step": step,
             "time": time,
             "winner": winner,
@@ -99,13 +100,14 @@ class Episode:
         Close the episode.
 
         Records termination metadata only.
+        No downstream effects are triggered.
         """
         self.end_step = step
         self.end_time = time
         self.closed = True
 
     # --------------------------------------------------
-    # Introspection helpers (derived, non-authoritative)
+    # Introspection helpers (derived, read-only)
     # --------------------------------------------------
     @property
     def decision_count(self) -> int:
