@@ -272,11 +272,19 @@ class PopulationModel:
 
         above = self.activity - self.threshold
         if above > 0.0:
-            fr = gain * above
+            struct_gain = getattr(self, "_structural_gain", 1.0)
+
+            if struct_gain < 0.7:
+                struct_gain = 0.7
+            elif struct_gain > 1.3:
+                struct_gain = 1.3
+
+            fr = struct_gain * gain * above
             if self.normalization > 0.0:
                 fr /= (1.0 + self.normalization * abs(self.activity))
         else:
             fr = 0.0
+
 
         if fr < 0.0:
             fr = 0.0
