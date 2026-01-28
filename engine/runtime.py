@@ -211,6 +211,18 @@ class BrainRuntime:
 
         self._build(brain)
 
+        # ---------------- Assembly differentiation (STRUCTURAL, compile-time) ----------------
+        try:
+            from regions.assembly_differentiation.adapter import (
+                AssemblyDifferentiationAdapter,
+            )
+
+            AssemblyDifferentiationAdapter.apply(runtime=self)
+        except ImportError:
+            # Differentiation layer not present; safe no-op
+            pass
+
+
         # ---------------- Hypothesis routing (STRUCTURAL) ----------------
         self.hypothesis_registry = HypothesisRegistry()
         self.hypothesis_router = HypothesisRouter(self.hypothesis_registry)

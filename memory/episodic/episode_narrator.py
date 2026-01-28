@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Dict, Any, Iterable
+from typing import List, Dict, Any, Iterable, Optional
 
 from memory.episodic.episode_replay import EpisodeReplay
 from memory.episodic.episode_structure import Episode
 from memory.episodic.episode_trace import EpisodeTraceRecord
+from memory.episodic.signal_snapshot import SignalSnapshot
 
 
 # ============================================================
@@ -26,7 +27,7 @@ class NarrativeEvent:
 
     episode_id: int
     step: int
-    kind: str           # "start", "decision", "close", "info"
+    kind: str           # "start", "signal", "decision", "close", "info"
     message: str
     payload: Dict[str, Any]
 
@@ -41,6 +42,7 @@ class EpisodeNarrator:
 
     Responsibilities:
     - Consume EpisodeReplay + EpisodeTrace
+    - Optionally consume SignalSnapshots
     - Produce a temporal narrative of what occurred
     - Describe dynamics WITHOUT interpretation or intent
 
@@ -54,14 +56,24 @@ class EpisodeNarrator:
     def narrate(
         self,
         replay: EpisodeReplay,
+        *,
+        signals: Optional[List[SignalSnapshot]] = None,
     ) -> List[NarrativeEvent]:
         """
         Produce a narrative for all closed episodes in the replay.
         """
         narrative: List[NarrativeEvent] = []
 
+        signal_index = self._index_signals(signals)
+
         for episode, records in replay.replay():
-            narrative.extend(self._narrate_episode(episode, records))
+            narrative.extend(
+                self._narrate_episode(
+                    episode=episode,
+                    records=records,
+                    signal_index=signal_index,
+                )
+            )
 
         return narrative
 
@@ -71,10 +83,14 @@ class EpisodeNarrator:
 
     def _narrate_episode(
         self,
+        *,
         episode: Episode,
         records: Iterable[EpisodeTraceRecord],
+        signal_index: Dict[int, SignalSnapshot],
     ) -> List[NarrativeEvent]:
         events: List[NarrativeEvent] = []
+
+        end_step = episode.end_step
 
         # --------------------------------------------------
         # Episode header
@@ -84,15 +100,36 @@ class EpisodeNarrator:
                 episode_id=episode.episode_id,
                 step=episode.start_step,
                 kind="start",
-                message=(
-                    f"Episode {episode.episode_id} started at step {episode.start_step}."
-                ),
+                message=f"Episode {episode.episode_id} started at step {episode.start_step}.",
                 payload={
                     "start_step": episode.start_step,
                     "tags": dict(episode.tags),
                 },
             )
         )
+
+        # --------------------------------------------------
+        # Signal annotations (independent timeline)
+        # --------------------------------------------------
+        for step, snapshot in signal_index.items():
+            if not snapshot.is_nonbaseline():
+                continue
+
+            if step < episode.start_step:
+                continue
+
+            if end_step is not None and step > end_step:
+                continue
+
+            events.append(
+                NarrativeEvent(
+                    episode_id=episode.episode_id,
+                    step=step,
+                    kind="signal",
+                    message=self._format_signal(snapshot),
+                    payload=snapshot.as_dict(),
+                )
+            )
 
         # --------------------------------------------------
         # Trace-driven narration
@@ -123,10 +160,12 @@ class EpisodeNarrator:
         # --------------------------------------------------
         # Post-episode summary
         # --------------------------------------------------
+        summary_step = end_step if end_step is not None else episode.start_step
+
         events.append(
             NarrativeEvent(
                 episode_id=episode.episode_id,
-                step=episode.end_step or episode.start_step,
+                step=summary_step,
                 kind="info",
                 message=self._format_summary(episode),
                 payload={
@@ -138,7 +177,41 @@ class EpisodeNarrator:
             )
         )
 
+        # --------------------------------------------------
+        # Temporal ordering (single authoritative sort)
+        # --------------------------------------------------
+        events.sort(key=lambda e: e.step)
+
         return events
+
+    # --------------------------------------------------
+    # Signal helpers (descriptive only)
+    # --------------------------------------------------
+
+    def _index_signals(
+        self,
+        signals: Optional[List[SignalSnapshot]],
+    ) -> Dict[int, SignalSnapshot]:
+        """
+        Index signals by timestep for O(1) lookup.
+        """
+        if not signals:
+            return {}
+
+        return {s.step: s for s in signals}
+
+    def _format_signal(self, snapshot: SignalSnapshot) -> str:
+        parts: List[str] = []
+
+        if snapshot.salience not in (None, 0.0):
+            parts.append(f"salience={snapshot.salience:.3f}")
+        if snapshot.value not in (None, 0.0):
+            parts.append(f"value={snapshot.value:.3f}")
+        if snapshot.urgency not in (None, 0.0):
+            parts.append(f"urgency={snapshot.urgency:.3f}")
+
+        joined = ", ".join(parts)
+        return f"Modulatory signals active: {joined}."
 
     # --------------------------------------------------
     # Formatting helpers (descriptive only)
