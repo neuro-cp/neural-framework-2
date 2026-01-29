@@ -6,6 +6,30 @@
 
   "function": "visual_signal_transduction",
 
+  "populations": {
+    "VISUAL_SIGNAL": {
+      "count": 5000,
+      "neuron_type": "excitatory",
+      "sign": 1.0,
+
+      "baseline": 0.0,
+      "tau": 8.0,
+      "gain": 1.0,
+      "threshold": 0.0,
+      "max_rate": 1.0,
+
+      "normalization": 0.0,
+      "homeostatic_gain": 0.0,
+
+      "plasticity_profile": "none",
+
+      "semantic_role": "sensory_input_carrier",
+
+      "clamp_min": 0.0,
+      "clamp_max": 1.0
+    }
+  },
+
   "signal_dimensions": {
     "width": 128,
     "height": 128,

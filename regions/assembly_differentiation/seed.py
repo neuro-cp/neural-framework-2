@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 
 # ============================================================
-# Canonical project seed
+# changing this will destroy all assembly characteristics
 # ============================================================
 
 SEED_PHRASE = "OHANA MEANS FAMILY!"

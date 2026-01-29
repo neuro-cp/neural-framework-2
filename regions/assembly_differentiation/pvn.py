@@ -20,7 +20,7 @@ class PVNDifferentiationAdapter:
     TARGET_POPULATION = "PARAVENTRICULAR_NUCLEUS"
     EXPECTED_ASSEMBLIES = 5
 
-    def __init__(self, attenuation: float = 0.25):
+    def __init__(self, attenuation: float = 1.0):
         self.attenuation = float(attenuation)
         self._rng = random.Random(get_seed_int())
         self._muted_ids: List[str] = []
