@@ -1,6 +1,12 @@
 .gitignore
-C:\Users\Admin\Desktop\neural framework\kernel_dominance_trace.csv
-STRUCTURE_DUMP_CHECKPOINT30.txt
+.pytest_cache/
+  .gitignore
+  CACHEDIR.TAG
+  README.md
+  v/
+    cache/
+      lastfailed
+      nodeids
 config/
   assembly_control.json
   global_dynamics.json
@@ -18,7 +24,6 @@ docs/
     post_decision_outcome_to_value.md
 dump.py
 engine/
-  IO_SCHEMA.txt
   __init__.py
   affective_urgency/
     tests/
@@ -163,9 +168,9 @@ engine/
     memory_bias_registry.py
     tests/
       __init__.py
+  IO_SCHEMA.txt
   population_model.py
   replay/
-    README.md
     __init__.py
     execution/
       __init__.py
@@ -187,6 +192,7 @@ engine/
         test_wake_vs_nrem_execution.py
         test_wake_vs_nrem_execution_log.txt
       wake_replay_mode.py
+    README.md
     requests/
       __init__.py
       replay_request.py
@@ -403,14 +409,49 @@ engine/
     value_signal.py
     value_source.py
     value_trace.py
-kernel_dominance_trace.csv
 learning/
-  README.md
   __init__.py
   audit/
     __init__.py
     learning_audit.py
     learning_audit_report.py
+  diffing/
+    __init__.py
+    learning_bundle_diff.py
+    learning_bundle_diff_aggregate.py
+    learning_bundle_diff_aggregator.py
+    learning_bundle_diff_builder.py
+    learning_bundle_diff_serializer.py
+    learning_bundle_diff_types.py
+    semantic_bundle_diff.py
+    structural_bundle_diff.py
+    tests/
+      test_learning_bundle_diff_does_not_mutate_inputs.py
+      test_learning_bundle_diff_no_difference_when_equal.py
+      test_learning_bundle_diff_read_only_and_deterministic.py
+      test_learning_bundle_diff_semantic_changes_detected.py
+      test_learning_bundle_diff_serialization_is_stable.py
+      test_learning_bundle_diff_structural_changes_detected.py
+  evaluation/
+    __init__.py
+    learning_evaluation_policy.py
+    learning_evaluation_result.py
+    learning_evaluation_runner.py
+    tests/
+      __init__.py
+      test_learning_evaluation_allows_duplicate_semantics.py
+      test_learning_evaluation_hard_failure.py
+      test_learning_evaluation_is_deterministic.py
+      test_learning_evaluation_rejects_insufficient_evidence.py
+  execution/
+    __init__.py
+    learning_execution_observer.py
+    learning_execution_result.py
+    run_observed_learning_batch.py
+    tests/
+      __init__.py
+      test_learning_execution_observer_is_deterministic.py
+      test_learning_execution_observer_is_read_only.py
   inputs/
     __init__.py
     learning_input_builder.py
@@ -418,7 +459,22 @@ learning/
     learning_pipeline_input_adapter.py
   inspection/
     __init__.py
+    diff_aggregate_inspection_builder.py
+    diff_aggregate_inspection_renderer.py
+    diff_aggregate_inspection_view.py
+    diff_inspection_builder.py
+    diff_inspection_renderer.py
+    diff_inspection_view.py
     learning_inspection_adapter.py
+    tests/
+      __init__.py
+      test_diff_aggregate_inspection_matches_aggregate.py
+      test_diff_inspection_is_deterministic.py
+      test_diff_inspection_is_read_only.py
+      test_diff_inspection_matches_diff_content.py
+      test_learning_bundle_diff_aggregation_is_deterministic.py
+      test_learning_bundle_diff_aggregation_is_read_only.py
+  README.md
   schemas/
     __init__.py
     learning_delta.py
@@ -439,9 +495,13 @@ learning/
     test_learning_audit_hard_failure.py
     test_learning_audit_replay_safety.py
     test_learning_boundedness.py
+    test_learning_bundle_diff_read_only.py
     test_learning_bundle_from_inspection_surface.py
+    test_learning_input_bundle_fuzzing.py
     test_learning_input_bundle_idempotent.py
     test_learning_input_bundle_order_invariant.py
+    test_learning_input_bundle_purity.py
+    test_learning_input_bundle_rejects_forbidden_objects.py
     test_learning_proposal_schema.py
     test_learning_session_idempotence.py
     test_no_authority_edges.py
@@ -559,6 +619,21 @@ memory/
       test_single_episode_lifecycle.py
       test_two_episodes_no_leakage.py
       tsnwe_log.txt
+  influence_eligibility/
+    __init__.py
+    eligibility_invariants.md
+    eligibility_policy.py
+    eligibility_record.py
+    eligibility_scope.py
+    inspection_adapter.py
+    README.md
+    tests/
+      __init__.py
+      test_eligibility_has_no_authority_imports.py
+      test_eligibility_inspection_adapter_is_read_only.py
+      test_eligibility_policy_is_abstract.py
+      test_eligibility_record_is_pure_data.py
+      test_eligibility_scope_is_restrictive.py
   inspection/
     __init__.py
     audit/
@@ -584,6 +659,14 @@ memory/
         test_structural_coherence_audit_log.txt
         test_temporal_coherence_audit.py
         test_temporal_coherence_audit.txt
+    diffing/
+      __init__.py
+      semantic_assembly_hypothesis_diff.py
+      semantic_grounding_diff.py
+      tests/
+        __init__.py
+        test_semantic_assembly_hypothesis_diff.py
+        test_semantic_grounding_diff.py
     docs/
       failure_modes/
       failure_modes_README.md
@@ -609,15 +692,51 @@ memory/
     semantic_ontology_report.py
     tests/
       __init__.py
-      test_exporters_are_read_only.py
-      test_inspection_builder.py
-      test_inspection_runner.py
-      test_inspection_runner_authority_leak.py
-      test_inspection_to_learning_continuity.py
-      test_ontology_inspection_is_read_only.py
-      test_promotion_diff.py
-      test_promotion_report_read_only.py
-      test_semantic_activation_report_read_only.py
+      conftest.py
+      LEGACY/
+        test_exporters_are_read_only.py
+        test_inspection_builder.py
+        test_inspection_runner.py
+        test_inspection_runner_authority_leak.py
+        test_inspection_to_learning_continuity.py
+        test_ontology_inspection_is_read_only.py
+        test_promotion_diff.py
+        test_promotion_report_read_only.py
+        test_semantic_activation_report_read_only.py
+      test_grounding_export_stability.py
+      test_grounding_removal_safety.py
+      test_inspection_diff_grounding_isolated.py
+      test_inspection_grounding_additive_only.py
+      test_inspection_grounding_does_not_affect_versions.py
+  proposal_channels/
+    __init__.py
+    inspection_adapter.py
+    proposal_channel.py
+    proposal_invariants.md
+    proposal_record.py
+    proposal_scope.py
+    README.md
+    tests/
+      __init__.py
+      test_proposal_channel_is_abstract.py
+      test_proposal_has_no_authority_imports.py
+      test_proposal_inspection_adapter_is_read_only.py
+      test_proposal_record_is_pure_data.py
+      test_proposal_scope_is_restrictive.py
+      VALIDATED.TXT
+  proposal_evaluation/
+    __init__.py
+    evaluation_engine.py
+    evaluation_policy.py
+    evaluation_record.py
+    README.md
+    tests/
+      __init__.py
+      test_evaluation_engine_is_read_only.py
+      test_evaluation_record_is_pure_data.py
+      test_no_authority_edges.py
+      test_veto_record_is_pure_data.py
+    veto_record.py
   proto_structural/
     __init__.py
     episode_signature.py
@@ -701,6 +820,20 @@ memory/
       test_annotation_engine.py
       test_annotation_registry.py
       test_annotation_visibility_adapter.py
+  semantic_assembly_hypotheses/
+    __init__.py
+    hypothesis_invariants.md
+    hypothesis_record.py
+    hypothesis_registry.py
+    hypothesis_scope.py
+    inspection_adapter.py
+    README.md
+    tests/
+      __init__.py
+      test_hypothesis_import_safety.py
+      test_hypothesis_inspection_adapter.py
+      test_hypothesis_registry_read_only.py
+      validated.txt
   semantic_drift/
     __init__.py
     drift_analyzer.py
@@ -709,13 +842,13 @@ memory/
       __init__.py
       test_drift_analyzer.py
   semantic_grounding/
-    README.md
     __init__.py
     grounding_policy.md
     grounding_record.py
     grounding_registry.py
     grounding_scope.py
     inspection_adapter.py
+    README.md
     tests/
       __init__.py
       test_grounding_has_no_runtime_or_learning_edges.py
@@ -876,9 +1009,9 @@ regions/
     hip_base.json
     subiculum.json
   inter_regional/
-    Intralaminar.json
     association_cortex.json
     corpus_callosum.json
+    Intralaminar.json
     pfc.json
   midbrain/
     inferior_colliculus.json
@@ -890,86 +1023,24 @@ regions/
     sensory_base.json
     somato_input.json
     visual_input.json
+STRUCTURE_DUMP_CHECKPOINT30.txt
 test_loader.py
 test_runtime.py
-visual_mass_probe.csv
+use_case_overview.md
 z artifacts/
   1.jpg
-  Figure_1.png
   assembly_audit.py
   checkpoint contract.txt
   demo_episode_narration.py
   demo_episode_narration_with_signals.py
   dominancetest.py
   dump_tool.py
+  Figure_1.png
   neural_framework_dump.txt
   poke_sweep.py
   test_competing_inputs.py
   testingpoke.py
 z testing/
-  GPi testing/
-    commitment detection/
-      committ testing delta/
-        decision_gating_trace.csv
-        delta.02test.png
-        dominance_trace.csv
-        kernel_dominance_trace.csv
-        pandaplot.py
-        runtime_log.txt
-        testingpoke.py
-        zlog.txt
-      early committment/
-        decision gating.png
-        decision_gating_trace.csv
-        dominance_trace.csv
-        kernel_dominance_trace.csv
-        runtime_log.txt
-        zlog.txt
-    controlled asymmetry/
-      3 way bias/
-        control d1 d2 ordered.png
-        decision_gating_trace.csv
-        dominance_trace.csv
-        kernel_dominance_trace.csv
-        pandaplot.py
-        runtime_log.txt
-        testingpoke.py
-        upgraded view/
-          3 way bias.png
-          decision_gating_trace.csv
-          dominance_trace.csv
-          kernel_dominance_trace.csv
-          pandaplot.py
-          runtime_log.txt
-          testingpoke.py
-          zlog.txt
-        zlog.txt
-      bias one way/
-        biased .3 initial.png
-        decision_gating_trace.csv
-        dominance_trace.csv
-        kernel_dominance_trace.csv
-        runtime_log.txt
-        zlog.txt
-    fixed relief/
-      decision_gating_trace.csv
-      dominance_trace.csv
-      gate relief mod.png
-      kernel_dominance_trace.csv
-      runtime_log.txt
-      zlog.txt
-    initial test/
-      decision gpi gate base.png
-      decision_gating_trace.csv
-      dominance_trace.csv
-      kernel_dominance_trace.csv
-    multi trial decision/
-      decision base.png
-      decision_gating_trace.csv
-      dominance_trace.csv
-      kernel_dominance_trace.csv
-      runtime_log.txt
-      zlog.txt
   behavioral characterization/
     behavioral plot.png
     char_personality.py
@@ -1046,6 +1117,69 @@ z testing/
     test_decision_detailing.py
     test_latch_gate.py
     zlog.txt
+  GPi testing/
+    commitment detection/
+      committ testing delta/
+        decision_gating_trace.csv
+        delta.02test.png
+        dominance_trace.csv
+        kernel_dominance_trace.csv
+        pandaplot.py
+        runtime_log.txt
+        testingpoke.py
+        zlog.txt
+      early committment/
+        decision gating.png
+        decision_gating_trace.csv
+        dominance_trace.csv
+        kernel_dominance_trace.csv
+        runtime_log.txt
+        zlog.txt
+    controlled asymmetry/
+      3 way bias/
+        control d1 d2 ordered.png
+        decision_gating_trace.csv
+        dominance_trace.csv
+        kernel_dominance_trace.csv
+        pandaplot.py
+        runtime_log.txt
+        testingpoke.py
+        upgraded view/
+          3 way bias.png
+          decision_gating_trace.csv
+          dominance_trace.csv
+          kernel_dominance_trace.csv
+          pandaplot.py
+          runtime_log.txt
+          testingpoke.py
+          zlog.txt
+        zlog.txt
+      bias one way/
+        biased .3 initial.png
+        decision_gating_trace.csv
+        dominance_trace.csv
+        kernel_dominance_trace.csv
+        runtime_log.txt
+        zlog.txt
+    fixed relief/
+      decision_gating_trace.csv
+      dominance_trace.csv
+      gate relief mod.png
+      kernel_dominance_trace.csv
+      runtime_log.txt
+      zlog.txt
+    initial test/
+      decision gpi gate base.png
+      decision_gating_trace.csv
+      dominance_trace.csv
+      kernel_dominance_trace.csv
+    multi trial decision/
+      decision base.png
+      decision_gating_trace.csv
+      dominance_trace.csv
+      kernel_dominance_trace.csv
+      runtime_log.txt
+      zlog.txt
   modpanda.py
   near decision testing/
     kernel_dominance_trace.csv
