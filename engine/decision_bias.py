@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
+from engine.execution.execution_target import ExecutionTarget
+
 
 class DecisionBias:
     """
@@ -25,27 +27,24 @@ class DecisionBias:
         decay_tau: float = 4.0,
         max_bias: float = 0.30,
         suppress_gain: float = 0.15,
+        execution_gate=None,
     ):
-        """
-        Parameters:
-        - decay_tau: seconds for bias to decay toward zero
-        - max_bias: absolute cap on bias magnitude
-        - suppress_gain: how strongly non-winning channels are suppressed
-        """
         self.decay_tau = float(decay_tau)
         self.max_bias = float(max_bias)
         self.suppress_gain = float(suppress_gain)
 
-        # channel_id -> bias value (positive = facilitation, negative = suppression)
+        # channel_id -> bias value
         self._bias: Dict[str, float] = {}
 
-        # For observability
+        # Diagnostics
         self.last_winner: Optional[str] = None
         self.last_applied_step: Optional[int] = None
-       
+
         # Ephemeral external bias modifiers (cleared every step)
         self._external_modifiers = []
 
+        # Optional execution gate (identity if None)
+        self.execution_gate = execution_gate
 
     # ------------------------------------------------------------
     # Public API
@@ -59,23 +58,11 @@ class DecisionBias:
         strength: float = 1.0,
         step: Optional[int] = None,
     ) -> None:
-        """
-        Apply a decision bias.
-
-        Parameters:
-        - winner: winning channel identifier
-        - channels: all known competing channels (optional)
-        - strength: scalar in [0, 1] controlling bias magnitude
-        - step: runtime step (for diagnostics only)
-        """
-
         strength = max(0.0, min(1.0, float(strength)))
 
-        # Facilitate the winner
         win_bias = min(self.max_bias, self.max_bias * strength)
         self._bias[winner] = win_bias
 
-        # Suppress competitors if provided
         if channels:
             for ch in channels:
                 if ch == winner:
@@ -90,9 +77,20 @@ class DecisionBias:
 
     def get(self, channel_id: str) -> float:
         """
-        Return current bias for a channel.
+        Return current bias for a channel (execution-gated).
         """
-        return float(self._bias.get(channel_id, 0.0))
+        value = float(self._bias.get(channel_id, 0.0))
+
+        if self.execution_gate is not None:
+            value = float(
+                self.execution_gate.apply(
+                    target=ExecutionTarget.DECISION_BIAS,
+                    value=value,
+                    identity=0.0,
+                )
+            )
+
+        return value
 
     # ------------------------------------------------------------
     # External modulation hooks (ephemeral)
@@ -105,19 +103,14 @@ class DecisionBias:
         - fn: Callable[[Dict[str, float]], Dict[str, float]]
         - Applied after decay
         - Cleared automatically after one step
-        - No learning, no persistence
         """
         self._external_modifiers.append(fn)
 
     # ------------------------------------------------------------
-    # Decay
+    # Decay + execution gating
     # ------------------------------------------------------------
 
     def step(self, dt: float) -> None:
-        """
-        Apply continuous exponential decay toward zero,
-        then apply any ephemeral external modifiers.
-        """
         if self.decay_tau <= 0:
             self._bias.clear()
         else:
@@ -130,32 +123,41 @@ class DecisionBias:
                     self._bias[ch] = v
 
         # --------------------------------------------------
-        # Apply ephemeral external modifiers (e.g. VTA value)
+        # Apply ephemeral external modifiers
         # --------------------------------------------------
         if self._external_modifiers:
-            bias = dict(self._bias)  # work on a copy
+            bias = dict(self._bias)
 
             for fn in self._external_modifiers:
                 bias = fn(bias)
 
-            # Enforce hard bounds and cleanup
-            for ch, v in list(bias.items()):
-                if abs(v) > self.max_bias:
-                    bias[ch] = max(-self.max_bias, min(self.max_bias, v))
-                if abs(bias[ch]) <= 1e-6:
-                    del bias[ch]
-
-            self._bias = bias
             self._external_modifiers.clear()
 
+            self._bias = bias
 
+        # --------------------------------------------------
+        # Execution gate (FINAL, per-channel)
+        # --------------------------------------------------
+        if self.execution_gate is not None:
+            gated: Dict[str, float] = {}
+
+            for ch, v in self._bias.items():
+                gv = float(
+                    self.execution_gate.apply(
+                        target=ExecutionTarget.DECISION_BIAS,
+                        value=v,
+                        identity=0.0,
+                    )
+                )
+
+                if abs(gv) > 1e-6:
+                    gated[ch] = max(-self.max_bias, min(self.max_bias, gv))
+
+            self._bias = gated
 
     # ------------------------------------------------------------
     # Diagnostics
     # ------------------------------------------------------------
 
     def dump(self) -> Dict[str, float]:
-        """
-        Snapshot of all current bias values.
-        """
         return dict(self._bias)

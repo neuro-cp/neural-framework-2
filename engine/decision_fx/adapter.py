@@ -8,6 +8,8 @@ from engine.decision_fx.decision_effects import DecisionEffects
 from engine.decision_fx.runtime_hook import DecisionRuntimeHook
 from engine.decision_fx.decision_trace import DecisionTrace
 
+from engine.execution.execution_target import ExecutionTarget
+
 
 class DecisionFXAdapter:
     """
@@ -25,14 +27,18 @@ class DecisionFXAdapter:
     - Safe to disable at runtime
     """
 
-    def __init__(self, enable_trace: bool = True):
+    def __init__(self, *, enable_trace: bool = True, execution_gate=None):
         self.policy = DecisionPolicy()
         self.router = DecisionRouter()
         self.effects = DecisionEffects()
         self.hook = DecisionRuntimeHook()
 
+        self.execution_gate = execution_gate  # may be None (identity)
+
         self.enable_trace = bool(enable_trace)
-        self._trace: Optional[DecisionTrace] = DecisionTrace() if self.enable_trace else None
+        self._trace: Optional[DecisionTrace] = (
+            DecisionTrace() if self.enable_trace else None
+        )
 
     # --------------------------------------------------
     # Runtime-facing API (SINGLE CALL)
@@ -50,22 +56,53 @@ class DecisionFXAdapter:
         This method is PURE with respect to runtime dynamics.
         """
 
+        # 1. Policy computation (ALWAYS allowed)
         policy = self.policy.compute(
             decision_state=decision_state,
             dominance=dominance,
         )
 
+        # 2. Routing (ALWAYS allowed)
         routed = self.router.route(policy)
 
-        # Ensure required keys exist for DecisionEffects.apply(**bundle)
+        # Normalize bundle shape
+        routed.setdefault("thalamic_gain", 1.0)
         routed.setdefault("region_gain", {})
         routed.setdefault("suppress_channels", {})
         routed.setdefault("lock_action", False)
 
+        # 3. EXECUTION GATE (bundle-level, advisory only)
+        if self.execution_gate is not None:
+            routed = {
+                "thalamic_gain": self.execution_gate.apply(
+                    target=ExecutionTarget.DECISION_FX_THALAMIC_GAIN,
+                    value=float(routed.get("thalamic_gain", 1.0)),
+                    identity=1.0,
+                ),
+                "region_gain": self.execution_gate.apply(
+                    target=ExecutionTarget.DECISION_FX_REGION_GAIN,
+                    value=dict(routed.get("region_gain", {})),
+                    identity={},
+                ),
+                "suppress_channels": self.execution_gate.apply(
+                    target=ExecutionTarget.DECISION_FX_SUPPRESS_CHANNELS,
+                    value=dict(routed.get("suppress_channels", {})),
+                    identity={},
+                ),
+                "lock_action": self.execution_gate.apply(
+                    target=ExecutionTarget.DECISION_FX_LOCK,
+                    value=bool(routed.get("lock_action", False)),
+                    identity=False,
+                ),
+            }
+
+        # 4. Effects application (already gated)
         effects = self.effects.apply(**routed)
 
+        # 5. Runtime hook ingestion (unchanged)
         self.hook.ingest(effects)
 
+        # 6. Trace (records what *would* have happened + what was gated)
         if self._trace is not None:
             self._trace.record(
                 step=int(decision_state.get("step", -1)),
@@ -84,10 +121,8 @@ class DecisionFXAdapter:
     # --------------------------------------------------
 
     def get_thalamic_gain_modifier(self) -> float:
-        # Runtime expects a numeric modifier, not a bound method.
         return float(self.hook.thalamic_gain())
 
-    # Optional compatibility alias
     def get_thalamic_gain(self) -> float:
         return float(self.hook.thalamic_gain())
 

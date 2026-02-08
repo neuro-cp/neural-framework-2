@@ -2,6 +2,8 @@
 from __future__ import annotations
 from typing import Optional
 
+from engine.execution.execution_target import ExecutionTarget
+
 
 class RoutingInfluence:
     """
@@ -21,10 +23,14 @@ class RoutingInfluence:
         default_gain: float = 1.0,
         salience_field=None,
         max_salience_gain: float = 0.15,
+        execution_gate=None,
     ):
         self.default_gain = float(default_gain)
         self.salience_field = salience_field
         self.max_salience_gain = float(max_salience_gain)
+
+        # Optional execution gate (identity if None)
+        self.execution_gate = execution_gate
 
     def gain_for(
         self,
@@ -36,8 +42,9 @@ class RoutingInfluence:
         Return a multiplicative gain applied to outgoing drive.
 
         Order of influence:
-        1) hypothesis-channel alignment (identity)
-        2) salience modulation (magnitude, gated upstream)
+        1) hypothesis-channel alignment
+        2) salience modulation (bounded)
+        3) execution gating (final scalar only)
         """
 
         gain = self.default_gain
@@ -52,12 +59,23 @@ class RoutingInfluence:
                 gain *= 0.90
 
         # ----------------------------------
-        # Salience modulation (new, lawful)
+        # Salience modulation (existing)
         # ----------------------------------
         if self.salience_field is not None:
             s = float(self.salience_field.get(assembly_id))
             if s > 0.0:
-                # bounded, linear lift
                 gain *= (1.0 + min(s, 1.0) * self.max_salience_gain)
+
+        # ----------------------------------
+        # Execution gate (NEW, output-only)
+        # ----------------------------------
+        if self.execution_gate is not None:
+            gain = float(
+                self.execution_gate.apply(
+                    target=ExecutionTarget.ROUTING_GAIN,
+                    value=gain,
+                    identity=self.default_gain,
+                )
+            )
 
         return gain

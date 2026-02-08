@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
 from memory.working_state.working_state import WorkingState
 from memory.working_state.working_policy import WorkingPolicy
@@ -37,6 +37,9 @@ class PFCAdapter:
             policy=policy or WorkingPolicy(),
         )
 
+        # Ephemeral external modulation (cleared every step)
+        self._external_gain_fn: Optional[Callable[[float], float]] = None
+
     # --------------------------------------------------
     # Runtime-facing API
     # --------------------------------------------------
@@ -45,8 +48,7 @@ class PFCAdapter:
         """
         Ingest decision latch output.
 
-        This should be called AFTER the decision latch evaluates,
-        and BEFORE dynamics step.
+        Called AFTER latch evaluation.
         """
         if not self.enable or decision_state is None:
             return
@@ -56,28 +58,38 @@ class PFCAdapter:
     def step(self, dt: float) -> None:
         """
         Advance working-state dynamics.
+
+        Order:
+        1. Internal dynamics
+        2. One-shot external modulation (if present)
         """
         if not self.enable:
             return
 
+        # 1. Internal working-state dynamics
         self._hook.step(dt)
 
-        # --------------------------------------------------
-        # Ephemeral external gain modulation (e.g. VTA value)
-        # --------------------------------------------------
-        if hasattr(self, "_external_gain_fn"):
+        # 2. Ephemeral external gain modulation (one-step only)
+        if self._external_gain_fn is not None:
             try:
                 base = self._hook.strength()
                 mod = float(self._external_gain_fn(base))
-                self._hook.state._strength = max(0.0, mod)
+
+                # Safety clamp: never negative
+                mod = max(0.0, mod)
+
+                # IMPORTANT:
+                # Mutate hook-owned state directly.
+                # This preserves encapsulation and avoids new authority APIs.
+                self._hook.state._strength = mod
             finally:
-                del self._external_gain_fn
+                self._external_gain_fn = None
 
     # --------------------------------------------------
     # External modulation hooks (ephemeral)
     # --------------------------------------------------
 
-    def apply_external_gain(self, fn) -> None:
+    def apply_external_gain(self, fn: Callable[[float], float]) -> None:
         """
         Apply a temporary external modifier to working-state strength.
 
@@ -136,3 +148,4 @@ class PFCAdapter:
         Hard reset. For testing only.
         """
         self._hook.reset()
+        self._external_gain_fn = None

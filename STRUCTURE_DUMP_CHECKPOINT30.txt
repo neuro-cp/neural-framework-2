@@ -149,6 +149,71 @@ engine/
     __init__.py
     test_visual_driver_baseline_motion.py
     visual_temporal_driver.py
+  execution/
+    __init__.py
+    execution_gate.py
+    execution_policy.py
+    execution_record.py
+    execution_state.py
+    execution_target.py
+    tests/
+      __init__.py
+      test_execution_allows_allowed_adapter.py
+      test_execution_blocks_disallowed_adapter.py
+      test_execution_off_is_identity.py
+      test_execution_off_is_identity_runtime.py
+      test_execution_removal_is_noop.py
+      test_execution_zeroes_output_not_adapter.py
+  execution_binding/
+    __init__.py
+    binding_contract.py
+    binding_map.py
+    binding_resolver.py
+    binding_result.py
+    binding_scope.py
+    binding_target.py
+    tests/
+      __init__.py
+      test_binding_contract_is_descriptive_only.py
+      test_binding_layer_removal_is_noop.py
+      test_binding_map_contains_no_runtime_edges.py
+      test_binding_resolver_emits_records_only.py
+      test_binding_scope_is_restrictive.py
+      test_binding_targets_are_non_executable.py
+  execution_dry_run/
+    __init__.py
+    dry_run_context.py
+    dry_run_contract.py
+    dry_run_mapper.py
+    dry_run_request.py
+    dry_run_result.py
+    dry_run_trace.py
+    tests/
+      __init__.py
+      test_dry_run_blocks_runtime_targets.py
+      test_dry_run_contract_is_non_executable.py
+      test_dry_run_emits_trace_only.py
+      test_dry_run_mapper_uses_binding_only.py
+      test_dry_run_removal_is_noop.py
+      test_dry_run_request_is_pure_data.py
+      VALIDATED.txt
+  execution_gate/
+    __init__.py
+    execution_authorization.py
+    execution_contract.py
+    execution_gate.py
+    execution_intent.py
+    execution_record.py
+    execution_scope.py
+    tests/
+      __init__.py
+      test_execution_authorization_is_explicit.py
+      test_execution_gate_closed_by_default.py
+      test_execution_gate_emits_record_only.py
+      test_execution_gate_removal_is_noop.py
+      test_execution_intent_is_non_numeric.py
+      test_execution_scope_blocks_illegal_targets.py
+      validated.txt
   inspection/
     __init__.py
     diffing/
@@ -409,6 +474,7 @@ engine/
     value_signal.py
     value_source.py
     value_trace.py
+kernel_dominance_trace.csv
 learning/
   __init__.py
   audit/

@@ -14,6 +14,7 @@ from persistence.persistence_core import BasalGangliaPersistence
 from engine.decision_bias import DecisionBias
 from engine.decision_fx.adapter import DecisionFXAdapter
 from memory.working_state.pfc_adapter import PFCAdapter
+from engine.execution.execution_target import ExecutionTarget
 from engine.control.control_hook import ControlHook
 from engine.control.control_state import ControlState
 from engine.vta_value.value_signal import ValueSignal
@@ -27,6 +28,7 @@ from engine.routing.hypothesis_registry import HypothesisRegistry
 from engine.routing.hypothesis_router import HypothesisRouter
 from engine.routing.hypothesis_generator import HypothesisGenerator
 from engine.routing.hypothesis_pressure import HypothesisPressure
+
 
 
 
@@ -240,6 +242,14 @@ class BrainRuntime:
             default_gain=1.0
         )
 
+        # ---------------- Execution gate ----------------
+        from engine.execution.execution_state import ExecutionState
+        from engine.execution.execution_gate import ExecutionGate
+
+        # Execution is OFF by default (identity behavior)
+        self.execution_state = ExecutionState(enabled=False)
+        self.execution_gate = ExecutionGate(self.execution_state)
+
 
     # ============================================================
     # Assembly Control
@@ -437,12 +447,21 @@ class BrainRuntime:
         if self.enable_vta_value and self.enable_decision_bias:
             urgency_gain = 1.0 + urgency if self.enable_urgency else 1.0
 
+            raw_value = self.value_signal.get() * urgency_gain
+
+            gated_value = self.execution_gate.apply(
+                target=ExecutionTarget.VALUE_BIAS,
+                value=raw_value,
+                identity=0.0,
+            )
+
             self.decision_bias.apply_external(
                 lambda bias_map: self.value_adapter.apply_to_decision_bias(
-                    value=self.value_signal.get() * urgency_gain,
+                    value=gated_value,
                     bias_map=bias_map,
                 )
             )
+
 
         # 6. Decision latch (creates _decision_state)
         self._evaluate_decision_latch(relief)
@@ -558,15 +577,20 @@ class BrainRuntime:
         
         # PFC working-state gain (advisory, post-decision)
         if self.enable_pfc_adapter and self.pfc_adapter.is_engaged():
-            gain = self.pfc_adapter.strength()
+            raw_gain = self.pfc_adapter.strength()
+
+            gated_gain = self.execution_gate.apply(
+                target=ExecutionTarget.PFC_CONTEXT_GAIN,
+                value=raw_gain,
+                identity=1.0,
+            )
 
             for p in assemblies:
                 existing = self.context.get_gain(p.assembly_id)
-                delta = (existing * gain) - existing
+                delta = (existing * gated_gain) - existing
                 if delta > 0.0:
                     self.context.inject_gain(p.assembly_id, delta)
-
-
+           
     def _step_striatum(self) -> None:
         striatum = self.region_states.get("striatum")
         if not striatum:

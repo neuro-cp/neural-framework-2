@@ -1,8 +1,10 @@
+# engine/salience/salience_field.py
 from __future__ import annotations
 
 from typing import Dict
 
 from engine.salience.salience_policy import SaliencePolicy
+from engine.execution.execution_target import ExecutionTarget
 
 
 class SalienceField:
@@ -27,6 +29,7 @@ class SalienceField:
         *,
         decay_tau: float = 3.0,
         max_value: float = 1.0,
+        execution_gate=None,
     ):
         self.decay_tau = float(decay_tau)
         self.max_value = float(max_value)
@@ -37,6 +40,8 @@ class SalienceField:
         # Optional structural sparsity gate (off by default)
         self._sparsity_gate = None
 
+        # Optional execution gate (identity if None)
+        self.execution_gate = execution_gate
 
     # --------------------------------------------------
     # Injection (single write path)
@@ -58,7 +63,7 @@ class SalienceField:
         self._values[assembly_id] = min(updated, self.max_value)
 
     # --------------------------------------------------
-    # Read access
+    # Read access (execution-gated)
     # --------------------------------------------------
 
     def get(self, assembly_id: str) -> float:
@@ -66,10 +71,21 @@ class SalienceField:
             if not self._sparsity_gate.allows(assembly_id):
                 return 0.0
 
-        return float(self._values.get(assembly_id, 0.0))
+        value = float(self._values.get(assembly_id, 0.0))
+
+        if self.execution_gate is not None:
+            value = float(
+                self.execution_gate.apply(
+                    target=ExecutionTarget.SALIENCE_GAIN,
+                    value=value,
+                    identity=0.0,
+                )
+            )
+
+        return value
 
     # --------------------------------------------------
-    # Structural sparsity (optional)
+    # Structural sparsity / routing bias (execution-gated)
     # --------------------------------------------------
 
     def routing_bias(self, assembly_id: str) -> float:
@@ -89,8 +105,22 @@ class SalienceField:
             if not self._sparsity_gate.allows(assembly_id):
                 return 0.0
 
-        return float(self._values.get(assembly_id, 0.0))
+        value = float(self._values.get(assembly_id, 0.0))
 
+        if self.execution_gate is not None:
+            value = float(
+                self.execution_gate.apply(
+                    target=ExecutionTarget.SALIENCE_ROUTING_BIAS,
+                    value=value,
+                    identity=0.0,
+                )
+            )
+
+        return value
+
+    # --------------------------------------------------
+    # Structural sparsity (optional)
+    # --------------------------------------------------
 
     def attach_sparsity_gate(self, gate) -> None:
         """
@@ -100,7 +130,6 @@ class SalienceField:
         - If not attached, salience behaves exactly as before
         """
         self._sparsity_gate = gate
-
 
     # --------------------------------------------------
     # Dynamics
