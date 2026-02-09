@@ -4,10 +4,10 @@
   "stn": 25,
   "striatum": 50,
 
-  "lgn": 50,
-  "mgb": 50,
-  "vpl": 50,
-  "vpm": 50,
+  "lgn": 35,
+  "mgb": 35,
+  "vpl": 35,
+  "vpm": 35,
   "md": 50,
   "pulvinar": 50,
   "trn": 50,
@@ -22,8 +22,8 @@
   "m1": 200,
 
   "ca1": 100,
-  "ca3": 100,
-  "dentate_gyrus": 100,
+  "ca3": 150,
+  "dentate_gyrus": 150,
   "subiculum": 100,
 
   "cerebellar_cortex": 300,
@@ -31,8 +31,8 @@
 
   "locus_coeruleus": 10,
   "raphe": 10,
-  "snc": 10,
-  "vta": 10,
+  "snc": 20,
+  "vta": 20,
 
   "hypothalamus": 5,
   "anterior_pituitary": 1,

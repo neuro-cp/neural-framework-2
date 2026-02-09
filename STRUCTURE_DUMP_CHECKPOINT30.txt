@@ -13,7 +13,15 @@ config/
   routing_defaults.json
 docs/
   architecture/
-    value_lifecycle.txt
+    phase20_execution_governance.md
+    phase21_execution_enablement.md
+    phase22_execution_proposals.md
+    phase23_proposal_governance.md
+    phase24_governance_to_enablement.md
+    phase25_governance_mediated_execution.md
+    phase26_execution_monitoring.md
+    phase27_execution_audit.md
+    value_lifecycle.md.txt
   contracts/
     value_outcome_invariants.md
   design/
@@ -23,6 +31,7 @@ docs/
     phase14_semantic_regional_grounding_schema.md
     post_decision_outcome_to_value.md
 dump.py
+dump_region_json.py
 engine/
   __init__.py
   affective_urgency/
@@ -151,11 +160,91 @@ engine/
     visual_temporal_driver.py
   execution/
     __init__.py
+    audit/
+      __init__.py
+      execution_audit_collector.py
+      execution_audit_event.py
+      execution_audit_snapshot.py
+      tests/
+        test_execution_audit_collector_records_events.py
+        test_execution_audit_event_is_pure_data.py
+        test_execution_audit_has_no_runtime_edges.py
+    enablement/
+      __init__.py
+      execution_enablement_controller.py
+      execution_enablement_policy.py
+      execution_enablement_record.py
+      execution_enablement_request.py
+      tests/
+        __init__.py
+        test_enablement_controller_applies_and_revokes.py
+        test_enablement_has_no_learning_or_runtime_edges.py
+        test_enablement_policy_is_time_bounded.py
+        test_enablement_request_is_pure_data.py
+        test_execution_enablement_is_reversible.py
     execution_gate.py
     execution_policy.py
     execution_record.py
     execution_state.py
     execution_target.py
+    governance/
+      __init__.py
+      operator_execution_authorization.py
+      operator_execution_policy.py
+      operator_execution_record.py
+      operator_execution_request.py
+      tests/
+        __init__.py
+        test_operator_execution_authorization_emits_record_only.py
+        test_operator_execution_governance_has_no_runtime_edges.py
+        test_operator_execution_policy_is_restrictive.py
+        test_operator_execution_request_is_pure_data.py
+    governance_enablement/
+      __init__.py
+      governance_enablement_mapper.py
+      governance_enablement_policy.py
+      governance_enablement_record.py
+      governance_enablement_request.py
+      tests/
+        test_governance_enablement_has_no_runtime_edges.py
+        test_governance_enablement_mapper_emits_record_only.py
+        test_governance_enablement_policy_is_restrictive.py
+        test_governance_enablement_request_is_pure_data.py
+    governance_execution/
+      __init__.py
+      governance_execution_adapter.py
+      tests/
+        test_governance_execution_adapter_applies_enablement.py
+        test_governance_execution_adapter_is_noop_on_reject.py
+    monitoring/
+      __init__.py
+      execution_monitor.py
+      execution_monitor_record.py
+      tests/
+        test_execution_monitor_no_runtime_edges.py
+        test_execution_monitor_revokes_on_expiry.py
+    proposal_governance/
+      __init__.py
+      proposal_governance_evaluator.py
+      proposal_governance_policy.py
+      proposal_governance_record.py
+      proposal_governance_request.py
+      tests/
+        test_proposal_governance_evaluator_emits_record_only.py
+        test_proposal_governance_has_no_runtime_edges.py
+        test_proposal_governance_policy_is_restrictive.py
+        test_proposal_governance_request_is_pure_data.py
+    proposals/
+      __init__.py
+      execution_proposal.py
+      execution_proposal_evaluator.py
+      execution_proposal_policy.py
+      execution_proposal_record.py
+      tests/
+        test_execution_proposal_evaluator_emits_record_only.py
+        test_execution_proposal_is_pure_data.py
+        test_execution_proposal_policy_is_restrictive.py
+        test_execution_proposals_have_no_runtime_or_gate_edges.py
     tests/
       __init__.py
       test_execution_allows_allowed_adapter.py
@@ -1089,6 +1178,7 @@ regions/
     sensory_base.json
     somato_input.json
     visual_input.json
+REGIONS_DUMP.txt
 STRUCTURE_DUMP_CHECKPOINT30.txt
 test_loader.py
 test_runtime.py
