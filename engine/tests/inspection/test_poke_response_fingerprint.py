@@ -15,7 +15,7 @@ DT = 0.01
 BASELINE_SECONDS = 1.0
 POKE_SECONDS = 3.0
 POKE_REGION = "stn"
-POKE_MAGNITUDE = 20.0
+POKE_MAGNITUDE = 125.0
 TOP_K = 10
 
 OUT_FILE = "poke_response_fingerprint.txt"

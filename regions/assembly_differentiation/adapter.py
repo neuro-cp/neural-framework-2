@@ -26,10 +26,10 @@ class AssemblyDifferentiationAdapter:
     Structural authority is defined by config/assembly_control.json.
     """
 
-    # Path: neural framework/regions/assembly_differentiation/
+    # regions/assembly_differentiation/
     BASE_PATH = Path(__file__).resolve().parent
 
-    # Path: neural framework/config/assembly_control.json
+    # config/assembly_control.json
     CONTROL_PATH = (
         Path(__file__).resolve().parents[2] / "config" / "assembly_control.json"
     )
@@ -41,13 +41,13 @@ class AssemblyDifferentiationAdapter:
     @classmethod
     def apply(cls, *, runtime) -> None:
         """
-        Apply differentiation to all structurally-declared regions.
+        Apply differentiation to all regions explicitly declared
+        in the assembly control file.
         """
         region_map = cls._collect_region_assemblies(runtime)
         control = cls._load_assembly_control()
 
         for region_name, assemblies in region_map.items():
-            # Only regions declared in control file may differentiate
             expected_n = control.get(region_name)
             if expected_n is None:
                 continue
@@ -59,14 +59,14 @@ class AssemblyDifferentiationAdapter:
             if not hasattr(module, "differentiate"):
                 raise RuntimeError(
                     f"[assembly_differentiation] "
-                    f"{region_name}.py exists but defines no `differentiate()`"
+                    f"{region_name}.py exists but defines no differentiate()"
                 )
 
-            # Bound assemblies to declared structural count
-            if len(assemblies) <= expected_n:
-                bounded = assemblies
-            else:
-                bounded = assemblies[:expected_n]
+            bounded = (
+                assemblies
+                if len(assemblies) <= expected_n
+                else assemblies[:expected_n]
+            )
 
             module.differentiate(
                 region_name=region_name,
@@ -80,16 +80,15 @@ class AssemblyDifferentiationAdapter:
 
     @classmethod
     def _collect_region_assemblies(
-        cls,
-        runtime,
+        cls, runtime
     ) -> Dict[str, List[PopulationModel]]:
         """
-        Gather assemblies grouped by region.
+        Gather all PopulationModel assemblies grouped by region.
         """
         regions: Dict[str, List[PopulationModel]] = {}
 
         for region_name, region_state in runtime.region_states.items():
-            pops = region_state.get("populations", {}) or {}
+            pops = region_state.get("populations") or {}
             for plist in pops.values():
                 for assembly in plist:
                     regions.setdefault(region_name, []).append(assembly)
@@ -99,7 +98,7 @@ class AssemblyDifferentiationAdapter:
     @classmethod
     def _load_region_module(cls, region_name: str):
         """
-        Load regions/assembly_differentiation/<region>.py if it exists.
+        Load regions/assembly_differentiation/<region_name>.py if present.
         """
         module_path = cls.BASE_PATH / f"{region_name}.py"
         if not module_path.exists():
@@ -112,14 +111,14 @@ class AssemblyDifferentiationAdapter:
     @classmethod
     def _load_assembly_control(cls) -> Dict[str, int]:
         """
-        Load canonical assembly counts per region.
+        Load canonical per-region assembly limits.
         """
         if not cls.CONTROL_PATH.exists():
             raise RuntimeError(
                 "[assembly_differentiation] config/assembly_control.json not found"
             )
 
-        with open(cls.CONTROL_PATH, "r") as f:
+        with cls.CONTROL_PATH.open("r", encoding="utf-8") as f:
             data = json.load(f)
 
         if not isinstance(data, dict):
@@ -127,11 +126,18 @@ class AssemblyDifferentiationAdapter:
                 "[assembly_differentiation] assembly_control.json must map region -> int"
             )
 
+        for k, v in data.items():
+            if not isinstance(k, str) or not isinstance(v, int):
+                raise RuntimeError(
+                    "[assembly_differentiation] assembly_control.json "
+                    "must map region names (str) to counts (int)"
+                )
+
         return data
 
     @staticmethod
     def _region_seed(region_name: str) -> int:
         """
-        Stable region-level seed.
+        Stable, deterministic region-level seed.
         """
         return hash(("assembly_differentiation", region_name))
