@@ -303,6 +303,15 @@ engine/
       test_execution_intent_is_non_numeric.py
       test_execution_scope_blocks_illegal_targets.py
       validated.txt
+  executive_observation/
+    __init__.py
+    executive_frame.py
+    executive_policy.py
+    executive_summary.py
+    executive_trace.py
+    README.md
+    tests/
+      test_executive_frame_is_pure_data.py
   inspection/
     __init__.py
     diffing/
@@ -342,7 +351,11 @@ engine/
       replay_executor.py
     inspection/
       __init__.py
+      replay_boundary_report.py
       replay_schedule_report.py
+      tests/
+        __init__.py
+        test_replay_boundary_stability.py
     modes/
       __init__.py
       nrem_replay_mode.py
@@ -787,6 +800,14 @@ memory/
       test_single_episode_lifecycle.py
       test_two_episodes_no_leakage.py
       tsnwe_log.txt
+  episodic_boundary/
+    __init__.py
+    boundary_adapter.py
+    boundary_event.py
+    boundary_policy.py
+    tests/
+      test_boundary_closes_and_opens_episode.py
+      test_boundary_event_is_immutable.py
   influence_eligibility/
     __init__.py
     eligibility_invariants.md
@@ -842,6 +863,12 @@ memory/
       promotion_to_identity_hardening.md
       replay_to_runtime_timing_influence.md
       semantic_to_authority_leakage.md
+    episodic_boundaries/
+      __init__.py
+      boundary_inspection_adapter.py
+      tests/
+        __init__.py
+        test_boundary_inspection_read_only.py
     exporters/
       __init__.py
       base.py
