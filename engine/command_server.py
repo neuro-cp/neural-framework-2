@@ -196,6 +196,38 @@ def _top_assemblies(runtime, region_label: str, n: int) -> str:
         f"{aid} :: {val:.4f}" for aid, val in rows[: max(1, n)]
     )
 
+def _dump_assemblies_json(runtime, region_label: str) -> str:
+    """
+    Inspection-only.
+    Writes per-assembly activity/output to a JSON file.
+    """
+    region_id = _resolve_region(runtime, region_label)
+    region = runtime.region_states.get(region_id)
+    if not region:
+        return f"ERROR: unknown region '{region_label}' (resolved='{region_id}')"
+
+    assemblies = []
+    for pop_label, plist in region.get("populations", {}).items():
+        for pop in plist:
+            assemblies.append({
+                "assembly_id": pop.assembly_id,
+                "population": pop_label,
+                "activity": float(getattr(pop, "activity", 0.0)),
+                "output": float(pop.output()),
+            })
+
+    payload = {
+        "region": region_id,
+        "step": getattr(runtime, "step_count", None),
+        "time": getattr(runtime, "time", None),
+        "assemblies": assemblies,
+    }
+
+    filename = f"assembly_dump_{region_id}_{payload['step']}.json"
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+    return f"OK wrote {len(assemblies)} assemblies to {filename}"
 
 # ============================================================
 # Context diagnostics
@@ -532,6 +564,7 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
             "  hypotheses\n"
             "  working\n"
             "  fx, or decision_fx\n"
+            "  dump_asm <region>\n"
             "  help"
         )
 
@@ -578,6 +611,9 @@ def start_command_server(runtime, host: str = "127.0.0.1", port: int = 5557):
 
         if op == "top":
             return "ERROR: usage top <region> <N>"
+        
+        if op == "dump_asm" and len(parts) == 2:
+            return _dump_assemblies_json(runtime, parts[1])       
 
         if op in ("context", "ctx"):
             return _dump_context(runtime)
