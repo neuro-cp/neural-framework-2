@@ -31,6 +31,8 @@ class RecruitmentSignature:
     urgency_summary: Dict[str, float]
     value_summary: Dict[str, float]
     decision_summary: Dict | None
+    has_decision: bool
+    winner: str | None
 
     # Recruitment comparison
     baseline_step: int
@@ -52,6 +54,7 @@ class RecruitmentSignature:
     # Structural interpretation
     recruitment_level: str
     identity_stability: str
+    scaling_direction: str
 
 
 # ------------------------------------------------------------
@@ -93,10 +96,6 @@ class RecruitmentSignatureBuilder:
 
         overlap = overlap_fraction(base_top, poke_top)
 
-        # --------------------------------------------------
-        # Structural recruitment interpretation
-        # --------------------------------------------------
-
         if poke_frac >= 0.95 and base_frac < 0.95:
             recruitment_level = "full"
         elif poke_frac > base_frac and poke_frac >= 0.3:
@@ -106,16 +105,22 @@ class RecruitmentSignatureBuilder:
         else:
             recruitment_level = "none"
 
-        # --------------------------------------------------
-        # Identity stability interpretation
-        # --------------------------------------------------
-
         if overlap >= 0.8:
             identity_stability = "stable"
         elif overlap >= 0.3:
             identity_stability = "shifted"
         else:
             identity_stability = "reorganized"
+
+        if poke_mass > base_mass:
+            scaling_direction = "up"
+        elif poke_mass < base_mass:
+            scaling_direction = "down"
+        else:
+            scaling_direction = "flat"
+
+        has_decision = decision_summary is not None
+        winner = decision_summary.get("winner") if decision_summary else None
 
         return RecruitmentSignature(
             episode_id=episode_id,
@@ -128,6 +133,8 @@ class RecruitmentSignatureBuilder:
             urgency_summary=urgency_summary,
             value_summary=value_summary,
             decision_summary=decision_summary,
+            has_decision=has_decision,
+            winner=winner,
 
             baseline_step=base["step"],
             poke_step=poke["step"],
@@ -147,4 +154,5 @@ class RecruitmentSignatureBuilder:
 
             recruitment_level=recruitment_level,
             identity_stability=identity_stability,
+            scaling_direction=scaling_direction,
         )
