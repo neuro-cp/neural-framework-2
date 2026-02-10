@@ -323,6 +323,15 @@ engine/
     tests/
       __init__.py
   IO_SCHEMA.txt
+  observation/
+    observation_engine.py
+    observation_event.py
+    observation_policy.py
+    observation_runtime_hook.py
+    observation_schema.py
+    tests/
+      test_observation_event_is_immutable.py
+      test_observation_policy_thresholds.py
   population_model.py
   replay/
     __init__.py
@@ -505,6 +514,10 @@ engine/
       tcp_value_ramp_gate_response_20260123_194145.txt
       tcp_value_ramp_gate_response_20260123_194635.txt
     downstream population probes/
+    inspection/
+      New Text Document.txt
+      test_dump_single_step_runtime_stats.py
+      test_poke_response_fingerprint.py
     integration/
       __init__.py
       test_drive_attention_wm_bias_flow.py
@@ -1074,6 +1087,7 @@ persistence/
     test_control_persistence_and_release.py
     test_control_persistence_and_release_log.txt
   traces.py
+poke_response_fingerprint.txt
 probe_visual_mass.py
 profiles/
   compounds/
@@ -1100,9 +1114,37 @@ regions/
     mea.json
   assembly_differentiation/
     __init__.py
+    a1.py
     adapter.py
+    anterior_pituitary.py
+    association_cortex.py
+    autonomic_system.py
+    ca1.py
+    ca3.py
+    cerebellar_cortex.py
+    deep_nuclei.py
+    dentate_gyrus.py
+    gpe.py
+    gpi.py
+    hypothalamus.py
+    insula.py
+    intralaminar.py
+    lgn.py
+    locus_coeruleus.py
+    m1.py
+    md.py
+    mgb.py
+    pfc.py
+    posterior_pituitary.py
+    pulvinar.py
     pvn.py
+    raphe.py
+    s1.py
     seed.py
+    snc.py
+    stn.py
+    striatum.py
+    subiculum.py
     tests/
       __init__.py
       test_adapter_allows_partial_differentiation.py
@@ -1111,6 +1153,11 @@ regions/
       test_pvn_structural_differentiation.py
       tpid_log.txt
       tpsd_log.txt
+    trn.py
+    v1.py
+    vpl.py
+    vpm.py
+    vta.py
   assembly_dump.py
   basal_ganglia/
     bg_base.json
@@ -1179,6 +1226,7 @@ regions/
     somato_input.json
     visual_input.json
 REGIONS_DUMP.txt
+single_step_runtime_dump.txt
 STRUCTURE_DUMP_CHECKPOINT30.txt
 test_loader.py
 test_runtime.py
@@ -1540,3 +1588,4 @@ z testing/
     test_decision_latch_value_gate.py
     win force test base.py
   zlogpanda.py
+zlog.txt

@@ -250,6 +250,46 @@ class BrainRuntime:
         self.execution_state = ExecutionState(enabled=False)
         self.execution_gate = ExecutionGate(self.execution_state)
 
+        # ---------------- Observation hook (READ-ONLY) ----------------
+        try:
+            from engine.observation.observation_runtime_hook import (
+                ObservationRuntimeHook,
+            )
+            self._observation_hook = ObservationRuntimeHook()
+        except ImportError:
+            # Observation layer not present; safe no-op
+            self._observation_hook = None
+       
+
+        # ---------------- Episodic boundary (READ-ONLY) ----------------
+        try:
+            from memory.episodic.episode_trace import EpisodeTrace
+            from memory.episodic.episode_tracker import EpisodeTracker
+            from memory.episodic.episode_runtime_hook import EpisodeRuntimeHook
+            from memory.episodic_boundary.boundary_adapter import BoundaryAdapter
+
+            # Episodic trace is the forensic ledger (immutable, append-only)
+            self._episode_trace = EpisodeTrace()
+
+            # Tracker owns episode lifecycle, backed by trace
+            self._episode_tracker = EpisodeTracker(
+                trace=self._episode_trace
+            )
+
+            # Boundary adapter interprets observation → boundary events
+            self._episodic_boundary_adapter = BoundaryAdapter()
+
+            # Runtime hook applies declared boundary events to tracker
+            self._episode_runtime_hook = EpisodeRuntimeHook(
+                tracker=self._episode_tracker
+            )
+
+        except ImportError:
+            # Episodic boundary layer not present; safe no-op
+            self._episode_trace = None
+            self._episode_tracker = None
+            self._episodic_boundary_adapter = None
+            self._episode_runtime_hook = None
 
     # ============================================================
     # Assembly Control
@@ -525,6 +565,26 @@ class BrainRuntime:
 
         # 12. Advance time
         self.time += self.dt
+        
+        # ---------------- Observation (READ-ONLY, post-settle) ----------------
+        if self._observation_hook is not None:
+            self._observation_hook.step(self)
+        
+        # ---------------- Episodic boundary (READ-ONLY, post-observation) ----------------
+        if (
+            self._episode_runtime_hook is not None
+            and self._episodic_boundary_adapter is not None
+            and self._observation_hook is not None
+        ):
+            boundary_events = self._episodic_boundary_adapter.step(
+                step=self.step_count,
+                observation_events=self._observation_hook.events,
+            )
+
+            self._episode_runtime_hook.step(
+                step=self.step_count,
+                boundary_events=boundary_events,
+            )
 
     # ============================================================
     # Subsystems
