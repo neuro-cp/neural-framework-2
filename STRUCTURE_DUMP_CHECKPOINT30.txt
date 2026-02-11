@@ -590,10 +590,16 @@ engine/
     value_source.py
     value_trace.py
 inspection/
+  output_log_holding_bin/
+    ep1__stn__baseline__step950.json
+    ep1__stn__post__step1050.json
   recruitment/
+    __init__.py
     holding_bin_writer.py
     recruitment_map.py
     recruitment_map_builder.py
+    recruitment_map_holder/
+      recruitment_map__ep1.json
     recruitment_map_holder.py
     recruitment_pipeline.py
     recruitment_signature.py
@@ -602,7 +608,11 @@ inspection/
     region_dump_index.py
     region_dump_index_builder.py
     tests/
+      __init__.py
       conftest.py
+      test_bounds.py
+      test_determinism.py
+      test_edge.py
       test_recruitment_map_builder.py
       test_recruitment_pipeline_persists_map.py
       test_recruitment_signature_builder.py
@@ -687,6 +697,10 @@ learning/
       episode_span_proposal_generator.py
       frequency_proposal_generator.py
       invalid_proposal_generator.py
+      structural_pattern_proposal_generator.py
+      tests/
+        __init__.py
+        test_structural_pattern_proposal_generator.py
   tests/
     __init__.py
     test_frequency_proposal_bounded.py
@@ -950,6 +964,16 @@ memory/
       test_no_authority_edges.py
       test_veto_record_is_pure_data.py
     veto_record.py
+  proto_learning/
+    __init__.py
+    structural_eligibility/
+      __init__.py
+      structural_candidate.py
+      structural_eligibility_engine.py
+      structural_eligibility_report.py
+      tests/
+        __init__.py
+        test_structural_eligibility_engine.py
   proto_structural/
     __init__.py
     episode_signature.py
@@ -1271,6 +1295,7 @@ regions/
     somato_input.json
     visual_input.json
 REGIONS_DUMP.txt
+run_recruitment_demo.py
 send_cmd.py
 single_step_runtime_dump.txt
 STRUCTURE_DUMP_CHECKPOINT30.txt
