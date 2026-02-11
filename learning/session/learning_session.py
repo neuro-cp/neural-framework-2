@@ -16,6 +16,9 @@ from learning.session.proposal_generators.structural_pattern_proposal_generator 
 from learning.audit.learning_audit import LearningAudit
 from learning.audit.learning_audit_report import LearningAuditReport
 
+# Governance chain (pure, offline)
+from learning.session._governance_flow import run_governance_chain
+
 
 class LearningSession:
     """
@@ -26,7 +29,7 @@ class LearningSession:
     - No mutation
     - No persistence
     - Deterministic
-    - Ordered execution: generators → audit → report
+    - Ordered execution: generators → audit → governance → report
     - Hard failure on structural violations
     """
 
@@ -42,15 +45,13 @@ class LearningSession:
     def run(self, *, inputs: Iterable[object]) -> List[LearningProposal]:
         proposals: List[LearningProposal] = []
 
-        # --- Input separation (pure extraction) ---
+        # --------------------------------------------------
+        # Input separation (pure extraction)
+        # --------------------------------------------------
 
         semantic_ids: List[str] = [
             obj for obj in inputs if isinstance(obj, str)
         ]
-
-        duplicate_semantics_detected = (
-            len(semantic_ids) != len(set(semantic_ids))
-        )
 
         semantic_episode_pairs: List[Tuple[str, int]] = [
             obj for obj in inputs
@@ -62,7 +63,9 @@ class LearningSession:
             if isinstance(obj, dict):
                 pattern_counts = obj
 
-        # --- 1. Ordered proposal generation ---
+        # --------------------------------------------------
+        # 1) Proposal generation (deterministic order)
+        # --------------------------------------------------
 
         proposals.extend(
             self._freq_gen.generate(
@@ -86,16 +89,28 @@ class LearningSession:
                 )
             )
 
-        # --- 2. Mandatory structural audit (hard gate) ---
+        # --------------------------------------------------
+        # 2) Mandatory structural audit (hard gate)
+        # --------------------------------------------------
 
         audit_result: LearningAuditReport = self._audit.audit(
             proposals=proposals
         )
+        # Raises internally if failure.
 
-        # Audit now raises internally on failure,
-        # so no need to re-raise here.
+        # --------------------------------------------------
+        # 3) Governance containment chain (hard gate)
+        # --------------------------------------------------
 
-        # --- 3. Descriptive session report (inspection only) ---
+        governance_record = run_governance_chain(
+            proposals=proposals,
+            report_surface=audit_result,  # offline surface only
+        )
+        # Raises AssertionError if rejected.
+
+        # --------------------------------------------------
+        # 4) Descriptive session report (inspection only)
+        # --------------------------------------------------
 
         _ = LearningSessionReport(
             replay_id=self._replay_id,
@@ -104,6 +119,8 @@ class LearningSession:
             rejected_count=0,
             audit_passed=audit_result.passed,
             audit_notes=audit_result.notes,
+            governance_record=governance_record,
+            governance_approved=True,
         )
 
         return proposals

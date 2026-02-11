@@ -17,13 +17,19 @@ class ContainmentEnvelopePolicy:
 
         fragility_index = fragility.get("fragility_index", 0)
 
-        if fragility_index <= 0:
-            allowed = max_adjustment
+        # Convert fragility into normalized ratio
+        # Bound ratio to [0, 1]
+        if max_adjustment <= 0:
+            fragility_ratio = 0.0
         else:
-            allowed = max(0, max_adjustment - fragility_index)
+            fragility_ratio = min(1.0, fragility_index / max_adjustment)
+
+        # Reduce allowed adjustment proportionally
+        allowed = int(max_adjustment * (1.0 - fragility_ratio))
 
         return {
             "allowed_adjustment": allowed,
             "fragility_index": fragility_index,
+            "fragility_ratio": fragility_ratio,
             "max_adjustment": max_adjustment,
         }
