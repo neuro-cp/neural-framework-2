@@ -31,6 +31,7 @@ docs/
     phase14_semantic_regional_grounding_schema.md
     post_decision_outcome_to_value.md
 dump.py
+dump_region_json.py
 engine/
   __init__.py
   affective_urgency/
@@ -616,89 +617,13 @@ inspection/
       test_recruitment_pipeline_persists_map.py
       test_recruitment_signature_builder.py
       test_region_dump_index_builder.py
+kernel_dominance_trace.csv
 learning/
   __init__.py
-  adaptive_calibration/
-    __init__.py
-    calibration_engine.py
-    calibration_policy.py
-    calibration_report.py
-    calibration_trace.py
-    tests/
-      __init__.py
-      test_calibration_adjustment_logic.py
-      test_calibration_empty_inputs.py
-      test_calibration_is_deterministic.py
-      test_calibration_is_read_only.py
-      test_calibration_no_authority_edges.py
   audit/
     __init__.py
     learning_audit.py
     learning_audit_report.py
-  authority_envelope/
-    __init__.py
-    envelope_engine.py
-    envelope_policy.py
-    envelope_report.py
-    envelope_trace.py
-    tests/
-      __init__.py
-      test_envelope_empty_inputs.py
-      test_envelope_is_deterministic.py
-      test_envelope_is_read_only.py
-      test_envelope_magnitude_calculation.py
-      test_envelope_no_authority_edges.py
-  calibration_application/
-    __init__.py
-    application_engine.py
-    application_policy.py
-    application_report.py
-    application_trace.py
-    tests/
-      __init__.py
-      test_application_clamps_when_exceeds_envelope.py
-      test_application_is_deterministic.py
-      test_application_no_authority_edges.py
-      test_application_passes_when_within_envelope.py
-      test_application_zero_floor.py
-  cognitive_evaluation/
-    __init__.py
-    cognitive_evaluation_engine.py
-    cognitive_evaluation_policy.py
-    cognitive_evaluation_report.py
-    cognitive_evaluation_trace.py
-    tests/
-      __init__.py
-      test_evaluation_integrates_all_layers.py
-      test_evaluation_is_deterministic.py
-      test_evaluation_is_read_only.py
-      test_evaluation_no_authority_edges.py
-  coherence_field/
-    __init__.py
-    coherence_engine.py
-    coherence_policy.py
-    coherence_report.py
-    coherence_trace.py
-    tests/
-      __init__.py
-      test_coherence_empty_inputs.py
-      test_coherence_index_calculation.py
-      test_coherence_is_deterministic.py
-      test_coherence_is_read_only.py
-      test_coherence_no_authority_edges.py
-  containment_envelope/
-    __init__.py
-    envelope_engine.py
-    envelope_policy.py
-    envelope_report.py
-    envelope_trace.py
-    tests/
-      __init__.py
-      test_envelope_is_deterministic.py
-      test_envelope_is_read_only.py
-      test_envelope_no_authority_edges.py
-      test_envelope_reduces_with_fragility.py
-      test_envelope_zero_floor.py
   diffing/
     __init__.py
     learning_bundle_diff.py
@@ -716,70 +641,6 @@ learning/
       test_learning_bundle_diff_semantic_changes_detected.py
       test_learning_bundle_diff_serialization_is_stable.py
       test_learning_bundle_diff_structural_changes_detected.py
-  drift_monitor/
-    __init__.py
-    drift_engine.py
-    drift_policy.py
-    drift_report.py
-    drift_trace.py
-    tests/
-      __init__.py
-      test_drift_is_deterministic.py
-      test_drift_is_read_only.py
-      test_drift_no_authority_edges.py
-      test_drift_trend_calculation.py
-      test_drift_zero_history.py
-  drive_bias/
-    __init__.py
-    drive_bias_engine.py
-    drive_bias_policy.py
-    drive_bias_report.py
-    drive_bias_trace.py
-    drive_signal.py
-    execution_preview/
-      __init__.py
-      execution_preview_engine.py
-      execution_preview_policy.py
-      execution_preview_report.py
-      execution_preview_trace.py
-      tests/
-        __init__.py
-        test_execution_preview_delta_surface_consistency.py
-        test_execution_preview_is_deterministic.py
-        test_execution_preview_is_read_only.py
-        test_execution_preview_no_authority_edges.py
-        test_execution_preview_respects_promotable_ids.py
-    promotion_preview/
-      __init__.py
-      promotion_preview_engine.py
-      promotion_preview_policy.py
-      promotion_preview_report.py
-      promotion_preview_trace.py
-      tests/
-        __init__.py
-        test_preview_is_deterministic.py
-        test_preview_is_read_only.py
-        test_preview_no_authority_edges.py
-        test_preview_respects_selection.py
-        test_preview_threshold_behavior.py
-    selection/
-      __init__.py
-      bias_selection_policy.py
-      bias_selection_report.py
-      bias_selection_trace.py
-      bias_selector.py
-      tests/
-        __init__.py
-        test_selection_is_deterministic.py
-        test_selection_is_read_only.py
-        test_selection_no_authority_edges.py
-        test_selection_respects_threshold.py
-    tests/
-      __init__.py
-      test_drive_bias_is_deterministic.py
-      test_drive_bias_is_read_only.py
-      test_drive_bias_no_authority_edges.py
-      test_drive_bias_scoring_consistency.py
   evaluation/
     __init__.py
     learning_evaluation_policy.py
@@ -800,58 +661,6 @@ learning/
       __init__.py
       test_learning_execution_observer_is_deterministic.py
       test_learning_execution_observer_is_read_only.py
-  fragility_index/
-    __init__.py
-    fragility_engine.py
-    fragility_policy.py
-    fragility_report.py
-    fragility_trace.py
-    tests/
-      __init__.py
-      test_fragility_calculation_logic.py
-      test_fragility_empty_inputs.py
-      test_fragility_is_deterministic.py
-      test_fragility_is_read_only.py
-      test_fragility_no_authority_edges.py
-  governance_escalation/
-    __init__.py
-    escalation_engine.py
-    escalation_policy.py
-    escalation_report.py
-    escalation_trace.py
-    tests/
-      __init__.py
-      test_escalation_is_deterministic.py
-      test_escalation_is_read_only.py
-      test_escalation_no_authority_edges.py
-      test_escalation_threshold_behavior.py
-      test_escalation_zero_pressure.py
-  governance_gate/
-    __init__.py
-    gate_engine.py
-    gate_policy.py
-    gate_report.py
-    gate_trace.py
-    tests/
-      __init__.py
-      test_gate_accepts_clean_record.py
-      test_gate_is_deterministic.py
-      test_gate_no_authority_edges.py
-      test_gate_rejects_when_clamped.py
-      test_gate_rejects_when_fragile.py
-  governance_record/
-    __init__.py
-    record_engine.py
-    record_policy.py
-    record_report.py
-    record_trace.py
-    tests/
-      __init__.py
-      test_record_contains_all_fields.py
-      test_record_identity_consistency.py
-      test_record_is_deterministic.py
-      test_record_is_read_only.py
-      test_record_no_authority_edges.py
   inputs/
     __init__.py
     learning_input_builder.py
@@ -874,72 +683,7 @@ learning/
       test_diff_inspection_matches_diff_content.py
       test_learning_bundle_diff_aggregation_is_deterministic.py
       test_learning_bundle_diff_aggregation_is_read_only.py
-  integrity_consensus/
-    __init__.py
-    consensus_engine.py
-    consensus_policy.py
-    consensus_report.py
-    consensus_trace.py
-    tests/
-      __init__.py
-      test_consensus_disagreement_score.py
-      test_consensus_empty_inputs.py
-      test_consensus_is_deterministic.py
-      test_consensus_is_read_only.py
-      test_consensus_no_authority_edges.py
-  integrity_pressure/
-    __init__.py
-    integrity_engine.py
-    integrity_policy.py
-    integrity_report.py
-    integrity_trace.py
-    tests/
-      __init__.py
-      test_integrity_is_deterministic.py
-      test_integrity_is_read_only.py
-      test_integrity_no_authority_edges.py
-      test_integrity_pressure_calculation.py
-      test_integrity_zero_inputs.py
-  meta_oversight/
-    __init__.py
-    oversight_engine.py
-    oversight_policy.py
-    oversight_report.py
-    oversight_trace.py
-    tests/
-      __init__.py
-      test_oversight_aggregation_consistency.py
-      test_oversight_empty_inputs.py
-      test_oversight_is_deterministic.py
-      test_oversight_is_read_only.py
-      test_oversight_no_authority_edges.py
-  momentum_field/
-    __init__.py
-    momentum_engine.py
-    momentum_policy.py
-    momentum_report.py
-    momentum_trace.py
-    tests/
-      __init__.py
-      test_momentum_acceleration_calculation.py
-      test_momentum_insufficient_history.py
-      test_momentum_is_deterministic.py
-      test_momentum_is_read_only.py
-      test_momentum_no_authority_edges.py
   README.md
-  risk_surface/
-    __init__.py
-    risk_engine.py
-    risk_policy.py
-    risk_report.py
-    risk_trace.py
-    tests/
-      __init__.py
-      test_risk_empty_inputs.py
-      test_risk_is_deterministic.py
-      test_risk_is_read_only.py
-      test_risk_no_authority_edges.py
-      test_risk_surface_calculation.py
   schemas/
     __init__.py
     learning_delta.py
@@ -957,32 +701,6 @@ learning/
       tests/
         __init__.py
         test_structural_pattern_proposal_generator.py
-  signal_entropy/
-    __init__.py
-    entropy_engine.py
-    entropy_policy.py
-    entropy_report.py
-    entropy_trace.py
-    tests/
-      __init__.py
-      test_entropy_calculation.py
-      test_entropy_empty_inputs.py
-      test_entropy_is_deterministic.py
-      test_entropy_is_read_only.py
-      test_entropy_no_authority_edges.py
-  stability_model/
-    __init__.py
-    stability_engine.py
-    stability_policy.py
-    stability_report.py
-    stability_trace.py
-    tests/
-      __init__.py
-      test_stability_confidence_calculation.py
-      test_stability_index_consistency.py
-      test_stability_is_deterministic.py
-      test_stability_is_read_only.py
-      test_stability_no_authority_edges.py
   tests/
     __init__.py
     test_frequency_proposal_bounded.py
@@ -1438,6 +1156,8 @@ persistence/
     test_control_persistence_and_release.py
     test_control_persistence_and_release_log.txt
   traces.py
+poke_response_fingerprint.txt
+probe_visual_mass.py
 profiles/
   compounds/
     compound_base.json
@@ -1574,8 +1294,10 @@ regions/
     sensory_base.json
     somato_input.json
     visual_input.json
-script.py
+REGIONS_DUMP.txt
+run_recruitment_demo.py
 send_cmd.py
+single_step_runtime_dump.txt
 STRUCTURE_DUMP_CHECKPOINT30.txt
 test_loader.py
 test_runtime.py
@@ -1587,21 +1309,12 @@ z artifacts/
   demo_episode_narration.py
   demo_episode_narration_with_signals.py
   dominancetest.py
-  dump_region_json.py
   dump_tool.py
   Figure_1.png
-  kernel_dominance_trace.csv
   neural_framework_dump.txt
-  poke_response_fingerprint.txt
   poke_sweep.py
-  probe_visual_mass.py
-  REGIONS_DUMP.txt
-  run_recruitment_demo.py
-  single_step_runtime_dump.txt
-  STRUCTURE_DUMP_CHECKPOINT30.txt
   test_competing_inputs.py
   testingpoke.py
-  zlog.txt
 z testing/
   assembly characterization/
     assembly_dump_gpi_657.json
@@ -1966,3 +1679,4 @@ z testing/
     test_decision_latch_value_gate.py
     win force test base.py
   zlogpanda.py
+zlog.txt
