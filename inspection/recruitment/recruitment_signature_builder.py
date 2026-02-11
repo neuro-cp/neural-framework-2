@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
+from inspection.recruitment.recruitment_signature import RecruitmentSignature
 from inspection.recruitment.recruitment_stats_from_dump import (
     load_dump,
     total_mass,
@@ -11,59 +12,24 @@ from inspection.recruitment.recruitment_stats_from_dump import (
     top_k_assemblies,
     tier_counts,
     overlap_fraction,
+    DEFAULT_ACTIVE_THRESHOLD,
 )
 
 
-# ------------------------------------------------------------
-# Data object (episodic artifact)
-# ------------------------------------------------------------
-
-@dataclass(frozen=True)
-class RecruitmentSignature:
-    # Episodic identity
-    episode_id: int
-    region: str
-
-    episode_start_step: int
-    episode_end_step: int
-
-    salience_summary: Dict[str, float]
-    urgency_summary: Dict[str, float]
-    value_summary: Dict[str, float]
-    decision_summary: Dict | None
-    has_decision: bool
-    winner: str | None
-
-    # Recruitment comparison
-    baseline_step: int
-    poke_step: int
-
-    baseline_mass: float
-    poke_mass: float
-    delta_mass: float
-
-    baseline_fraction_active: float
-    poke_fraction_active: float
-    delta_fraction_active: float
-
-    baseline_tiers: Dict[str, int]
-    poke_tiers: Dict[str, int]
-
-    top_k_overlap: float
-
-    # Structural interpretation
-    recruitment_level: str
-    identity_stability: str
-    scaling_direction: str
-
-
-# ------------------------------------------------------------
-# Builder
-# ------------------------------------------------------------
-
 class RecruitmentSignatureBuilder:
-    def __init__(self, top_k: int = 10):
-        self._top_k = top_k
+    """
+    Builds episode-scoped RecruitmentSignature objects by comparing
+    a baseline dump vs a post dump for a region.
+
+    This performs *interpretation of mechanics* (recruitment vs scaling)
+    based on measurable structure.
+
+    Offline-only. Read-only. No caching.
+    """
+
+    def __init__(self, *, top_k: int = 10, active_threshold: float = DEFAULT_ACTIVE_THRESHOLD) -> None:
+        self._top_k = int(top_k)
+        self._active_threshold = float(active_threshold)
 
     def build(
         self,
@@ -76,31 +42,35 @@ class RecruitmentSignatureBuilder:
         salience_summary: Dict[str, float],
         urgency_summary: Dict[str, float],
         value_summary: Dict[str, float],
-        decision_summary: Dict | None,
+        decision_summary: Optional[Dict],
     ) -> RecruitmentSignature:
 
         base = load_dump(baseline_dump)
-        poke = load_dump(post_dump)
+        post = load_dump(post_dump)
 
-        base_asm = base["assemblies"]
-        poke_asm = poke["assemblies"]
+        base_asm = list(base.get("assemblies", []))
+        post_asm = list(post.get("assemblies", []))
 
         base_mass = total_mass(base_asm)
-        poke_mass = total_mass(poke_asm)
+        post_mass = total_mass(post_asm)
 
-        base_frac = fraction_active(base_asm)
-        poke_frac = fraction_active(poke_asm)
+        base_frac = fraction_active(base_asm, threshold=self._active_threshold)
+        post_frac = fraction_active(post_asm, threshold=self._active_threshold)
 
         base_top = top_k_assemblies(base_asm, self._top_k)
-        poke_top = top_k_assemblies(poke_asm, self._top_k)
+        post_top = top_k_assemblies(post_asm, self._top_k)
 
-        overlap = overlap_fraction(base_top, poke_top)
+        overlap = overlap_fraction(base_top, post_top)
 
-        if poke_frac >= 0.95 and base_frac < 0.95:
+        # -------------------------
+        # Structural interpretation
+        # -------------------------
+
+        if post_frac >= 0.95 and base_frac < 0.95:
             recruitment_level = "full"
-        elif poke_frac > base_frac and poke_frac >= 0.3:
+        elif post_frac > base_frac and post_frac >= 0.3:
             recruitment_level = "partial"
-        elif poke_frac < base_frac:
+        elif post_frac < base_frac:
             recruitment_level = "suppression"
         else:
             recruitment_level = "none"
@@ -112,9 +82,9 @@ class RecruitmentSignatureBuilder:
         else:
             identity_stability = "reorganized"
 
-        if poke_mass > base_mass:
+        if post_mass > base_mass:
             scaling_direction = "up"
-        elif poke_mass < base_mass:
+        elif post_mass < base_mass:
             scaling_direction = "down"
         else:
             scaling_direction = "flat"
@@ -123,36 +93,37 @@ class RecruitmentSignatureBuilder:
         winner = decision_summary.get("winner") if decision_summary else None
 
         return RecruitmentSignature(
-            episode_id=episode_id,
-            region=region,
+            episode_id=int(episode_id),
+            region=str(region),
 
-            episode_start_step=episode_bounds["start_step"],
-            episode_end_step=episode_bounds["end_step"],
+            episode_start_step=int(episode_bounds["start_step"]),
+            episode_end_step=int(episode_bounds["end_step"]),
 
-            salience_summary=salience_summary,
-            urgency_summary=urgency_summary,
-            value_summary=value_summary,
-            decision_summary=decision_summary,
-            has_decision=has_decision,
-            winner=winner,
+            salience_summary=dict(salience_summary),
+            urgency_summary=dict(urgency_summary),
+            value_summary=dict(value_summary),
 
-            baseline_step=base["step"],
-            poke_step=poke["step"],
+            decision_summary=dict(decision_summary) if decision_summary else None,
+            has_decision=bool(has_decision),
+            winner=str(winner) if winner is not None else None,
 
-            baseline_mass=base_mass,
-            poke_mass=poke_mass,
-            delta_mass=poke_mass - base_mass,
+            baseline_step=int(base.get("step", -1)),
+            post_step=int(post.get("step", -1)),
 
-            baseline_fraction_active=base_frac,
-            poke_fraction_active=poke_frac,
-            delta_fraction_active=poke_frac - base_frac,
+            baseline_mass=float(base_mass),
+            post_mass=float(post_mass),
+            delta_mass=float(post_mass - base_mass),
+
+            baseline_fraction_active=float(base_frac),
+            post_fraction_active=float(post_frac),
+            delta_fraction_active=float(post_frac - base_frac),
 
             baseline_tiers=tier_counts(base_asm),
-            poke_tiers=tier_counts(poke_asm),
+            post_tiers=tier_counts(post_asm),
 
-            top_k_overlap=overlap,
+            top_k_overlap=float(overlap),
 
-            recruitment_level=recruitment_level,
-            identity_stability=identity_stability,
-            scaling_direction=scaling_direction,
+            recruitment_level=str(recruitment_level),
+            identity_stability=str(identity_stability),
+            scaling_direction=str(scaling_direction),
         )

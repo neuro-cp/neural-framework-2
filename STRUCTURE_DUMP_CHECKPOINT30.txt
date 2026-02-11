@@ -589,6 +589,24 @@ engine/
     value_signal.py
     value_source.py
     value_trace.py
+inspection/
+  recruitment/
+    holding_bin_writer.py
+    recruitment_map.py
+    recruitment_map_builder.py
+    recruitment_map_holder.py
+    recruitment_pipeline.py
+    recruitment_signature.py
+    recruitment_signature_builder.py
+    recruitment_stats_from_dump.py
+    region_dump_index.py
+    region_dump_index_builder.py
+    tests/
+      conftest.py
+      test_recruitment_map_builder.py
+      test_recruitment_pipeline_persists_map.py
+      test_recruitment_signature_builder.py
+      test_region_dump_index_builder.py
 kernel_dominance_trace.csv
 learning/
   __init__.py
@@ -1253,6 +1271,7 @@ regions/
     somato_input.json
     visual_input.json
 REGIONS_DUMP.txt
+send_cmd.py
 single_step_runtime_dump.txt
 STRUCTURE_DUMP_CHECKPOINT30.txt
 test_loader.py
@@ -1272,6 +1291,26 @@ z artifacts/
   test_competing_inputs.py
   testingpoke.py
 z testing/
+  assembly characterization/
+    assembly_dump_gpi_657.json
+    assembly_dump_gpi_775.json
+    assembly_dump_md_2065.json
+    assembly_dump_md_2145.json
+    assembly_dump_pfc_1558.json
+    assembly_dump_pfc_1732.json
+    assembly_dump_pulvinar_1872.json
+    assembly_dump_pulvinar_1979.json
+    assembly_dump_stn_1051.json
+    assembly_dump_stn_134.json
+    assembly_dump_stn_298.json
+    assembly_dump_stn_948.json
+    assembly_dump_striatum_1216.json
+    assembly_dump_striatum_1365.json
+    assembly_dump_striatum_1458.json
+    assembly_dump_striatum_979.json
+    assembly_dump_trn_430.json
+    assembly_dump_trn_543.json
+    interpretation.txt
   behavioral characterization/
     behavioral plot.png
     char_personality.py

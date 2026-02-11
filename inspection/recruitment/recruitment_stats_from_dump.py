@@ -6,15 +6,15 @@ from typing import Dict, List, Tuple
 
 
 # ------------------------------------------------------------
-# Config (tune freely)
+# Defaults (tune freely)
 # ------------------------------------------------------------
 
-ACTIVE_THRESHOLD = 0.01
-TOP_K = 10
+DEFAULT_ACTIVE_THRESHOLD = 0.01
+DEFAULT_TOP_K = 10
 
 
 # ------------------------------------------------------------
-# Helpers (mirrors yesterday’s logic)
+# Helpers (pure; offline)
 # ------------------------------------------------------------
 
 def load_dump(path: Path) -> Dict:
@@ -22,15 +22,15 @@ def load_dump(path: Path) -> Dict:
         return json.load(f)
 
 
-def fraction_active(assemblies: List[Dict]) -> float:
+def fraction_active(assemblies: List[Dict], *, threshold: float = DEFAULT_ACTIVE_THRESHOLD) -> float:
     if not assemblies:
         return 0.0
-    active = sum(1 for a in assemblies if a["output"] > ACTIVE_THRESHOLD)
+    active = sum(1 for a in assemblies if float(a.get("output", 0.0)) > threshold)
     return active / len(assemblies)
 
 
 def total_mass(assemblies: List[Dict]) -> float:
-    return sum(a["output"] for a in assemblies)
+    return float(sum(float(a.get("output", 0.0)) for a in assemblies))
 
 
 def top_k_assemblies(
@@ -38,24 +38,22 @@ def top_k_assemblies(
     k: int,
 ) -> List[Tuple[str, float]]:
     rows = [
-        (a["assembly_id"], a["output"])
+        (str(a.get("assembly_id")), float(a.get("output", 0.0)))
         for a in assemblies
-        if a["output"] > 0.0
+        if float(a.get("output", 0.0)) > 0.0
     ]
     rows.sort(key=lambda x: x[1], reverse=True)
     return rows[:k]
 
 
 def tier_counts(assemblies: List[Dict]) -> Dict[str, int]:
-    tiers = {
-        "high": 0,   # strong recruitment
-        "mid": 0,    # moderate
-        "low": 0,    # weak but nonzero
-        "zero": 0,   # silent
-    }
-
+    """
+    Coarse tiering of outputs.
+    These boundaries are inspection-only and may evolve during mechanics calibration.
+    """
+    tiers = {"high": 0, "mid": 0, "low": 0, "zero": 0}
     for a in assemblies:
-        out = a["output"]
+        out = float(a.get("output", 0.0))
         if out > 0.2:
             tiers["high"] += 1
         elif out > 0.05:
@@ -64,7 +62,6 @@ def tier_counts(assemblies: List[Dict]) -> Dict[str, int]:
             tiers["low"] += 1
         else:
             tiers["zero"] += 1
-
     return tiers
 
 
@@ -80,29 +77,25 @@ def overlap_fraction(
 
 
 # ------------------------------------------------------------
-# Main analysis
+# Convenience CLI for ad-hoc inspection
 # ------------------------------------------------------------
 
-def analyze_pair(baseline_path: Path, poke_path: Path) -> None:
+def analyze_pair(baseline_path: Path, post_path: Path, *, top_k: int = DEFAULT_TOP_K, threshold: float = DEFAULT_ACTIVE_THRESHOLD) -> None:
     base = load_dump(baseline_path)
-    poke = load_dump(poke_path)
+    post = load_dump(post_path)
 
     base_asm = base["assemblies"]
-    poke_asm = poke["assemblies"]
+    post_asm = post["assemblies"]
 
     print("=" * 80)
-    print(f"REGION: {base['region']}")
-    print(f"BASELINE STEP: {base['step']}")
-    print(f"POKE STEP: {poke['step']}")
+    print(f"REGION: {base.get('region')}")
+    print(f"BASELINE STEP: {base.get('step')}")
+    print(f"POST STEP: {post.get('step')}")
     print("=" * 80)
-
-    # -------------------------
-    # Baseline stats
-    # -------------------------
 
     base_mass = total_mass(base_asm)
-    base_frac = fraction_active(base_asm)
-    base_top = top_k_assemblies(base_asm, TOP_K)
+    base_frac = fraction_active(base_asm, threshold=threshold)
+    base_top = top_k_assemblies(base_asm, top_k)
     base_tiers = tier_counts(base_asm)
 
     print("\n[BASELINE]")
@@ -113,45 +106,33 @@ def analyze_pair(baseline_path: Path, poke_path: Path) -> None:
     for aid, val in base_top:
         print(f"  {aid:<60} {val:.6f}")
 
-    # -------------------------
-    # Post-poke stats
-    # -------------------------
+    post_mass = total_mass(post_asm)
+    post_frac = fraction_active(post_asm, threshold=threshold)
+    post_top = top_k_assemblies(post_asm, top_k)
+    post_tiers = tier_counts(post_asm)
 
-    poke_mass = total_mass(poke_asm)
-    poke_frac = fraction_active(poke_asm)
-    poke_top = top_k_assemblies(poke_asm, TOP_K)
-    poke_tiers = tier_counts(poke_asm)
-
-    print("\n[POST-POKE]")
-    print(f"Total mass:       {poke_mass:.6f}")
-    print(f"Fraction active:  {poke_frac:.4f}")
-    print(f"Tiers:            {poke_tiers}")
+    print("\n[POST]")
+    print(f"Total mass:       {post_mass:.6f}")
+    print(f"Fraction active:  {post_frac:.4f}")
+    print(f"Tiers:            {post_tiers}")
     print("Top assemblies:")
-    for aid, val in poke_top:
+    for aid, val in post_top:
         print(f"  {aid:<60} {val:.6f}")
 
-    # -------------------------
-    # Recruitment deltas
-    # -------------------------
-
-    overlap = overlap_fraction(base_top, poke_top)
+    overlap = overlap_fraction(base_top, post_top)
 
     print("\n[RECRUITMENT SUMMARY]")
-    print(f"Δ mass:           {poke_mass - base_mass:.6f}")
-    print(f"Δ fraction:       {poke_frac - base_frac:.4f}")
+    print(f"Δ mass:           {post_mass - base_mass:.6f}")
+    print(f"Δ fraction:       {post_frac - base_frac:.4f}")
     print(f"Top-K overlap:    {overlap:.4f}")
     print("=" * 80)
 
-
-# ------------------------------------------------------------
-# CLI entry
-# ------------------------------------------------------------
 
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) != 3:
-        print("Usage: python recruitment_stats_from_dump.py <baseline.json> <poke.json>")
+        print("Usage: python recruitment_stats_from_dump.py <baseline.json> <post.json>")
         sys.exit(1)
 
     analyze_pair(Path(sys.argv[1]), Path(sys.argv[2]))
