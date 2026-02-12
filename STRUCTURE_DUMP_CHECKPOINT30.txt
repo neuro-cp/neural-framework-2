@@ -839,6 +839,10 @@ learning/
       test_gate_no_authority_edges.py
       test_gate_rejects_when_clamped.py
       test_gate_rejects_when_fragile.py
+  governance_inspection/
+    __init__.py
+    compliance adapter.txt
+    governance_inspection_adapter.py
   governance_record/
     __init__.py
     record_engine.py
@@ -945,8 +949,11 @@ learning/
     learning_delta.py
     learning_proposal.py
     learning_session_report.py
+  scripts/
+    run_learning_with_governance_preview.py
   session/
     __init__.py
+    _governance_flow.py
     learning_session.py
     proposal_generators/
       __init__.py
@@ -957,6 +964,11 @@ learning/
       tests/
         __init__.py
         test_structural_pattern_proposal_generator.py
+    tests/
+      __init__.py
+      test_governance_chain_sensitivity.py
+      test_learning_session_governance_integration.py
+      test_learning_session_governance_rejection.py
   signal_entropy/
     __init__.py
     entropy_engine.py

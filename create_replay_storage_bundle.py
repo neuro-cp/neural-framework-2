@@ -12,15 +12,13 @@ FILES = {}
 # ---------------------------
 
 FILES[os.path.join(BASE_DIR, "__init__.py")] = ""
-
 FILES[os.path.join(TEST_DIR, "__init__.py")] = ""
 
 # ---------------------------
 # replay_storage_result.py
 # ---------------------------
 
-FILES[os.path.join(BASE_DIR, "replay_storage_result.py")] = r"""
-from dataclasses import dataclass
+FILES[os.path.join(BASE_DIR, "replay_storage_result.py")] = """from dataclasses import dataclass
 from typing import List
 
 
@@ -39,13 +37,7 @@ class ReplayStorageResult:
 # replay_storage_policy.py
 # ---------------------------
 
-FILES[os.path.join(BASE_DIR, "replay_storage_policy.py")] = r"""
-class ReplayStoragePolicy:
-    """
-    Deterministic storage policy container.
-    Future-safe extension point.
-    """
-
+FILES[os.path.join(BASE_DIR, "replay_storage_policy.py")] = """class ReplayStoragePolicy:
     MIN_PROPOSALS_REQUIRED = 0
 """
 
@@ -53,34 +45,18 @@ class ReplayStoragePolicy:
 # replay_storage_pipeline.py
 # ---------------------------
 
-FILES[os.path.join(BASE_DIR, "replay_storage_pipeline.py")] = r"""
-from typing import Iterable
+FILES[os.path.join(BASE_DIR, "replay_storage_pipeline.py")] = """from typing import Iterable
 
 from learning.session.learning_session import LearningSession
-from learning.adapters.learning_to_promotion_adapter import (
-    LearningToPromotionAdapter,
-)
-from memory.semantic_promotion.promotion_execution_adapter import (
-    PromotionExecutionAdapter,
-)
-from memory.semantic_promotion.promoted_semantic_registry import (
-    PromotedSemanticRegistry,
-)
+from learning.adapters.learning_to_promotion_adapter import LearningToPromotionAdapter
+from memory.semantic_promotion.promotion_execution_adapter import PromotionExecutionAdapter
+from memory.semantic_promotion.promoted_semantic_registry import PromotedSemanticRegistry
 
 from .replay_storage_result import ReplayStorageResult
 from .replay_storage_policy import ReplayStoragePolicy
 
 
 class ReplayStoragePipeline:
-    """
-    Offline replay-driven storage module.
-
-    CONTRACT:
-    - Deterministic
-    - Offline
-    - Non-authoritative
-    - No runtime access
-    """
 
     def __init__(self, replay_id: str):
         self.replay_id = replay_id
@@ -97,7 +73,6 @@ class ReplayStoragePipeline:
                 promoted_semantic_ids=[],
             )
 
-        # Convert proposals → semantic deltas
         applied = []
 
         for proposal in proposals:
@@ -142,11 +117,10 @@ class ReplayStoragePipeline:
 """
 
 # ---------------------------
-# TEST: deterministic
+# TESTS
 # ---------------------------
 
-FILES[os.path.join(TEST_DIR, "test_replay_storage_is_deterministic.py")] = r"""
-from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
+FILES[os.path.join(TEST_DIR, "test_replay_storage_is_deterministic.py")] = """from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
 
 
 class DummyBundle:
@@ -163,12 +137,7 @@ def test_replay_storage_is_deterministic():
     assert result1.promoted_semantic_ids == result2.promoted_semantic_ids
 """
 
-# ---------------------------
-# TEST: empty
-# ---------------------------
-
-FILES[os.path.join(TEST_DIR, "test_replay_storage_respects_empty_input.py")] = r"""
-from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
+FILES[os.path.join(TEST_DIR, "test_replay_storage_respects_empty_input.py")] = """from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
 
 
 def test_replay_storage_respects_empty_input():
@@ -178,12 +147,7 @@ def test_replay_storage_respects_empty_input():
     assert result.registry_size == 0
 """
 
-# ---------------------------
-# TEST: promotes semantics
-# ---------------------------
-
-FILES[os.path.join(TEST_DIR, "test_replay_storage_promotes_semantics.py")] = r"""
-from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
+FILES[os.path.join(TEST_DIR, "test_replay_storage_promotes_semantics.py")] = """from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
 
 
 class DummyBundle:
