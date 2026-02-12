@@ -1,211 +1,150 @@
-# create_replay_storage_bundle.py
-
 import os
 
-BASE_DIR = os.path.join("memory", "replay_storage")
-TEST_DIR = os.path.join(BASE_DIR, "tests")
+BASE = os.path.join("memory", "recall_runtime_bridge")
+TESTS = os.path.join(BASE, "tests")
 
 FILES = {}
 
-# ---------------------------
-# __init__.py
-# ---------------------------
+FILES[os.path.join(BASE, "__init__.py")] = ""
+FILES[os.path.join(TESTS, "__init__.py")] = ""
 
-FILES[os.path.join(BASE_DIR, "__init__.py")] = ""
+# ---------------------------------------
+# recall_runtime_result.py
+# ---------------------------------------
 
-FILES[os.path.join(TEST_DIR, "__init__.py")] = ""
-
-# ---------------------------
-# replay_storage_result.py
-# ---------------------------
-
-FILES[os.path.join(BASE_DIR, "replay_storage_result.py")] = r"""
-from dataclasses import dataclass
-from typing import List
+FILES[os.path.join(BASE, "recall_runtime_result.py")] = """from dataclasses import dataclass
+from typing import Dict
 
 
 @dataclass(frozen=True)
-class ReplayStorageResult:
-    replay_id: str
-    proposal_count: int
-    promoted_semantic_ids: List[str]
-
-    @property
-    def registry_size(self) -> int:
-        return len(self.promoted_semantic_ids)
+class RecallRuntimeResult:
+    applied_targets: Dict[str, float]
 """
 
-# ---------------------------
-# replay_storage_policy.py
-# ---------------------------
+# ---------------------------------------
+# recall_runtime_policy.py
+# ---------------------------------------
 
-FILES[os.path.join(BASE_DIR, "replay_storage_policy.py")] = r"""
-class ReplayStoragePolicy:
-    """
-    Deterministic storage policy container.
-    Future-safe extension point.
-    """
-
-    MIN_PROPOSALS_REQUIRED = 0
+FILES[os.path.join(BASE, "recall_runtime_policy.py")] = """class RecallRuntimePolicy:
+    ENABLE_RECALL_EXECUTION = True
 """
 
-# ---------------------------
-# replay_storage_pipeline.py
-# ---------------------------
+# ---------------------------------------
+# recall_runtime_adapter.py
+# ---------------------------------------
 
-FILES[os.path.join(BASE_DIR, "replay_storage_pipeline.py")] = r"""
-from typing import Iterable
+FILES[os.path.join(BASE, "recall_runtime_adapter.py")] = """from typing import Dict
 
-from learning.session.learning_session import LearningSession
-from learning.adapters.learning_to_promotion_adapter import (
-    LearningToPromotionAdapter,
-)
-from memory.semantic_promotion.promotion_execution_adapter import (
-    PromotionExecutionAdapter,
-)
-from memory.semantic_promotion.promoted_semantic_registry import (
-    PromotedSemanticRegistry,
-)
+from engine.execution.execution_target import ExecutionTarget
+from engine.execution.execution_gate import ExecutionGate
 
-from .replay_storage_result import ReplayStorageResult
-from .replay_storage_policy import ReplayStoragePolicy
+from memory.influence_arbitration.influence_packet import InfluencePacket
+from .recall_runtime_result import RecallRuntimeResult
+from .recall_runtime_policy import RecallRuntimePolicy
 
 
-class ReplayStoragePipeline:
-    """
-    Offline replay-driven storage module.
+class RecallRuntimeAdapter:
 
-    CONTRACT:
-    - Deterministic
-    - Offline
-    - Non-authoritative
-    - No runtime access
-    """
+    def apply_packet(
+        self,
+        packet: InfluencePacket,
+        gate: ExecutionGate,
+        identity_map: Dict[str, float],
+    ) -> RecallRuntimeResult:
 
-    def __init__(self, replay_id: str):
-        self.replay_id = replay_id
+        if not RecallRuntimePolicy.ENABLE_RECALL_EXECUTION:
+            return RecallRuntimeResult(applied_targets={})
 
-    def run(self, bundles: Iterable[object]) -> ReplayStorageResult:
+        applied = {}
 
-        session = LearningSession(replay_id=self.replay_id)
-        proposals = session.run(inputs=bundles)
+        for target_name, magnitude in packet.targets.items():
+            enum_target = ExecutionTarget[target_name]
 
-        if len(proposals) < ReplayStoragePolicy.MIN_PROPOSALS_REQUIRED:
-            return ReplayStorageResult(
-                replay_id=self.replay_id,
-                proposal_count=0,
-                promoted_semantic_ids=[],
+            identity = identity_map.get(target_name, 0.0)
+
+            result = gate.apply(
+                target=enum_target,
+                value=magnitude,
+                identity=identity,
             )
 
-        # Convert proposals → semantic deltas
-        applied = []
+            applied[target_name] = result
 
-        for proposal in proposals:
-            for delta in proposal.deltas:
-                applied.append(
-                    {
-                        "semantic_id": f"sem:{delta.target}",
-                        "pattern_type": delta.delta_type,
-                        "supporting_episode_ids": [1],
-                        "recurrence_count": 1,
-                        "persistence_span": 1,
-                        "stability_classification": "unstable",
-                    }
-                )
-
-        governance_record = {
-            "approved": True,
-            "applied_deltas": applied,
-        }
-
-        adapter = LearningToPromotionAdapter()
-        candidates = adapter.build_candidates(
-            governance_record=governance_record
-        )
-
-        exec_adapter = PromotionExecutionAdapter()
-        promoted = exec_adapter.execute(
-            candidates=candidates,
-            promotion_step=0,
-            promotion_time=0.0,
-        )
-
-        registry = PromotedSemanticRegistry.build(
-            promoted_semantics=promoted
-        )
-
-        return ReplayStorageResult(
-            replay_id=self.replay_id,
-            proposal_count=len(proposals),
-            promoted_semantic_ids=[p.semantic_id for p in registry],
-        )
+        return RecallRuntimeResult(applied_targets=applied)
 """
 
-# ---------------------------
-# TEST: deterministic
-# ---------------------------
+# ---------------------------------------
+# TESTS
+# ---------------------------------------
 
-FILES[os.path.join(TEST_DIR, "test_replay_storage_is_deterministic.py")] = r"""
-from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
+FILES[os.path.join(TESTS, "test_bridge_execution_off.py")] = """from memory.recall_runtime_bridge.recall_runtime_adapter import RecallRuntimeAdapter
+from memory.influence_arbitration.influence_packet import InfluencePacket
 
+class DummyGate:
+    def apply(self, target, value, identity):
+        return identity  # always identity
 
-class DummyBundle:
-    replay_id = "demo"
+def test_execution_off():
+    adapter = RecallRuntimeAdapter()
+    packet = InfluencePacket(targets={"VALUE_BIAS": 5.0})
 
+    result = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 0.0})
 
-def test_replay_storage_is_deterministic():
-    pipeline = ReplayStoragePipeline(replay_id="demo")
-    bundle = DummyBundle()
-
-    result1 = pipeline.run([bundle])
-    result2 = pipeline.run([bundle])
-
-    assert result1.promoted_semantic_ids == result2.promoted_semantic_ids
+    assert result.applied_targets["VALUE_BIAS"] == 0.0
 """
 
-# ---------------------------
-# TEST: empty
-# ---------------------------
+FILES[os.path.join(TESTS, "test_bridge_execution_on.py")] = """from memory.recall_runtime_bridge.recall_runtime_adapter import RecallRuntimeAdapter
+from memory.influence_arbitration.influence_packet import InfluencePacket
 
-FILES[os.path.join(TEST_DIR, "test_replay_storage_respects_empty_input.py")] = r"""
-from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
+class DummyGate:
+    def apply(self, target, value, identity):
+        return value
 
+def test_execution_on():
+    adapter = RecallRuntimeAdapter()
+    packet = InfluencePacket(targets={"VALUE_BIAS": 5.0})
 
-def test_replay_storage_respects_empty_input():
-    pipeline = ReplayStoragePipeline(replay_id="demo")
-    result = pipeline.run([])
+    result = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 0.0})
 
-    assert result.registry_size == 0
+    assert result.applied_targets["VALUE_BIAS"] == 5.0
 """
 
-# ---------------------------
-# TEST: promotes semantics
-# ---------------------------
+FILES[os.path.join(TESTS, "test_bridge_identity_preserved.py")] = """from memory.recall_runtime_bridge.recall_runtime_adapter import RecallRuntimeAdapter
+from memory.influence_arbitration.influence_packet import InfluencePacket
 
-FILES[os.path.join(TEST_DIR, "test_replay_storage_promotes_semantics.py")] = r"""
-from memory.replay_storage.replay_storage_pipeline import ReplayStoragePipeline
+class DummyGate:
+    def apply(self, target, value, identity):
+        return identity
 
+def test_identity_preserved():
+    adapter = RecallRuntimeAdapter()
+    packet = InfluencePacket(targets={"VALUE_BIAS": 3.0})
 
-class DummyBundle:
-    replay_id = "demo"
+    result = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 2.0})
 
-
-def test_replay_storage_promotes_semantics():
-    pipeline = ReplayStoragePipeline(replay_id="demo")
-    bundle = DummyBundle()
-
-    result = pipeline.run([bundle])
-
-    assert isinstance(result.promoted_semantic_ids, list)
+    assert result.applied_targets["VALUE_BIAS"] == 2.0
 """
 
-# ---------------------------
-# Write Files
-# ---------------------------
+FILES[os.path.join(TESTS, "test_bridge_deterministic.py")] = """from memory.recall_runtime_bridge.recall_runtime_adapter import RecallRuntimeAdapter
+from memory.influence_arbitration.influence_packet import InfluencePacket
+
+class DummyGate:
+    def apply(self, target, value, identity):
+        return value
+
+def test_deterministic():
+    adapter = RecallRuntimeAdapter()
+    packet = InfluencePacket(targets={"VALUE_BIAS": 4.0})
+
+    r1 = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 0.0})
+    r2 = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 0.0})
+
+    assert r1 == r2
+"""
 
 for path, content in FILES.items():
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
 
-print("Replay Storage module bundle created successfully.")
+print("Recall Runtime Bridge module created successfully.")

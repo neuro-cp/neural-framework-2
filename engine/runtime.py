@@ -246,9 +246,30 @@ class BrainRuntime:
         from engine.execution.execution_state import ExecutionState
         from engine.execution.execution_gate import ExecutionGate
 
-        # Execution is OFF by default (identity behavior)
-        self.execution_state = ExecutionState(enabled=False)
+        toggle_path = Path(__file__).parent.parent / "config" / "executive_function_toggle.json"
+
+        enabled_flag = False  # safe default
+
+        if toggle_path.exists():
+            try:
+                with open(toggle_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    enabled_flag = bool(data.get("enabled", False))
+            except Exception:
+                enabled_flag = False  # fail closed
+
+        self.execution_state = ExecutionState(enabled=enabled_flag)
         self.execution_gate = ExecutionGate(self.execution_state)
+
+        # ---------------- Recall → Runtime bridge ----------------
+        try:
+            from memory.recall_runtime_bridge.recall_runtime_adapter import (
+                RecallRuntimeAdapter,
+            )
+
+            self.recall_runtime_adapter = RecallRuntimeAdapter()
+        except ImportError:
+            self.recall_runtime_adapter = None
 
         # ---------------- Observation hook (READ-ONLY) ----------------
         try:
@@ -489,9 +510,30 @@ class BrainRuntime:
 
             raw_value = self.value_signal.get() * urgency_gain
 
+            # ---------------- Recall injection (VALUE_BIAS) ----------------
+            recall_bias_value = 0.0
+
+            if (
+                self.execution_state.enabled
+                and self.recall_runtime_adapter is not None
+            ):
+                packet = self._compute_recall_packet()
+
+                bridge_result = self.recall_runtime_adapter.apply_packet(
+                    packet=packet,
+                    gate=self.execution_gate,
+                    identity_map={"VALUE_BIAS": 0.0},
+                )
+
+                recall_bias_value = bridge_result.applied_targets.get(
+                    "VALUE_BIAS", 0.0
+                )
+
+            combined_value = raw_value + recall_bias_value
+
             gated_value = self.execution_gate.apply(
                 target=ExecutionTarget.VALUE_BIAS,
-                value=raw_value,
+                value=combined_value,
                 identity=0.0,
             )
 
@@ -501,7 +543,6 @@ class BrainRuntime:
                     bias_map=bias_map,
                 )
             )
-
 
         # 6. Decision latch (creates _decision_state)
         self._evaluate_decision_latch(relief)
@@ -631,26 +672,43 @@ class BrainRuntime:
         pfc = self.region_states.get("pfc")
         if not pfc:
             return
+
         assemblies = [p for plist in pfc["populations"].values() for p in plist]
         if assemblies:
             self.pfc_context.apply(assemblies, self.context)
-        
+
         # PFC working-state gain (advisory, post-decision)
         if self.enable_pfc_adapter and self.pfc_adapter.is_engaged():
             raw_gain = self.pfc_adapter.strength()
 
+            # ---------------- Recall injection (PFC_CONTEXT_GAIN) ----------------
+            recall_context_gain = 0.0
+
+            if (
+                self.execution_state.enabled
+                and self.recall_runtime_adapter is not None
+            ):
+                packet = self._compute_recall_packet()
+
+                bridge_result = self.recall_runtime_adapter.apply_packet(
+                    packet=packet,
+                    gate=self.execution_gate,
+                    identity_map={"PFC_CONTEXT_GAIN": 1.0},
+                )
+
+                recall_context_gain = bridge_result.applied_targets.get(
+                    "PFC_CONTEXT_GAIN", 0.0
+                )
+
+            combined_gain = raw_gain + recall_context_gain
+
             gated_gain = self.execution_gate.apply(
                 target=ExecutionTarget.PFC_CONTEXT_GAIN,
-                value=raw_gain,
+                value=combined_gain,
                 identity=1.0,
             )
 
-            for p in assemblies:
-                existing = self.context.get_gain(p.assembly_id)
-                delta = (existing * gated_gain) - existing
-                if delta > 0.0:
-                    self.context.inject_gain(p.assembly_id, delta)
-           
+                   
     def _step_striatum(self) -> None:
         striatum = self.region_states.get("striatum")
         if not striatum:
@@ -742,6 +800,30 @@ class BrainRuntime:
         gpi_mean = sum(outs) / len(outs)
         relief = 1.0 - self.gpi_gain * gpi_mean
         return max(self.gpi_floor, min(1.0, relief))
+    
+    def _compute_recall_packet(self):
+        """
+        Collects recall-driven influence proposals.
+        Execution-neutral. Pure packet construction.
+        """
+        try:
+            from memory.replay_recall.pipeline import ReplayRecallPipeline
+            from memory.influence_arbitration.influence_packet import InfluencePacket
+        except ImportError:
+            from memory.influence_arbitration.influence_packet import InfluencePacket
+            return InfluencePacket(targets={})
+
+        if not hasattr(self, "_recall_pipeline"):
+            self._recall_pipeline = ReplayRecallPipeline()
+
+        suggestions = self._recall_pipeline.query(runtime=self)
+
+        # Convert suggestions → InfluencePacket
+        targets = {}
+        for s in suggestions:
+            targets[s.target] = targets.get(s.target, 0.0) + float(s.magnitude)
+
+        return InfluencePacket(targets=targets)
 
     def _evaluate_decision_latch(self, relief: float) -> None:
         if self._decision_fired:
