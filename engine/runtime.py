@@ -822,7 +822,7 @@ class BrainRuntime:
         targets = {}
         for s in suggestions:
             targets[s.target] = targets.get(s.target, 0.0) + float(s.magnitude)
-
+            
         return InfluencePacket(targets=targets)
 
     def _evaluate_decision_latch(self, relief: float) -> None:

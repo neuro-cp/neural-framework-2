@@ -8,3 +8,4 @@ class ExecutionTarget(Enum):
     ROUTING_GAIN = auto()
     PFC_CONTEXT_GAIN = auto()
     DECISION_FX_GAIN = auto()
+    DECISION_BIAS = auto()

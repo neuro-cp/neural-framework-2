@@ -11,6 +11,7 @@ class ExecutionPolicy:
         ExecutionTarget.ROUTING_GAIN,
         ExecutionTarget.PFC_CONTEXT_GAIN,
         ExecutionTarget.DECISION_FX_GAIN,
+        ExecutionTarget.DECISION_BIAS,
     }
 
     @classmethod

@@ -9,8 +9,10 @@
       nodeids
 config/
   assembly_control.json
+  executive_function_toggle.json
   global_dynamics.json
   routing_defaults.json
+create_replay_storage_bundle.py
 docs/
   architecture/
     phase20_execution_governance.md
@@ -252,6 +254,9 @@ engine/
       test_execution_off_is_identity_runtime.py
       test_execution_removal_is_noop.py
       test_execution_zeroes_output_not_adapter.py
+      test_pipeline.py
+      test_pipeline_recall_layer.py
+      test_recall_execution_containment_matrix.py
   execution_binding/
     __init__.py
     binding_contract.py
@@ -616,8 +621,13 @@ inspection/
       test_recruitment_pipeline_persists_map.py
       test_recruitment_signature_builder.py
       test_region_dump_index_builder.py
+kernel_dominance_trace.csv
 learning/
   __init__.py
+  adapters/
+    __init__.py
+    learning_to_promotion_adapter.py
+    New Text Document.txt
   adaptive_calibration/
     __init__.py
     calibration_engine.py
@@ -1134,6 +1144,18 @@ memory/
     tests/
       test_boundary_closes_and_opens_episode.py
       test_boundary_event_is_immutable.py
+  influence_arbitration/
+    __init__.py
+    arbitration_engine.py
+    arbitration_policy.py
+    influence_packet.py
+    tests/
+      __init__.py
+      test_arbitration_clamp_total.py
+      test_arbitration_deterministic.py
+      test_arbitration_empty.py
+      test_arbitration_merge_same_target.py
+      test_arbitration_priority.py
   influence_eligibility/
     __init__.py
     eligibility_invariants.md
@@ -1149,6 +1171,18 @@ memory/
       test_eligibility_policy_is_abstract.py
       test_eligibility_record_is_pure_data.py
       test_eligibility_scope_is_restrictive.py
+  influence_mapping/
+    __init__.py
+    influence_mapping_adapter.py
+    influence_mapping_policy.py
+    influence_target.py
+    tests/
+      __init__.py
+      test_mapping_clamped.py
+      test_mapping_context_target.py
+      test_mapping_deterministic.py
+      test_mapping_empty.py
+      test_mapping_value_target.py
   inspection/
     __init__.py
     audit/
@@ -1287,6 +1321,51 @@ memory/
       test_pattern_report_rendering.py
       test_pattern_statistics_basic.py
       test_signature_builder_basic.py
+  recall_execution/
+    __init__.py
+    recall_execution_adapter.py
+    recall_execution_policy.py
+    recall_execution_result.py
+    tests/
+      __init__.py
+      test_recall_execution_clamping.py
+      test_recall_execution_deterministic.py
+      test_recall_execution_empty.py
+      test_recall_execution_mapping.py
+  recall_runtime_bridge/
+    __init__.py
+    recall_runtime_adapter.py
+    recall_runtime_policy.py
+    recall_runtime_result.py
+    tests/
+      __init__.py
+      test_bridge_deterministic.py
+      test_bridge_execution_off.py
+      test_bridge_execution_on.py
+      test_bridge_identity_preserved.py
+  replay_recall/
+    __init__.py
+    recall_bias_suggestion.py
+    recall_matcher.py
+    recall_query.py
+    recall_weighting.py
+    replay_recall_pipeline.py
+    tests/
+      __init__.py
+      test_recall_empty_registry.py
+      test_recall_is_deterministic.py
+      test_recall_recurrence_weighting.py
+      test_recall_similarity_scoring.py
+  replay_storage/
+    __init__.py
+    replay_storage_pipeline.py
+    replay_storage_policy.py
+    replay_storage_result.py
+    tests/
+      __init__.py
+      test_replay_storage_is_deterministic.py
+      test_replay_storage_promotes_semantics.py
+      test_replay_storage_respects_empty_input.py
   reset/
     __init__.py
     reset_arbitration_policy.md
