@@ -1,150 +1,150 @@
-import os
-
-BASE = os.path.join("memory", "recall_runtime_bridge")
-TESTS = os.path.join(BASE, "tests")
-
-FILES = {}
-
-FILES[os.path.join(BASE, "__init__.py")] = ""
-FILES[os.path.join(TESTS, "__init__.py")] = ""
-
-# ---------------------------------------
-# recall_runtime_result.py
-# ---------------------------------------
-
-FILES[os.path.join(BASE, "recall_runtime_result.py")] = """from dataclasses import dataclass
-from typing import Dict
+from pathlib import Path
 
 
-@dataclass(frozen=True)
-class RecallRuntimeResult:
-    applied_targets: Dict[str, float]
+BASE = Path("integration/tests/substrate_surface")
+BASE.mkdir(parents=True, exist_ok=True)
+
+
+def write_file(path: Path, content: str):
+    path.write_text(content.strip() + "\n", encoding="utf-8")
+
+
+# ------------------------------
+# __init__.py
+# ------------------------------
+
+write_file(BASE / "__init__.py", "")
+
+
+# ------------------------------
+# test_role_matrix.py
+# ------------------------------
+
+write_file(
+    BASE / "test_role_matrix.py",
+    """
+from integration.substrate_surface.role_matrix import RoleMatrix
+
+
+def test_role_matrix_restricts_targets():
+    targets = RoleMatrix.allowed_targets("simulation_evaluator")
+
+    assert "VALUE_BIAS" in targets
+    assert "PFC_CONTEXT_GAIN" not in targets
 """
+)
 
-# ---------------------------------------
-# recall_runtime_policy.py
-# ---------------------------------------
 
-FILES[os.path.join(BASE, "recall_runtime_policy.py")] = """class RecallRuntimePolicy:
-    ENABLE_RECALL_EXECUTION = True
+# ------------------------------
+# test_mode_behavior_policy.py
+# ------------------------------
+
+write_file(
+    BASE / "test_mode_behavior_policy.py",
+    """
+from integration.substrate_surface.mode_behavior_policy import ModeBehaviorPolicy
+
+
+def test_mode_clamps_magnitude():
+    magnitude = 0.9
+
+    clamped = ModeBehaviorPolicy.apply("passive", magnitude)
+
+    assert clamped == 0.25
 """
-
-# ---------------------------------------
-# recall_runtime_adapter.py
-# ---------------------------------------
-
-FILES[os.path.join(BASE, "recall_runtime_adapter.py")] = """from typing import Dict
-
-from engine.execution.execution_target import ExecutionTarget
-from engine.execution.execution_gate import ExecutionGate
-
-from memory.influence_arbitration.influence_packet import InfluencePacket
-from .recall_runtime_result import RecallRuntimeResult
-from .recall_runtime_policy import RecallRuntimePolicy
+)
 
 
-class RecallRuntimeAdapter:
+# ------------------------------
+# test_confidence_weighting_policy.py
+# ------------------------------
 
-    def apply_packet(
-        self,
-        packet: InfluencePacket,
-        gate: ExecutionGate,
-        identity_map: Dict[str, float],
-    ) -> RecallRuntimeResult:
+write_file(
+    BASE / "test_confidence_weighting_policy.py",
+    """
+from integration.substrate_surface.confidence_weighting_policy import ConfidenceWeightingPolicy
 
-        if not RecallRuntimePolicy.ENABLE_RECALL_EXECUTION:
-            return RecallRuntimeResult(applied_targets={})
 
-        applied = {}
+def test_confidence_attenuates():
+    magnitude = 1.0
+    confidence = 0.5
 
-        for target_name, magnitude in packet.targets.items():
-            enum_target = ExecutionTarget[target_name]
+    adjusted = ConfidenceWeightingPolicy.apply(magnitude, confidence)
 
-            identity = identity_map.get(target_name, 0.0)
+    assert adjusted == 0.5
 
-            result = gate.apply(
-                target=enum_target,
-                value=magnitude,
-                identity=identity,
-            )
 
-            applied[target_name] = result
+def test_confidence_never_amplifies():
+    magnitude = 0.6
+    confidence = 1.5  # should be clamped
 
-        return RecallRuntimeResult(applied_targets=applied)
+    adjusted = ConfidenceWeightingPolicy.apply(magnitude, confidence)
+
+    assert adjusted <= magnitude
 """
+)
 
-# ---------------------------------------
-# TESTS
-# ---------------------------------------
 
-FILES[os.path.join(TESTS, "test_bridge_execution_off.py")] = """from memory.recall_runtime_bridge.recall_runtime_adapter import RecallRuntimeAdapter
-from memory.influence_arbitration.influence_packet import InfluencePacket
+# ------------------------------
+# test_influence_packet_builder.py
+# ------------------------------
 
-class DummyGate:
-    def apply(self, target, value, identity):
-        return identity  # always identity
+write_file(
+    BASE / "test_influence_packet_builder.py",
+    """
+import pytest
 
-def test_execution_off():
-    adapter = RecallRuntimeAdapter()
-    packet = InfluencePacket(targets={"VALUE_BIAS": 5.0})
+from integration.transformation.structured_signal import StructuredCognitiveSignal
+from integration.substrate_surface.influence_packet_builder import InfluencePacketBuilder
 
-    result = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 0.0})
 
-    assert result.applied_targets["VALUE_BIAS"] == 0.0
+def test_influence_packet_builder_respects_role():
+    signal = StructuredCognitiveSignal(
+        semantic_tokens=["alpha"],
+        quantitative_fields={},
+        role="simulation_evaluator",
+        mode="active",
+        confidence=1.0,
+    )
+
+    packets = InfluencePacketBuilder.build(signal, base_magnitude=1.0)
+
+    targets = [p.target for p in packets]
+
+    assert "VALUE_BIAS" in targets
+    assert "PFC_CONTEXT_GAIN" not in targets
+
+
+def test_zero_magnitude_produces_no_packets():
+    signal = StructuredCognitiveSignal(
+        semantic_tokens=["alpha"],
+        quantitative_fields={},
+        role="simulation_evaluator",
+        mode="passive",
+        confidence=0.0,
+    )
+
+    packets = InfluencePacketBuilder.build(signal, base_magnitude=1.0)
+
+    assert packets == []
+
+
+def test_influence_packet_is_immutable():
+    signal = StructuredCognitiveSignal(
+        semantic_tokens=["alpha"],
+        quantitative_fields={},
+        role="simulation_evaluator",
+        mode="active",
+        confidence=1.0,
+    )
+
+    packets = InfluencePacketBuilder.build(signal, base_magnitude=1.0)
+
+    packet = packets[0]
+
+    with pytest.raises(Exception):
+        packet.magnitude = 0.0
 """
+)
 
-FILES[os.path.join(TESTS, "test_bridge_execution_on.py")] = """from memory.recall_runtime_bridge.recall_runtime_adapter import RecallRuntimeAdapter
-from memory.influence_arbitration.influence_packet import InfluencePacket
-
-class DummyGate:
-    def apply(self, target, value, identity):
-        return value
-
-def test_execution_on():
-    adapter = RecallRuntimeAdapter()
-    packet = InfluencePacket(targets={"VALUE_BIAS": 5.0})
-
-    result = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 0.0})
-
-    assert result.applied_targets["VALUE_BIAS"] == 5.0
-"""
-
-FILES[os.path.join(TESTS, "test_bridge_identity_preserved.py")] = """from memory.recall_runtime_bridge.recall_runtime_adapter import RecallRuntimeAdapter
-from memory.influence_arbitration.influence_packet import InfluencePacket
-
-class DummyGate:
-    def apply(self, target, value, identity):
-        return identity
-
-def test_identity_preserved():
-    adapter = RecallRuntimeAdapter()
-    packet = InfluencePacket(targets={"VALUE_BIAS": 3.0})
-
-    result = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 2.0})
-
-    assert result.applied_targets["VALUE_BIAS"] == 2.0
-"""
-
-FILES[os.path.join(TESTS, "test_bridge_deterministic.py")] = """from memory.recall_runtime_bridge.recall_runtime_adapter import RecallRuntimeAdapter
-from memory.influence_arbitration.influence_packet import InfluencePacket
-
-class DummyGate:
-    def apply(self, target, value, identity):
-        return value
-
-def test_deterministic():
-    adapter = RecallRuntimeAdapter()
-    packet = InfluencePacket(targets={"VALUE_BIAS": 4.0})
-
-    r1 = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 0.0})
-    r2 = adapter.apply_packet(packet, DummyGate(), {"VALUE_BIAS": 0.0})
-
-    assert r1 == r2
-"""
-
-for path, content in FILES.items():
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-print("Recall Runtime Bridge module created successfully.")
+print("Substrate surface tests installed successfully.")
